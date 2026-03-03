@@ -101,17 +101,59 @@ devflow_init() {
     fi
   fi
 
-  # Hindsight — install profile via uvx
+  # Hindsight — install profile via uvx with interactive provider selection
   if has_cmd uvx; then
-    info "Setting up Hindsight profile..."
-    uvx hindsight-embed profile create main \
-      --port 8888 \
-      --env HINDSIGHT_API_LLM_PROVIDER=anthropic \
-      --env HINDSIGHT_API_LLM_API_KEY=placeholder 2>/dev/null \
-      && ok "Hindsight profile 'main' created" \
-      || skip "Hindsight profile 'main' already exists or could not be created"
-    uvx hindsight-embed profile set-active main 2>/dev/null
-    info "Set your API key: uvx hindsight-embed profile set-env main HINDSIGHT_API_LLM_API_KEY <your-key>"
+    if [[ -f "${HOME}/.hindsight/profiles/main.env" ]]; then
+      local current_provider
+      current_provider="$(grep HINDSIGHT_API_LLM_PROVIDER "${HOME}/.hindsight/profiles/main.env" 2>/dev/null | cut -d= -f2)"
+      ok "Hindsight profile 'main' exists (provider: ${current_provider:-unknown})"
+    else
+      section "Configuring Hindsight memory"
+      log "Choose an LLM provider for Hindsight memory processing."
+      log ""
+      printf "  ${BOLD}1)${RESET} Claude Code      ${DIM}— uses your Claude Code subscription, no API key needed${RESET}\n"
+      printf "  ${BOLD}2)${RESET} OpenAI Codex     ${DIM}— uses your OpenAI Codex subscription, no API key needed${RESET}\n"
+      printf "  ${BOLD}3)${RESET} Anthropic API    ${DIM}— requires ANTHROPIC_API_KEY${RESET}\n"
+      printf "  ${BOLD}4)${RESET} OpenAI API       ${DIM}— requires OPENAI_API_KEY${RESET}\n"
+      printf "  ${BOLD}5)${RESET} Groq             ${DIM}— requires GROQ_API_KEY${RESET}\n"
+      printf "  ${BOLD}6)${RESET} Ollama           ${DIM}— free, runs locally, no API key${RESET}\n"
+      log ""
+      printf "  Select provider [1]: "
+      local provider_choice
+      read -r provider_choice </dev/tty 2>/dev/null || provider_choice="1"
+      provider_choice="${provider_choice:-1}"
+
+      local hs_provider="" hs_needs_key=false
+      case "$provider_choice" in
+        1) hs_provider="claude-code" ;;
+        2) hs_provider="openai-codex" ;;
+        3) hs_provider="anthropic"; hs_needs_key=true ;;
+        4) hs_provider="openai"; hs_needs_key=true ;;
+        5) hs_provider="groq"; hs_needs_key=true ;;
+        6) hs_provider="ollama" ;;
+        *) hs_provider="claude-code"; warn "Invalid choice, defaulting to Claude Code" ;;
+      esac
+
+      local create_args=(main --port 8888 --env "HINDSIGHT_API_LLM_PROVIDER=${hs_provider}")
+
+      if $hs_needs_key; then
+        printf "  Enter API key: "
+        local api_key
+        read -rs api_key </dev/tty 2>/dev/null || api_key=""
+        echo ""
+        if [[ -n "$api_key" ]]; then
+          create_args+=(--env "HINDSIGHT_API_LLM_API_KEY=${api_key}")
+        else
+          create_args+=(--env "HINDSIGHT_API_LLM_API_KEY=placeholder")
+          warn "No API key provided. Set it later: uvx hindsight-embed profile set-env main HINDSIGHT_API_LLM_API_KEY <key>"
+        fi
+      fi
+
+      uvx hindsight-embed profile create "${create_args[@]}" 2>/dev/null \
+        && ok "Hindsight profile 'main' created (provider: ${hs_provider})" \
+        || warn "Hindsight profile creation failed — configure manually: uvx hindsight-embed configure"
+      uvx hindsight-embed profile set-active main 2>/dev/null
+    fi
   else
     skip "uvx not available — skipping Hindsight profile setup"
   fi
@@ -315,8 +357,9 @@ OJSON
   detail ".continue/checks/      — Code review check files"
   log ""
   log "Next steps:"
-  detail "devflow up          — Start Docker services (Hindsight + Langfuse)"
-  detail "devflow seed        — Seed Hindsight memory from project files"
-  detail "devflow status      — Check status of all layers"
-  detail "devflow skills list — Browse available skills"
+  detail "uvx hindsight-embed daemon start   — Start Hindsight memory daemon"
+  detail "devflow up                         — Start Langfuse (Docker)"
+  detail "devflow seed                       — Seed memory from project files"
+  detail "devflow status                     — Check status of all layers"
+  detail "devflow skills list                — Browse available skills"
 }

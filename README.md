@@ -46,16 +46,14 @@ make link  # symlinks to ~/.local/bin/devflow
 
 ```bash
 # 1. Initialize (installs tools, configures MCP, copies templates, installs plugins)
+#    Interactive prompt lets you choose LLM provider for Hindsight memory
 devflow init ~/projects/myapp
 
-# 2. Set your Anthropic API key for Hindsight memory
-uvx hindsight-embed profile set-env main HINDSIGHT_API_LLM_API_KEY sk-ant-...
-
-# 3. Start Hindsight daemon + Docker services (Langfuse)
+# 2. Start Hindsight daemon + Docker services (Langfuse)
 uvx hindsight-embed daemon start
 devflow up  # starts Langfuse (Docker)
 
-# 4. Seed Hindsight with project knowledge
+# 3. Seed Hindsight with project knowledge
 devflow seed
 
 # 4. Check status of all 6 layers
@@ -125,10 +123,18 @@ All operations are idempotent — safe to run multiple times. User-scoped files 
 
 Hindsight runs as a **local daemon** via `hindsight-embed` — no Docker needed for memory.
 
-```bash
-# Configure (one-time)
-uvx hindsight-embed profile set-env main HINDSIGHT_API_LLM_API_KEY sk-ant-...
+`devflow init` prompts you to choose an LLM provider:
 
+| Provider       | API Key? | Notes                               |
+| -------------- | -------- | ----------------------------------- |
+| `claude-code`  | No       | Uses your Claude Code subscription  |
+| `openai-codex` | No       | Uses your OpenAI Codex subscription |
+| `anthropic`    | Yes      | Direct Anthropic API                |
+| `openai`       | Yes      | Direct OpenAI API                   |
+| `groq`         | Yes      | Fast inference                      |
+| `ollama`       | No       | Free, local models                  |
+
+```bash
 # Start/stop daemon
 uvx hindsight-embed daemon start
 uvx hindsight-embed daemon stop
@@ -137,6 +143,9 @@ uvx hindsight-embed daemon status
 # Test memory
 uvx hindsight-embed memory retain default "TypeScript project uses strict mode"
 uvx hindsight-embed memory recall default "project conventions"
+
+# Change provider later
+uvx hindsight-embed profile set-env main HINDSIGHT_API_LLM_PROVIDER claude-code
 ```
 
 API: `localhost:8888` | MCP: `localhost:8888/mcp/`
