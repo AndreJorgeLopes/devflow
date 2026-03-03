@@ -1,0 +1,14 @@
+# OS
+.DS_Store
+
+# Docker
+docker/.env
+
+# Build
+*.tar.gz
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0",
+  "description": "Devflow Skills Marketplace — Claude Code slash commands integrating all 6 layers of the devflow stack",
+  "layers": {
+    "1": "Hindsight (memory)",
+    "2": "Agent Deck (session management)",
+    "3": "Worktrunk (git worktrees)",
+    "4": "Continue.dev (code review)",
+    "5": "Process discipline",
+    "6": "Langfuse (observability)"
+  },
+  "skills": [
+    {
+      "name": "memory-recall",
+      "description": "Recall relevant memories before starting a task",
+      "category": "memory",
+      "layer": 1,
+      "files": ["memory-recall/recall-before-task.md"]
+    },
+    {
+      "name": "retain-learning",
+      "description": "Retain a new learning or discovery into Hindsight",
+      "category": "memory",
+      "layer": 1,
+      "files": ["memory-recall/retain-learning.md"]
+    },
+    {
+      "name": "reflect-session",
+      "description": "Reflect on the current session and consolidate learnings",
+      "category": "memory",
+      "layer": 1,
+      "files": ["memory-recall/reflect-session.md"]
+    },
+    {
+      "name": "pre-push-check",
+      "description": "Run the full pre-push review pipeline before pushing code",
+      "category": "code-review",
+      "layer": 4,
+      "files": ["code-review/pre-push-check.md"]
+    },
+    {
+      "name": "new-feature",
+      "description": "Start a new feature with worktree, memory recall, and workspace setup",
+      "category": "worktree-flow",
+      "layer": 3,
+      "files": ["worktree-flow/new-feature.md"]
+    },
+    {
+      "name": "finish-feature",
+      "description": "Finish a feature with checks, commit, merge, and learning retention",
+      "category": "worktree-flow",
+      "layer": 3,
+      "files": ["worktree-flow/finish-feature.md"]
+    },
+    {
+      "name": "create-pr",
+      "description": "Full PR creation pipeline with self-review and checks",
+      "category": "pr-pipeline",
+      "layer": 4,
+      "files": ["pr-pipeline/create-pr.md"]
+    },
+    {
+      "name": "spec-feature",
+      "description": "Spec a new feature with architecture recall, planning, and task breakdown",
+      "category": "process-discipline",
+      "layer": 5,
+      "files": ["process-discipline/spec-feature.md"]
+    },
+    {
+      "name": "architecture-decision",
+      "description": "Document an architectural decision with rationale and memory retention",
+      "category": "process-discipline",
+      "layer": 5,
+      "files": ["process-discipline/architecture-decision.md"]
+    },
+    {
+      "name": "session-summary",
+      "description": "Generate a session summary for Langfuse tracing and observability",
+      "category": "observability",
+      "layer": 6,
+      "files": ["observability/session-summary.md"]
+    }
+  ]
+}

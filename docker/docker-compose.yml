@@ -1,0 +1,76 @@
+version: "3.9"
+
+services:
+  # ── Hindsight (Memory) ──────────────────────────────────────────────
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:latest
+    container_name: devflow-hindsight
+    ports:
+      - "8888:8888" # API
+      - "9999:9999" # UI
+    environment:
+      HINDSIGHT_API_LLM_PROVIDER: ${HINDSIGHT_API_LLM_PROVIDER:-anthropic}
+      HINDSIGHT_API_LLM_API_KEY: ${ANTHROPIC_API_KEY}
+    volumes:
+      - hindsight-data:/home/hindsight/.pg0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - devflow
+
+  # ── Langfuse PostgreSQL ─────────────────────────────────────────────
+  langfuse-db:
+    image: postgres:15
+    container_name: devflow-langfuse-db
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - devflow
+
+  # ── Langfuse Web (Observability) ────────────────────────────────────
+  langfuse-web:
+    image: langfuse/langfuse:2
+    container_name: devflow-langfuse-web
+    ports:
+      - "3100:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      NEXTAUTH_SECRET: devflow-langfuse-secret-change-me
+      NEXTAUTH_URL: http://localhost:3100
+      SALT: devflow-salt-change-me
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/public/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - devflow
+
+volumes:
+  hindsight-data:
+  langfuse-db-data:
+
+networks:
+  devflow:
+    driver: bridge

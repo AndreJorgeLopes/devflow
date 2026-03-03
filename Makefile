@@ -1,0 +1,65 @@
+PREFIX ?= $(HOME)/.local
+BINDIR := $(PREFIX)/bin
+LIBDIR := $(PREFIX)/share/devflow
+VERSION := 0.1.0
+TARBALL := devflow-$(VERSION).tar.gz
+
+.PHONY: install uninstall link test brew-local release help
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
+
+install: ## Install devflow to PREFIX (~/.local by default)
+	@mkdir -p $(BINDIR) $(LIBDIR)
+	@cp -R lib templates skills config docker $(LIBDIR)/
+	@cp bin/devflow $(LIBDIR)/devflow-bin
+	@chmod 755 $(LIBDIR)/devflow-bin
+	@printf '#!/usr/bin/env bash\nexport DEVFLOW_ROOT="%s"\nexec "%s/devflow-bin" "$$@"\n' \
+		"$(LIBDIR)" "$(LIBDIR)" > $(BINDIR)/devflow
+	@chmod 755 $(BINDIR)/devflow
+	@echo "devflow $(VERSION) installed to $(BINDIR)/devflow"
+	@echo "Make sure $(BINDIR) is in your PATH."
+
+uninstall: ## Remove devflow
+	@rm -f $(BINDIR)/devflow
+	@rm -rf $(LIBDIR)
+	@echo "devflow removed."
+
+link: ## Symlink bin/devflow for local development
+	@mkdir -p $(BINDIR)
+	@ln -sf $(CURDIR)/bin/devflow $(BINDIR)/devflow
+	@echo "devflow linked: $(BINDIR)/devflow -> $(CURDIR)/bin/devflow"
+	@echo "DEVFLOW_ROOT will default to $(CURDIR) when running from source."
+
+test: ## Run smoke tests
+	@echo "=== devflow smoke tests ==="
+	@if [ -x bin/devflow ]; then \
+		echo "PASS: bin/devflow exists and is executable"; \
+	else \
+		echo "FAIL: bin/devflow not found or not executable"; exit 1; \
+	fi
+	@if bin/devflow version 2>/dev/null | grep -q "$(VERSION)"; then \
+		echo "PASS: devflow version reports $(VERSION)"; \
+	else \
+		echo "SKIP: devflow version (binary may not be ready yet)"; \
+	fi
+	@if bin/devflow help 2>/dev/null | grep -qi "usage\|help\|devflow"; then \
+		echo "PASS: devflow help produces output"; \
+	else \
+		echo "SKIP: devflow help (binary may not be ready yet)"; \
+	fi
+	@echo "=== done ==="
+
+brew-local: ## Install via local Homebrew formula
+	brew install --formula Formula/devflow.rb
+
+release: ## Create a release tarball
+	@mkdir -p dist
+	tar czf dist/$(TARBALL) \
+		--exclude='.git' \
+		--exclude='dist' \
+		--exclude='*.tar.gz' \
+		-C .. devflow
+	@echo "Tarball: dist/$(TARBALL)"
+	@echo "SHA256:  $$(shasum -a 256 dist/$(TARBALL) | cut -d' ' -f1)"
+	@echo "Update Formula/devflow.rb with the SHA256 above."

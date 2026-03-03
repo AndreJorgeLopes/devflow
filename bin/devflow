@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ── Resolve devflow root ─────────────────────────────────────────────────────
+# Follow symlinks to find the real install directory
+_resolve_source() {
+  local src="${BASH_SOURCE[0]}"
+  while [[ -L "$src" ]]; do
+    local dir="$(cd "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    [[ "$src" != /* ]] && src="$dir/$src"
+  done
+  echo "$src"
+}
+DEVFLOW_BIN="$(cd "$(dirname "$(_resolve_source)")" && pwd)"
+DEVFLOW_ROOT="$(dirname "$DEVFLOW_BIN")"
+
+# ── Source libraries ──────────────────────────────────────────────────────────
+source "${DEVFLOW_ROOT}/lib/utils.sh"
+source "${DEVFLOW_ROOT}/lib/init.sh"
+source "${DEVFLOW_ROOT}/lib/services.sh"
+source "${DEVFLOW_ROOT}/lib/check.sh"
+source "${DEVFLOW_ROOT}/lib/skills.sh"
+source "${DEVFLOW_ROOT}/lib/seed.sh"
+source "${DEVFLOW_ROOT}/lib/worktree.sh"
+
+# Override devflow_root to use our resolved path
+devflow_root() { echo "$DEVFLOW_ROOT"; }
+
+# ── Help ──────────────────────────────────────────────────────────────────────
+usage() {
+  cat <<EOF
+${BOLD}devflow${RESET} v${DEVFLOW_VERSION} — AI dev environment orchestrator
+
+${BOLD}USAGE${RESET}
+  devflow <command> [options]
+
+${BOLD}COMMANDS${RESET}
+  ${CYAN}init${RESET} [project-dir]          Initialize a project with all 6 layers
+  ${CYAN}up${RESET}                           Start Docker services (Hindsight + Langfuse)
+  ${CYAN}down${RESET}                         Stop Docker services
+  ${CYAN}status${RESET}                       Show status of all layers
+  ${CYAN}check${RESET}                        Run Continue.dev checks on current diff
+  ${CYAN}skills${RESET} list                  List available skills
+  ${CYAN}skills${RESET} install <name>        Install a skill to the current project
+  ${CYAN}skills${RESET} remove <name>         Remove a skill from the project
+  ${CYAN}seed${RESET} [project-dir]           Seed Hindsight memory from project files
+  ${CYAN}worktree${RESET} <name> [--agent]    Create a worktree, optionally launch agent
+  ${CYAN}review${RESET}                       Run self-review via Claude Code
+  ${CYAN}version${RESET}                      Print version
+  ${CYAN}help${RESET}                         Show this help
+
+${BOLD}LAYERS${RESET}
+  1. Hindsight    — Memory MCP (Docker)
+  2. Agent Deck   — Session wrapper (brew)
+  3. Worktrunk    — Git worktrees (brew)
+  4. Continue.dev — Code review (npm)
+  5. CLAUDE.md    — Process discipline (skills)
+  6. Langfuse     — Observability (Docker)
+
+${BOLD}EXAMPLES${RESET}
+  devflow init ~/projects/myapp
+  devflow up
+  devflow seed
+  devflow worktree feat/add-auth --agent claude
+  devflow skills install code-review
+  devflow check
+
+EOF
+}
+
+# ── Review ────────────────────────────────────────────────────────────────────
+devflow_review() {
+  section "Running self-review"
+
+  if ! has_cmd claude; then
+    die "Claude Code is not installed. Install from https://claude.ai/download"
+  fi
+
+  local proj
+  proj="$(project_root)"
+
+  if [[ ! -f "${proj}/CLAUDE.md" ]]; then
+    die "No CLAUDE.md found in project root. Run 'devflow init' first."
+  fi
+
+  local diff
+  diff=$(git -C "$proj" diff HEAD 2>/dev/null || git -C "$proj" diff 2>/dev/null || echo "")
+
+  if [[ -z "$diff" ]]; then
+    warn "No uncommitted changes to review."
+    info "Reviewing staged changes instead..."
+    diff=$(git -C "$proj" diff --cached 2>/dev/null || echo "")
+  fi
+
+  if [[ -z "$diff" ]]; then
+    die "No changes to review (no uncommitted or staged changes)."
+  fi
+
+  log "Invoking Claude Code for review..."
+  echo "$diff" | claude --print \
+    "Review this diff against the project's CLAUDE.md conventions. Check for: naming conventions, architecture violations, missing error handling, test coverage gaps. Be specific and actionable." \
+    2>/dev/null \
+    || die "Claude Code review failed. Make sure Claude Code is installed and authenticated."
+}
+
+# ── Dispatch ──────────────────────────────────────────────────────────────────
+main() {
+  local cmd="${1:-help}"
+  shift || true
+
+  case "$cmd" in
+    init)      devflow_init "$@" ;;
+    up)        devflow_up "$@" ;;
+    down)      devflow_down "$@" ;;
+    status)    devflow_status "$@" ;;
+    check)     devflow_check "$@" ;;
+    skills)    devflow_skills "$@" ;;
+    seed)      devflow_seed "$@" ;;
+    worktree)  devflow_worktree "$@" ;;
+    review)    devflow_review "$@" ;;
+    version)   echo "devflow v${DEVFLOW_VERSION}" ;;
+    help|-h|--help) usage ;;
+    *)         err "Unknown command: $cmd"; usage; exit 1 ;;
+  esac
+}
+
+main "$@"
