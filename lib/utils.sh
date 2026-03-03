@@ -47,7 +47,7 @@ has_cmd() {
 # ensure_docker — check Docker daemon is running
 ensure_docker() {
   need_cmd docker
-  timeout 5 docker info >/dev/null 2>&1 || die "Docker is not running. Please start Docker Desktop."
+  timeout 5 docker info >/dev/null 2>&1 || die "Docker is not running. Start your Docker runtime (e.g. colima start, or start Docker Desktop)."
 }
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
