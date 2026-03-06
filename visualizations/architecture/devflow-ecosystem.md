@@ -7,7 +7,7 @@ tags:
     hindsight,
     agent-deck,
     worktrunk,
-    continue-dev,
+    code-review,
     langfuse,
     skills,
     conductor,
@@ -44,7 +44,11 @@ graph TD
     end
 
     subgraph L4 [" Layer 4 — Code Review "]
-        CN["Continue.dev<br/>(cn check)<br/>.continue/checks/*.md"]
+        CR["Code Review<br/>(devflow check)<br/>.devflow/checks/*.md"]
+        CR_CLAUDE["Claude Code CLI<br/>(claude --print)<br/>structured JSON output"]
+        CR_OPENCODE["OpenCode CLI<br/>(opencode run)<br/>text output fallback"]
+        CR -->|"primary"| CR_CLAUDE
+        CR -->|"fallback"| CR_OPENCODE
     end
 
     subgraph L5 [" Layer 5 — Process Discipline "]
@@ -58,7 +62,7 @@ graph TD
     CLI -->|"up / down"| HS
     CLI -->|"up / down"| LF
     CLI -->|"worktree --agent"| WT
-    CLI -->|"check"| CN
+    CLI -->|"check"| CR
     CLI -->|"skills install/remove"| SK
     CLI -->|"seed"| HS
     CLI -->|"init"| AD
@@ -70,7 +74,7 @@ graph TD
     classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
     classDef agentDeckStyle fill:#3b82f6,color:#fff,stroke:#1e40af
     classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
-    classDef continueStyle fill:#d97706,color:#fff,stroke:#b45309
+    classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
     classDef skillsStyle fill:#be185d,color:#fff,stroke:#9d174d
     classDef langfuseStyle fill:#0891b2,color:#fff,stroke:#0e7490
     classDef cliStyle fill:#374151,color:#fff,stroke:#1f2937
@@ -79,7 +83,7 @@ graph TD
     class HS hindsightStyle
     class AD agentDeckStyle
     class WT worktrunkStyle
-    class CN continueStyle
+    class CR,CR_CLAUDE,CR_OPENCODE reviewStyle
     class SK skillsStyle
     class LF langfuseStyle
     class CLI cliStyle
@@ -98,7 +102,7 @@ graph LR
     COND["Conductor<br/>(Monitor + Auto-respond)"]
     HS["Hindsight<br/>(Memory)"]
     WT["Worktrunk<br/>(Worktrees)"]
-    CN["Continue.dev<br/>(Review)"]
+    CR["Code Review<br/>(devflow check)"]
     SK["Skills<br/>(Process)"]
     LF["Langfuse<br/>(Traces)"]
     AGENT["AI Agent<br/>(Claude Code /<br/>OpenCode)"]
@@ -114,7 +118,7 @@ graph LR
     AGENT -->|"recall / retain /<br/>reflect via MCP"| HS
     AGENT -->|"follows process<br/>from"| SK
     SK -->|"orchestrates<br/>across layers"| HS
-    SK -->|"triggers<br/>cn check"| CN
+    SK -->|"triggers<br/>devflow check"| CR
     SK -->|"creates / cleans<br/>worktrees"| WT
     SK -->|"logs session<br/>summary"| LF
     LF -.->|"collects traces<br/>from agent"| AGENT
@@ -122,7 +126,7 @@ graph LR
     classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
     classDef agentDeckStyle fill:#3b82f6,color:#fff,stroke:#1e40af
     classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
-    classDef continueStyle fill:#d97706,color:#fff,stroke:#b45309
+    classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
     classDef skillsStyle fill:#be185d,color:#fff,stroke:#9d174d
     classDef langfuseStyle fill:#0891b2,color:#fff,stroke:#0e7490
     classDef agentStyle fill:#374151,color:#fff,stroke:#1f2937
@@ -132,7 +136,7 @@ graph LR
     class HS hindsightStyle
     class AD agentDeckStyle
     class WT worktrunkStyle
-    class CN continueStyle
+    class CR reviewStyle
     class SK skillsStyle
     class LF langfuseStyle
     class AGENT agentStyle
@@ -146,18 +150,18 @@ graph LR
 
 Each skill is a slash command that orchestrates across multiple layers:
 
-| Skill                    | Layer | Touches | What it does                                       |
-| ------------------------ | ----- | ------- | -------------------------------------------------- |
-| `/memory-recall`         | 1     | L1      | Recall memories before starting a task             |
-| `/retain-learning`       | 1     | L1      | Store a discovery into Hindsight                   |
-| `/reflect-session`       | 1     | L1      | End-of-session reflection and memory consolidation |
-| `/new-feature`           | 1     | L1      | POST-LAUNCH setup guide for new feature workspace  |
-| `/finish-feature`        | 4     | L4 + L1 | cn check + retain learnings (terminal action)      |
-| `/pre-push-check`        | 4     | L4 + L5 | cn check + CLAUDE.md compliance self-review        |
-| `/create-pr`             | 4     | L4 + L1 | Self-review + cn check + gh pr create              |
-| `/spec-feature`          | 5     | L1 + L5 | Architecture recall + spec doc + task breakdown    |
-| `/architecture-decision` | 5     | L1 + L5 | ADR + Hindsight retention + CLAUDE.md update       |
-| `/session-summary`       | 6     | L6 + L1 | Metrics, quality scores, Langfuse trace logging    |
+| Skill                    | Layer | Touches | What it does                                          |
+| ------------------------ | ----- | ------- | ----------------------------------------------------- |
+| `/memory-recall`         | 1     | L1      | Recall memories before starting a task                |
+| `/retain-learning`       | 1     | L1      | Store a discovery into Hindsight                      |
+| `/reflect-session`       | 1     | L1      | End-of-session reflection and memory consolidation    |
+| `/new-feature`           | 1     | L1      | POST-LAUNCH setup guide for new feature workspace     |
+| `/finish-feature`        | 4     | L4 + L1 | devflow check + retain learnings (terminal action)    |
+| `/pre-push-check`        | 4     | L4 + L5 | devflow check + CLAUDE.md compliance self-review      |
+| `/create-pr`             | 4     | L4 + L1 | Self-review + devflow check + gh pr create            |
+| `/spec-feature`          | 5     | L1 + L5 | Architecture recall + spec doc + task breakdown       |
+| `/architecture-decision` | 5     | L1 + L5 | ADR + Hindsight retention + CLAUDE.md update          |
+| `/session-summary`       | 6     | L6 + L1 | Metrics, quality scores, Langfuse trace logging       |
 
 ---
 
@@ -178,36 +182,43 @@ graph TD
         COND_C["Conductor<br/>(persistent session in Agent Deck)<br/>monitors · auto-responds · escalates"]
         WEB_C["Web UI<br/>(agent-deck web)<br/>:8420 dashboard"]
         WT_C["worktrunk / wt<br/>(brew install)"]
-        CN_C["continue.dev / cn<br/>(npm -g)"]
         AD_C --> COND_C
         AD_C --> WEB_C
+    end
+
+    subgraph Review ["Code Review (devflow check)"]
+        CR_C["devflow check<br/>(CLI dispatch)"]
+        CR_CL["claude --print<br/>(primary · structured JSON)"]
+        CR_OC["opencode run<br/>(fallback · text output)"]
+        CR_C -->|"primary"| CR_CL
+        CR_C -->|"fallback"| CR_OC
     end
 
     subgraph Config ["Config Files"]
         CLAUDE["~/.claude/CLAUDE.md<br/>(user-scoped agent config)"]
         AGENTS["~/.claude/AGENTS.md<br/>(multi-agent coordination)"]
         TRUST["~/.claude.json<br/>(trust config)"]
-        CHECKS[".continue/checks/*.md<br/>(per-project review rules)"]
+        CHECKS[".devflow/checks/*.md<br/>(per-project review rules)"]
         TOML[".worktrunk.toml<br/>(per-project worktree config)"]
         SKILLS["~/.claude/commands/*<br/>(installed skills)"]
     end
 
     AD_C -->|"MCP connection"| HS_C
     COND_C -->|"monitors sessions via"| AD_C
-    CN_C -->|"reads rules from"| CHECKS
+    CR_C -->|"reads rules from"| CHECKS
     WT_C -->|"reads config from"| TOML
     AD_C -->|"reads profiles"| CLAUDE
     AD_C -->|"reads trust"| TRUST
     SKILLS -->|"orchestrate"| AD_C
     SKILLS -->|"orchestrate"| WT_C
-    SKILLS -->|"orchestrate"| CN_C
+    SKILLS -->|"orchestrate"| CR_C
     SKILLS -->|"orchestrate"| HS_C
     SKILLS -->|"orchestrate"| LF_WEB
 
     classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
     classDef agentDeckStyle fill:#3b82f6,color:#fff,stroke:#1e40af
     classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
-    classDef continueStyle fill:#d97706,color:#fff,stroke:#b45309
+    classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
     classDef skillsStyle fill:#be185d,color:#fff,stroke:#9d174d
     classDef langfuseStyle fill:#0891b2,color:#fff,stroke:#0e7490
     classDef configStyle fill:#6b7280,color:#fff,stroke:#4b5563
@@ -218,7 +229,7 @@ graph TD
     class COND_C conductorStyle
     class WEB_C agentDeckStyle
     class WT_C,TOML worktrunkStyle
-    class CN_C,CHECKS continueStyle
+    class CR_C,CR_CL,CR_OC,CHECKS reviewStyle
     class LF_DB,LF_WEB langfuseStyle
     class CLAUDE,AGENTS,TRUST,SKILLS skillsStyle
 ```
@@ -236,7 +247,7 @@ graph TD
 | `devflow status`                    | Health check across all 6 layers                                                                  | All 6  |
 | `devflow seed [dir]`                | Seed Hindsight memory from project files                                                          | L1     |
 | `devflow worktree <name> [--agent]` | Create worktree + copy deps + optionally launch agent                                             | L2, L3 |
-| `devflow check`                     | Run cn check against .continue/checks/                                                            | L4     |
+| `devflow check`                     | Run code review against .devflow/checks/ (Claude Code primary, OpenCode fallback)                 | L4     |
 | `devflow review`                    | Pipe git diff into Claude Code with review prompt                                                 | L4, L5 |
 | `devflow web`                       | Open agent-deck web dashboard (:8420)                                                             | L2     |
 | `devflow conductor`                 | Manage conductors (start, stop, status)                                                           | L2     |
