@@ -1,80 +1,80 @@
 ---
-description: Finish a feature — run checks, generate a commit message, merge via Worktrunk, and retain session learnings.
+description: Finish a feature — run verification, create PR, retain learnings, and hand off cleanup to the terminal.
 ---
 
-You are finishing a feature. This command runs the full completion pipeline.
+You are finishing a feature. Run the full completion pipeline before handing off to the developer for worktree cleanup.
+
+**IMPORTANT:** Do NOT clean up the worktree or switch branches from inside this session — that is a terminal action performed by the developer after the session ends.
 
 ## Steps
 
-1. **Assess the current state**. Run:
+1. **Assess the current state.** Run:
 
    ```bash
+   git branch --show-current
    git status
    git diff --stat
-   git log --oneline main..HEAD
+   git log --oneline main..HEAD 2>/dev/null || git log --oneline master..HEAD
    ```
 
-   Confirm we're in a feature worktree and there are changes to finalize.
+   Confirm you are on a feature branch (not `main`/`master`) and there are changes to finalize.
 
-2. **Run the pre-push checks**. Execute the full check pipeline:
+2. **Run verification checks.** Execute the full check pipeline:
 
    ```bash
    cn check
    ```
 
-   If `cn` is not available, run lint and type checks directly:
+   If `cn` is not available, run lint, types, and tests directly:
 
    ```bash
    yarn lint
    yarn build
-   ```
-
-   Also run relevant tests:
-
-   ```bash
    yarn test --changedSince=main
    ```
 
-3. **If checks fail**, report the failures and ask the user to fix them before proceeding. Do NOT continue past this step with failing checks.
+   **If checks fail**, report the failures clearly and stop. Do NOT continue past this step with failing checks. Help the user fix issues if they ask.
 
-4. **Stage and commit**. If there are uncommitted changes:
-   - Stage all relevant changes: `git add -A`
-   - Generate a commit message by analyzing the full diff. The message should:
-     - Follow conventional commits format (feat:, fix:, refactor:, etc.)
+3. **Stage and commit.** If there are uncommitted changes:
+   - Stage relevant changes: `git add -A`
+   - Analyze the full diff to generate a commit message:
+     - Follow conventional commits format (`feat:`, `fix:`, `refactor:`, etc.)
      - Be concise (1-2 lines)
      - Reference the ticket ID if present in the branch name
    - Present the commit message to the user for approval before committing.
 
-5. **Merge via Worktrunk**. Run:
+4. **Push and create PR.** Push the branch and create a pull request:
 
    ```bash
-   worktrunk merge
+   git push -u origin HEAD
    ```
 
-   If `worktrunk` is not available, fall back to manual merge:
+   Then create the PR using `gh`:
 
    ```bash
-   git checkout main
-   git merge --no-ff <feature-branch>
+   gh pr create --title "<title>" --body "<body>"
    ```
 
-6. **Reflect and retain learnings**. Review the session:
-   - What was built?
-   - Were there any notable decisions, gotchas, or patterns discovered?
-   - Use the `hindsight_retain` MCP tool to store each learning.
+   The PR body should include:
+   - Summary of changes (2-3 bullet points)
+   - Ticket reference if applicable
+   - Testing notes (what was verified)
 
-7. **Clean up the worktree**:
+   Present the PR URL to the user.
 
-   ```bash
-   worktrunk clean
-   ```
+5. **Retain session learnings.** Review the session and retain important discoveries:
+   - Architecture decisions made during this feature
+   - Gotchas or non-obvious patterns encountered
+   - Bug root causes and fixes
+   - Use Hindsight `retain` for each learning, tagged with the project name
 
-8. **Present the summary**:
+6. **Present the summary and hand off cleanup:**
 
    ```
    ## Feature Complete
 
-   **Feature:** <name>
+   **Branch:** <branch-name>
+   **PR:** <pr-url>
    **Commits:** <count>
    **Files changed:** <count>
 
@@ -86,9 +86,18 @@ You are finishing a feature. This command runs the full completion pipeline.
    ### Learnings Retained
    - [list of retained memories]
 
-   ### Next Steps
-   - Push to remote: `git push`
-   - Create PR: use `/create-pr`
+   ### Cleanup (run from your terminal)
+   To remove the worktree after PR is merged:
+     agent-deck worktree finish "<session>"
+     # or manually:
+     wt drop <branch-name>
    ```
+
+## Important
+
+- Never merge to `main` from inside the agent — use PRs.
+- Never clean up the worktree from inside the agent — that's a terminal action.
+- If checks fail, stop and help fix. Do not skip verification.
+- Always retain learnings before ending the session.
 
 $ARGUMENTS

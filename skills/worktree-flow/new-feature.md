@@ -1,62 +1,58 @@
 ---
-description: Start a new feature — create a worktree via Worktrunk, recall relevant memories, and set up the workspace.
+description: Post-launch setup for a new feature worktree — detect context, recall memories, and transition to brainstorming.
 ---
 
-You are starting a new feature. This command sets up an isolated workspace with full context.
+You have been launched inside a feature worktree. Your job is to orient yourself, load context, and start the feature.
+
+**IMPORTANT:** Do NOT create worktrees or branches — that was already handled by `devflow worktree` before this session started.
 
 ## Steps
 
-1. **Parse the feature details** from the arguments below. Extract:
-   - Feature name or ticket ID (e.g., "MES-1234" or "add-user-metrics")
-   - Brief description of what the feature does
-   - If no arguments provided, ask the user for a feature name and description.
-
-2. **Create the worktree** using Worktrunk. Run:
+1. **Detect workspace context.** Run these commands to understand where you are:
 
    ```bash
-   worktrunk new <feature-name>
+   git branch --show-current
+   git log --oneline -1 main 2>/dev/null || git log --oneline -1 master 2>/dev/null
+   basename "$(git rev-parse --show-toplevel)"
    ```
 
-   This creates an isolated git worktree branched from the main branch. If `worktrunk` is not available, fall back to manual git worktree creation:
+   Extract:
+   - **Branch name** (e.g., `feat/MES-1234/add-user-metrics`)
+   - **Base branch** (`main` or `master`)
+   - **Project name** (from the repo root directory)
+   - **Ticket ID** if present in the branch name (e.g., `MES-1234`)
 
-   ```bash
-   git worktree add ../worktrees/<feature-name> -b feat/<feature-name>
+   If the current branch is `main` or `master`, this skill does not apply — tell the user to create a worktree first with `devflow worktree <name>`.
+
+2. **Recall relevant memories** using Hindsight. Query with:
+   - `"<project>: <domain area from branch name>"`
+   - `"<project>: architecture"` (general patterns)
+   - If a ticket ID is present: `"<project>: <ticket-id>"`
+
+3. **Present the workspace context:**
+
    ```
+   ## Feature Workspace
 
-3. **Recall relevant memories** for this feature area. Use the `hindsight_recall` MCP tool with:
-   - The feature description as the query
-   - Any mentioned domain areas (e.g., "messaging", "conversations", "carriers")
-   - Any mentioned technologies or patterns
-
-4. **Present the workspace setup**:
-
-   ```
-   ## Feature Workspace Ready
-
-   **Feature:** <feature-name>
-   **Branch:** feat/<feature-name>
-   **Worktree:** <path>
+   **Branch:** <branch-name>
+   **Base:** <base-branch>
+   **Project:** <project-name>
+   **Ticket:** <ticket-id or "none">
 
    ### Recalled Context
    - [relevant memories, patterns, and gotchas for this area]
-
-   ### Suggested Starting Points
-   - [files likely to be modified based on the feature description]
-   - [related test files]
-
-   ### Reminders
-   - [any hard rules from memory that apply]
+   - [or "No prior memories found for this area"]
    ```
 
-5. **Suggest next steps**:
-   - Use `/spec-feature` if the feature needs a spec first
-   - Dive into implementation if the scope is clear
-   - Review recalled architecture decisions that might constrain the approach
+4. **Ask what the feature is about.** If the branch name is descriptive enough, summarize your understanding and ask for confirmation. Otherwise, ask the user to describe the feature.
+
+5. **Transition to brainstorming.** Once you understand the feature, invoke the `brainstorming` skill to explore requirements, design, and approach before writing any code.
 
 ## Important
 
-- Always create the worktree BEFORE starting any code changes. This keeps the main workspace clean.
-- If the feature name matches a ticket ID pattern, use it as the branch prefix (e.g., `feat/MES-1234/description`).
-- The worktree is disposable — it will be cleaned up by `/finish-feature`.
+- This skill is a **post-launch setup guide** — the worktree already exists.
+- Always recall from Hindsight before starting work.
+- Never skip the brainstorming step for non-trivial features.
+- If the branch name contains a ticket ID, use it as a namespace prefix in all Hindsight interactions.
 
 $ARGUMENTS
