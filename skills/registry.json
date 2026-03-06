@@ -5,7 +5,7 @@
     "1": "Hindsight (memory)",
     "2": "Agent Deck (session management)",
     "3": "Worktrunk (git worktrees)",
-    "4": "Continue.dev (code review)",
+    "4": "Code Review (claude/opencode)",
     "5": "Process discipline",
     "6": "Langfuse (observability)"
   },
