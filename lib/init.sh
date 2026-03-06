@@ -97,19 +97,13 @@ devflow_init() {
     _install_via_brew "worktrunk"
   fi
 
-  # Continue.dev CLI — distributed via npm, not Homebrew
-  if has_cmd cn; then
-    ok "continue.dev CLI (cn)"
+  # Code Review CLI — uses claude (primary) or opencode (fallback), no install needed
+  if has_cmd claude; then
+    ok "Code review CLI: claude"
+  elif has_cmd opencode; then
+    ok "Code review CLI: opencode (fallback)"
   else
-    if has_cmd npm; then
-      info "Installing continue.dev CLI via npm..."
-      npm install -g @continuedev/cli 2>/dev/null && ok "continue.dev CLI (cn) installed" || warn "Could not install cn — run: npm i -g @continuedev/cli"
-    elif has_cmd yarn; then
-      info "Installing continue.dev CLI via yarn..."
-      yarn global add @continuedev/cli 2>/dev/null && ok "continue.dev CLI (cn) installed" || warn "Could not install cn — run: npm i -g @continuedev/cli"
-    else
-      warn "continue.dev CLI (cn) not found — install with: npm i -g @continuedev/cli"
-    fi
+    warn "No code review CLI found — install Claude Code or OpenCode"
   fi
 
   # uv (Python) — needed for Hindsight
@@ -256,22 +250,22 @@ with open(config_path, 'r+') as f:
     ok "Created .worktrunk.toml"
   fi
 
-  # .continue/checks/ — review rules are per-project (team can customize)
-  if [[ -d "${templates_dir}/.continue/checks" ]]; then
-    mkdir -p "${project_dir}/.continue/checks"
+  # .devflow/checks/ — review rules are per-project (team can customize)
+  if [[ -d "${templates_dir}/.devflow/checks" ]]; then
+    mkdir -p "${project_dir}/.devflow/checks"
     local copied=0
-    for check_file in "${templates_dir}/.continue/checks/"*.md; do
+    for check_file in "${templates_dir}/.devflow/checks/"*.md; do
       local basename
       basename="$(basename "$check_file")"
-      if [[ ! -f "${project_dir}/.continue/checks/${basename}" ]]; then
-        cp "$check_file" "${project_dir}/.continue/checks/${basename}"
+      if [[ ! -f "${project_dir}/.devflow/checks/${basename}" ]]; then
+        cp "$check_file" "${project_dir}/.devflow/checks/${basename}"
         ((copied++))
       fi
     done
     if [[ $copied -gt 0 ]]; then
-      ok "Copied ${copied} check file(s) to .continue/checks/"
+      ok "Copied ${copied} check file(s) to .devflow/checks/"
     else
-      skip ".continue/checks/ already up to date"
+      skip ".devflow/checks/ already up to date"
     fi
   fi
 
@@ -441,7 +435,7 @@ OJSON
   log ""
   log "Project-scoped (${project_dir}):"
   detail ".worktrunk.toml        — Git worktree config"
-  detail ".continue/checks/      — Code review check files"
+  detail ".devflow/checks/       — Code review check files"
   log ""
   log "Next steps:"
   detail "uvx hindsight-embed daemon start   — Start Hindsight memory daemon"
