@@ -93,6 +93,13 @@
       "category": "visualizations",
       "layer": 5,
       "files": ["visualizations/visualizations-config.md"]
+    },
+    {
+      "name": "dependency-update",
+      "description": "Check if Brewfile, Formula, or install script need updating when dependencies change",
+      "category": "process-discipline",
+      "layer": 5,
+      "files": ["process-discipline/dependency-update.md"]
     }
   ]
 }
