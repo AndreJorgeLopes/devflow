@@ -132,7 +132,7 @@ flowchart TD
     CHECK --> CLI
     CLI --> RESULT
 
-    RESULT -->|"pass"| CONTINUE["Continue workflow\n(push / PR / merge)"]
+    RESULT -->|"pass"| PASS["Proceed with workflow\n(push / PR / merge)"]
     RESULT -->|"fail"| BLOCK["Block + show findings\n(fix before proceeding)"]
 
     classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
@@ -145,7 +145,7 @@ flowchart TD
     class PREPUSH,CREATEPR,FINISH skillsStyle
     class CHECK,RESULT reviewStyle
     class CLI cliStyle
-    class CONTINUE passStyle
+    class PASS passStyle
     class BLOCK failStyle
 ```
 

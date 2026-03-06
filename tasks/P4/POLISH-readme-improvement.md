@@ -120,7 +120,7 @@ graph TB
     end
 
     subgraph "Layer 4: Code Review"
-        Continue[Code Review<br/>Pre-push checks]
+        Review[Code Review<br/>Pre-push checks]
     end
 
     subgraph "Layer 5: Process Discipline"
@@ -134,7 +134,7 @@ graph TB
     CLI --> Hindsight
     CLI --> AgentDeck
     CLI --> Worktrunk
-    CLI --> Continue
+    CLI --> Review
     CLI --> Config
     CLI --> Langfuse
 ````
