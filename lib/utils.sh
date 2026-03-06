@@ -44,10 +44,34 @@ has_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
-# ensure_docker — check Docker daemon is running
+# ensure_docker — check Docker CLI exists and daemon is reachable
 ensure_docker() {
-  need_cmd docker
-  timeout 5 docker info >/dev/null 2>&1 || die "Docker is not running. Start your Docker runtime (e.g. colima start, or start Docker Desktop)."
+  # 1. Check Docker CLI is installed
+  if ! has_cmd docker; then
+    die "Docker CLI not found. Install from https://docs.docker.com/get-docker/"
+  fi
+
+  # 2. Check daemon is reachable
+  if timeout 5 docker info >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # 3. Daemon unreachable — detect available runtimes and suggest accordingly
+  local runtimes=()
+  has_cmd colima          && runtimes+=("colima start")
+  [[ -d "/Applications/Docker.app" ]] && runtimes+=("open -a Docker")
+  has_cmd orbctl          && runtimes+=("orbctl start")
+
+  if [[ ${#runtimes[@]} -gt 0 ]]; then
+    local suggestions
+    suggestions=$(printf "'%s'" "${runtimes[0]}")
+    for ((i=1; i<${#runtimes[@]}; i++)); do
+      suggestions+=", or '${runtimes[$i]}'"
+    done
+    die "Docker daemon is not running. Start it with: ${suggestions}"
+  else
+    die "Docker daemon is not running and no runtime found. Install one of: colima (brew install colima) or Docker Desktop (https://docs.docker.com/get-docker/)"
+  fi
 }
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
