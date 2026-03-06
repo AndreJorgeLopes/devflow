@@ -7,12 +7,52 @@ devflow_up() {
   compose_file="$(devflow_compose_file)"
 
   [[ -f "$compose_file" ]] || die "Docker compose file not found: $compose_file"
+
+  # 1. Validate Docker CLI + daemon
+  section "Checking Docker"
   ensure_docker
+  ok "Docker daemon running"
 
-  section "Starting devflow services"
+  # 2. Start Docker services
+  section "Starting Docker services"
   docker_compose -f "$compose_file" up -d
+  ok "Docker compose services started"
 
-  log "Services started. Run 'devflow status' to verify."
+  # 3. Wait for health checks (Hindsight /health endpoint)
+  section "Waiting for services to become healthy"
+  local retries=0 max_retries=30
+  while (( retries < max_retries )); do
+    if hindsight_available; then
+      ok "Hindsight API healthy"
+      break
+    fi
+    retries=$((retries + 1))
+    printf "  ${DIM}waiting for Hindsight... (%d/%d)${RESET}\r" "$retries" "$max_retries"
+    sleep 2
+  done
+  if (( retries >= max_retries )); then
+    warn "Hindsight API did not become healthy after $((max_retries * 2))s — check logs with: docker compose -f \"$compose_file\" logs hindsight"
+  fi
+
+  # 4. Validate CLI tools
+  section "Checking CLI tools"
+  if has_cmd agent-deck; then ok "agent-deck on PATH"; else warn "agent-deck not found on PATH"; fi
+  if has_cmd wt;         then ok "wt on PATH";         else warn "wt (worktrunk) not found on PATH"; fi
+  if has_cmd cn;         then ok "cn on PATH";         else warn "cn (continue.dev) not found on PATH"; fi
+
+  # 5. Check CLAUDE.md
+  if [[ -f "${HOME}/.claude/CLAUDE.md" ]]; then
+    ok "~/.claude/CLAUDE.md exists"
+  else
+    warn "~/.claude/CLAUDE.md not found — run 'devflow init' to create it"
+  fi
+
+  # 6. Summary
+  section "devflow is up"
+  info "Hindsight API : ${HINDSIGHT_API:-http://localhost:8888}"
+  info "Hindsight UI  : http://localhost:9999"
+  info "Langfuse      : http://localhost:3100"
+  echo ""
 }
 
 devflow_down() {
@@ -25,7 +65,7 @@ devflow_down() {
   section "Stopping devflow services"
   docker_compose -f "$compose_file" down
 
-  log "Services stopped."
+  log "Docker services stopped. CLI tools (agent-deck, wt, cn) remain available."
 }
 
 devflow_status() {
@@ -33,6 +73,12 @@ devflow_status() {
 
   local compose_file
   compose_file="$(devflow_compose_file)"
+
+  # Cache docker info check once for the whole status run
+  local docker_ok=false
+  if has_cmd docker && timeout 5 docker info >/dev/null 2>&1; then
+    docker_ok=true
+  fi
 
   # ── Layer 1: Hindsight (Memory MCP) ────────────────────────────────────────
   printf "\n${BOLD}Layer 1: Hindsight${RESET} (memory MCP)\n"
@@ -49,15 +95,15 @@ devflow_status() {
 
   # Fall back to Docker container check
   if ! $hindsight_runtime_found; then
-    if timeout 5 docker info >/dev/null 2>&1; then
+    if $docker_ok; then
       if docker_compose -f "$compose_file" ps --status running 2>/dev/null | grep -q "hindsight"; then
         ok "Hindsight container running (Docker)"
         hindsight_runtime_found=true
       else
-        fail "Hindsight container not running"
+        fail "Hindsight container not running — run 'devflow up' to start"
       fi
     else
-      fail "Docker runtime not running (try: colima start)"
+      fail "Docker runtime not running — run 'devflow up' to start"
     fi
   fi
 
@@ -137,15 +183,20 @@ devflow_status() {
 
   # ── Layer 6: Langfuse ──────────────────────────────────────────────────────
   printf "\n${BOLD}Layer 6: Langfuse${RESET} (observability, Docker)\n"
-  if timeout 5 docker info >/dev/null 2>&1; then
+  if $docker_ok; then
     if docker_compose -f "$compose_file" ps --status running 2>/dev/null | grep -q "langfuse"; then
       ok "Langfuse container running"
     else
-      fail "Langfuse container not running"
+      fail "Langfuse container not running — run 'devflow up' to start"
     fi
   else
-    fail "Docker runtime not running (try: colima start)"
+    fail "Docker runtime not running — run 'devflow up' to start"
   fi
 
   echo ""
+}
+
+devflow_restart() {
+  devflow_down "$@"
+  devflow_up "$@"
 }
