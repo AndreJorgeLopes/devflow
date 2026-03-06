@@ -1,0 +1,10 @@
+{
+  "name": "devflow",
+  "description": "Devflow AI development workflow skills — memory, worktrees, code review, process discipline, observability",
+  "version": "0.1.0",
+  "author": { "name": "Andre Jorge Lopes" },
+  "repository": "https://github.com/andrejorgelopes/devflow",
+  "license": "MIT",
+  "commands": "./commands/",
+  "skills": ["./skills/recall-before-task/SKILL.md"]
+}
