@@ -1,5 +1,5 @@
 class Devflow < Formula
-  desc "AI dev environment orchestrator — integrates Hindsight, Agent Deck, Worktrunk, Continue.dev, and Langfuse"
+  desc "AI dev environment orchestrator — integrates Hindsight, Agent Deck, Worktrunk, Code Review, and Langfuse"
   homepage "https://github.com/AndreJorgeLopes/devflow"
   url "https://github.com/AndreJorgeLopes/devflow/archive/refs/tags/v0.1.0.tar.gz"
   version "0.1.0"
