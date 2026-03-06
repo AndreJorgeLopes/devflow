@@ -14,7 +14,7 @@ files_to_touch:
   - lib/check.sh
   - config/agent-deck/config.toml.tmpl
   - config/worktrunk/ (new configs)
-  - config/continue/ (new configs)
+  - config/review/ (new configs)
   - config/langfuse/ (new export scripts)
 ---
 
@@ -27,7 +27,7 @@ The devflow ecosystem has 6 layers + 2 AI providers, each with its own config fo
 - **Agent Deck** (`~/.agent-deck/config.toml`): Template defines `[mcps.hindsight]` but live config has empty `[mcps]`. Skill pool dir doesn't exist. MCP pool disabled.
 - **Claude Code**: 4 skill sources, 3 MCP sources, hooks in settings.json, 4 plugins, 5 agents — partially synced (only CLAUDE.md).
 - **OpenCode**: Skills via git clone, plugin manually placed, `opencode.json` barely configured, no MCPs.
-- **Continue.dev**: Has `~/.continue/skills/` (2 skills via npx), accepts `--mcp`/`--rule` per invocation — no devflow integration.
+- **Code Review**: The `devflow check` command wraps the code review backend, accepts check rules per invocation — no separate CLI install needed.
 - **Worktrunk**: `~/.config/worktrunk/config.toml` doesn't exist despite rich hook system (10 types).
 - **Langfuse**: Prompt templates, eval configs, dashboards all in Postgres DB — not version-controlled.
 - **Cross-agent**: `~/.agents/skills/` managed by `npx skills` — separate from all other systems.
@@ -52,10 +52,10 @@ agent-deck skills/pool/    ← SOURCE OF TRUTH for skills
     ┌────┴──────────────────────────────────────────────┐
     │              │              │              │        │
     ▼              ▼              ▼              ▼        ▼
-Claude Code    OpenCode     Continue.dev   Worktrunk   Langfuse
+Claude Code    OpenCode     Code Review    Worktrunk   Langfuse
 ├ ~/.claude.json  ├ opencode.json  ├ wrapped by    ├ config.toml  ├ (export
 │  (MCPs)         │  (MCPs)        │  devflow check │  (hooks)      │  prompts
-├ ~/.claude/      ├ ~/.config/     │  --mcp/--rule  └──────────     │  via API)
+├ ~/.claude/      ├ ~/.config/     │  --rule        └──────────     │  via API)
 │  skills/        │  opencode/     └────────────                    └─────────
 │  settings.json  │  skills/
 │  plugins        │  plugins/
@@ -123,8 +123,6 @@ devflow_sync() {
   # ── Sync Skills ─────────────────────────────────────────────
   sync_skills_to_claude_code
   sync_skills_to_opencode
-  sync_skills_to_continue
-
   # ── Sync Worktrunk config ───────────────────────────────────
   sync_worktrunk_config
 
@@ -157,11 +155,6 @@ devflow_sync() {
 - Read agent-deck skill pool
 - Symlink to `~/.config/opencode/skills/` (if not already there)
 
-`sync_skills_to_continue()`:
-- Read agent-deck skill pool
-- Symlink to `~/.continue/skills/` (if not already there)
-- Note: continue.dev also has `~/.agents/skills/` managed by `npx skills` — don't overwrite those
-
 `sync_worktrunk_config()`:
 - If `~/.config/worktrunk/config.toml` doesn't exist, generate from devflow template
 - Set defaults: worktree-path pattern, LLM commit command, merge behavior
@@ -176,7 +169,7 @@ Layer          Skills  MCPs    Hooks   Config
 Agent Deck     ✓ 11    ✓ 1     ✓       ✓
 Claude Code    ✓ 4     ✓ 1     ✓       ✓
 OpenCode       ✗ 0     ✗ 0     —       ✗
-Continue.dev   ✓ 2     —       —       —
+Code Review    —       —       —       ✓
 Worktrunk      —       —       ✗ 0     ✗
 Langfuse       —       —       —       n/a
 ```
@@ -194,14 +187,14 @@ After all layers are configured, run `devflow sync` as the final step.
 **Step 3.3 — Add sync to `devflow up`:**
 After services are healthy, run `devflow sync --quiet` to ensure everything is aligned.
 
-**Step 3.4 — Wrap `devflow check` for continue.dev:**
-Update `lib/check.sh` to pass MCP flags:
+**Step 3.4 — Wrap `devflow check` for code review:**
+Update `lib/check.sh` to pass review flags:
 ```bash
 devflow_check() {
-  local mcp_flags=""
-  # Read MCPs from agent-deck config and build --mcp flags
-  # ... parse [mcps.*] section ...
-  cn check $mcp_flags "$@"
+  local review_flags=""
+  # Read check rules from devflow config
+  # ... parse checks config ...
+  devflow check $review_flags "$@"
 }
 ```
 
@@ -224,10 +217,9 @@ If Langfuse has prompt templates or eval configs configured via the web UI:
 - [ ] `devflow sync` propagates MCPs to OpenCode (`opencode.json`)
 - [ ] `devflow sync` propagates skills to Claude Code (`~/.claude/skills/`)
 - [ ] `devflow sync` propagates skills to OpenCode (`~/.config/opencode/skills/`)
-- [ ] `devflow sync` propagates skills to Continue.dev (`~/.continue/skills/`)
 - [ ] `devflow sync --status` shows sync state matrix
 - [ ] `~/.config/worktrunk/config.toml` is generated with devflow defaults
-- [ ] `devflow check` passes `--mcp` flags to `cn` for Hindsight access
+- [ ] `devflow check` passes appropriate flags for code review with Hindsight access
 - [ ] `devflow init` runs sync as final step
 - [ ] `devflow up` runs quiet sync after services are healthy
 - [ ] Agent-deck TUI Skill Manager (`s` key) shows devflow skills
@@ -236,9 +228,9 @@ If Langfuse has prompt templates or eval configs configured via the web UI:
 ## Technical Notes
 
 - **Agent-deck cannot write to OpenCode or Claude Code configs natively.** The sync command bridges this gap.
-- **Continue.dev has no persistent MCP config.** Wrapping `devflow check` with flags is the only reliable approach.
+- **Code Review has no persistent MCP config.** Wrapping `devflow check` with flags is the only reliable approach.
 - **Worktrunk hooks use Jinja2 template variables** (`{{ branch }}`, `{{ repo }}`, etc.). Leverage these for automatic setup.
-- **Cross-agent skills at `~/.agents/skills/`** are managed by `npx skills` CLI with `.skill-lock.json`. Don't overwrite — only add missing ones.
+- **Cross-agent skills at `~/.agents/skills/`** are managed by the skills CLI with `.skill-lock.json`. Don't overwrite — only add missing ones.
 - **Langfuse export is optional** — many users won't have custom prompts/evals yet.
 - **Idempotent:** `devflow sync` must be safe to run repeatedly. Use symlinks where possible (single source, multiple targets). Check before writing.
 - **Drift detection:** Compare timestamps or checksums of synced files to detect when manual changes have diverged from agent-deck source.
@@ -263,7 +255,7 @@ cat ~/.config/opencode/opencode.json | python3 -c "import json,sys; print(json.l
 # 5. Check skills in all targets
 ls ~/.claude/skills/
 ls ~/.config/opencode/skills/
-ls ~/.continue/skills/
+# (Code review checks are managed via devflow check — no separate skills dir needed)
 
 # 6. Check worktrunk config
 cat ~/.config/worktrunk/config.toml

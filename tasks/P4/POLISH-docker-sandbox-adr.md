@@ -140,7 +140,7 @@ The security benefit of sandboxing is proportional to the trust level of the age
 
 ### Mitigations
 
-- Agent actions are reviewed via pre-push checks (Continue.dev) and self-review (devflow review)
+- Agent actions are reviewed via pre-push checks (Code Review) and self-review (devflow review)
 - Git worktrees (Worktrunk) provide project-level isolation between concurrent tasks
 - Hindsight memory provides audit trail of agent actions
 - Users can opt-in to sandboxing via `--sandbox` flag when working with untrusted code
