@@ -23,6 +23,7 @@ source "${DEVFLOW_ROOT}/lib/check.sh"
 source "${DEVFLOW_ROOT}/lib/skills.sh"
 source "${DEVFLOW_ROOT}/lib/seed.sh"
 source "${DEVFLOW_ROOT}/lib/worktree.sh"
+source "${DEVFLOW_ROOT}/lib/visualizations.sh"
 
 # Override devflow_root to use our resolved path
 devflow_root() { echo "$DEVFLOW_ROOT"; }
@@ -39,14 +40,19 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}init${RESET} [project-dir]          Initialize a project with all 6 layers
   ${CYAN}up${RESET}                           Start Docker services (Hindsight + Langfuse)
   ${CYAN}down${RESET}                         Stop Docker services
+  ${CYAN}restart${RESET}                      Restart Docker services (down + up)
   ${CYAN}status${RESET}                       Show status of all layers
   ${CYAN}check${RESET}                        Run Continue.dev checks on current diff
   ${CYAN}skills${RESET} list                  List available skills
   ${CYAN}skills${RESET} install <name>        Install a skill to the current project
   ${CYAN}skills${RESET} remove <name>         Remove a skill from the project
+  ${CYAN}skills${RESET} convert [opts]        Convert skills to a Claude Code plugin
   ${CYAN}seed${RESET} [project-dir]           Seed Hindsight memory from project files
   ${CYAN}worktree${RESET} <name> [--agent]    Create a worktree, optionally launch agent
   ${CYAN}review${RESET}                       Run self-review via Claude Code
+  ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)
+  ${CYAN}web${RESET} [args]                   Open agent-deck web UI
+  ${CYAN}conductor${RESET} [args]             Run agent-deck conductor
   ${CYAN}version${RESET}                      Print version
   ${CYAN}help${RESET}                         Show this help
 
@@ -113,12 +119,16 @@ main() {
     init)      devflow_init "$@" ;;
     up)        devflow_up "$@" ;;
     down)      devflow_down "$@" ;;
+    restart)   devflow_restart "$@" ;;
     status)    devflow_status "$@" ;;
     check)     devflow_check "$@" ;;
     skills)    devflow_skills "$@" ;;
     seed)      devflow_seed "$@" ;;
     worktree)  devflow_worktree "$@" ;;
     review)    devflow_review "$@" ;;
+    visualizations|viz) devflow_visualizations "$@" ;;
+    web)       need_cmd agent-deck; agent-deck web "$@" ;;
+    conductor) need_cmd agent-deck; agent-deck conductor "$@" ;;
     version)   echo "devflow v${DEVFLOW_VERSION}" ;;
     help|-h|--help) usage ;;
     *)         err "Unknown command: $cmd"; usage; exit 1 ;;
