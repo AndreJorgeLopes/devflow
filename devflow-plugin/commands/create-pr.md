@@ -1,5 +1,5 @@
 ---
-description: Full PR creation pipeline — self-review, Continue.dev checks, and PR creation with a structured template.
+description: Full PR creation pipeline — self-review, code review checks, and PR creation with a structured template.
 ---
 
 You are creating a pull request. This command runs the full PR pipeline.
@@ -24,13 +24,13 @@ You are creating a pull request. This command runs the full PR pipeline.
    - Incomplete implementations or placeholder code
    - Missing tests for new functionality
 
-3. **Run Continue.dev checks**:
+3. **Run code review checks**:
 
    ```bash
-   cn check
+   devflow check
    ```
 
-   If `cn` is not available, run lint, type-check, and tests:
+   If devflow check is not available, run lint, type-check, and tests:
 
    ```bash
    yarn lint && yarn build && yarn test --changedSince=main
