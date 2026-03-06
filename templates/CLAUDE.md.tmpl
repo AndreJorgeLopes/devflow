@@ -111,6 +111,20 @@ wt drop <branch-name>     # Clean up worktree
 - Never commit directly to `main` — always use a feature branch/worktree
 - Keep worktrees short-lived — merge or drop within a few sessions
 
+## Starting Feature Work
+
+The entry point for new features is always the terminal CLI, not an agent skill:
+
+```bash
+devflow worktree feat/TICKET-ID --agent claude
+```
+
+This creates an isolated worktree, copies dependencies, and launches Claude Code.
+Once inside the session, the agent automatically:
+1. Loads CLAUDE.md (this file)
+2. Recalls relevant context from Hindsight
+3. Follows the process discipline below
+
 ## Observability
 
 Langfuse tracing may be configured for agent interactions.
