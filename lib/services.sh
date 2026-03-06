@@ -38,7 +38,9 @@ devflow_up() {
   section "Checking CLI tools"
   if has_cmd agent-deck; then ok "agent-deck on PATH"; else warn "agent-deck not found on PATH"; fi
   if has_cmd wt;         then ok "wt on PATH";         else warn "wt (worktrunk) not found on PATH"; fi
-  if has_cmd cn;         then ok "cn on PATH";         else warn "cn (continue.dev) not found on PATH"; fi
+  if has_cmd claude; then ok "claude on PATH (code review: primary)"
+  elif has_cmd opencode; then ok "opencode on PATH (code review: fallback)"
+  else warn "No code review CLI found (claude or opencode)"; fi
 
   # 5. Check CLAUDE.md
   if [[ -f "${HOME}/.claude/CLAUDE.md" ]]; then
@@ -65,7 +67,7 @@ devflow_down() {
   section "Stopping devflow services"
   docker_compose -f "$compose_file" down
 
-  log "Docker services stopped. CLI tools (agent-deck, wt, cn) remain available."
+  log "Docker services stopped. CLI tools (agent-deck, wt, claude/opencode) remain available."
 }
 
 devflow_status() {
@@ -129,12 +131,16 @@ devflow_status() {
     fail "worktrunk (wt) not installed"
   fi
 
-  # ── Layer 4: Continue.dev ──────────────────────────────────────────────────
-  printf "\n${BOLD}Layer 4: Continue.dev${RESET} (code review)\n"
-  if has_cmd cn; then
-    ok "continue.dev CLI (cn) installed"
+  # ── Layer 4: Code Review ────────────────────────────────────────────────────
+  printf "\n${BOLD}Layer 4: Code Review${RESET} (AI-powered)\n"
+  if [[ -n "${DEVFLOW_REVIEW_CLI:-}" ]] && has_cmd "$DEVFLOW_REVIEW_CLI"; then
+    ok "Code review CLI: ${DEVFLOW_REVIEW_CLI} (DEVFLOW_REVIEW_CLI override)"
+  elif has_cmd claude; then
+    ok "Code review CLI: claude (primary)"
+  elif has_cmd opencode; then
+    ok "Code review CLI: opencode (fallback)"
   else
-    fail "continue.dev CLI (cn) not installed"
+    fail "No code review CLI found — install Claude Code or OpenCode"
   fi
 
   # ── Layer 5: CLAUDE.md + Skills ────────────────────────────────────────────
