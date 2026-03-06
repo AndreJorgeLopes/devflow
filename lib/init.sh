@@ -18,9 +18,32 @@ devflow_init() {
   section "Checking prerequisites"
 
   local missing=0
+  local docker_daemon_ok=true
   for cmd in docker git tmux; do
     if has_cmd "$cmd"; then
       ok "$cmd"
+      # Enhanced Docker check: CLI exists, but is the daemon running?
+      if [[ "$cmd" == "docker" ]]; then
+        if ! timeout 5 docker info >/dev/null 2>&1; then
+          docker_daemon_ok=false
+          warn "Docker CLI found but daemon not running"
+          local runtimes=()
+          has_cmd colima && runtimes+=("colima start")
+          [[ -d "/Applications/Docker.app" ]] && runtimes+=("open -a Docker")
+          has_cmd orbctl && runtimes+=("orbctl start")
+          if [[ ${#runtimes[@]} -gt 0 ]]; then
+            local suggestions
+            suggestions=$(printf "'%s'" "${runtimes[0]}")
+            for ((i=1; i<${#runtimes[@]}; i++)); do
+              suggestions+=", or '${runtimes[$i]}'"
+            done
+            info "  Start with: ${suggestions}"
+          else
+            info "  Install a runtime: colima (brew install colima) or Docker Desktop"
+          fi
+          warn "Layers requiring Docker (Hindsight, Langfuse) won't work until daemon is running"
+        fi
+      fi
     else
       fail "$cmd — not found"
       missing=1
@@ -189,6 +212,38 @@ devflow_init() {
     ok "Created ~/.claude/AGENTS.md"
   fi
 
+  # ── 3b. Claude Code trust configuration ────────────────────────────────────
+  section "Claude Code Trust Configuration"
+  info "devflow creates worktrees in dynamic paths. To avoid trust dialogs"
+  info "interrupting automated workflows, we can trust your home directory."
+  info "This only skips the initial project trust prompt — file and tool"
+  info "permissions are still enforced per-session."
+  echo ""
+  printf "${YELLOW}Trust ${HOME} for Claude Code? [Y/n] ${RESET}"
+  read -r answer </dev/tty 2>/dev/null || answer="Y"
+  if [[ "$answer" != "n" && "$answer" != "N" ]]; then
+    if [[ -f "${HOME}/.claude.json" ]]; then
+      python3 -c "
+import json, os
+config_path = os.path.expanduser('~/.claude.json')
+with open(config_path, 'r+') as f:
+    d = json.load(f)
+    home = os.path.expanduser('~')
+    projects = d.setdefault('projects', {})
+    home_project = projects.setdefault(home, {})
+    home_project['hasTrustDialogAccepted'] = True
+    f.seek(0)
+    json.dump(d, f, indent=2)
+    f.truncate()
+"
+      ok "Home directory trusted for Claude Code"
+    else
+      warn "~/.claude.json not found — run Claude Code once first, then re-run devflow init"
+    fi
+  else
+    skip "Skipped — you'll see trust dialogs for new worktrees"
+  fi
+
   # ── 4. Project-scoped config (worktree, code review checks) ───────────────
   # These ARE per-project because they configure project-specific tooling.
   section "Setting up project files in ${project_dir}"
@@ -233,6 +288,38 @@ devflow_init() {
       || skip "worktrunk plugin already installed or not available"
   else
     skip "Claude Code not installed — skipping plugin install"
+  fi
+
+  # ── 5b. Agent Deck Conductor Setup ──────────────────────────────────────
+  section "Agent Deck Conductor Setup"
+  if has_cmd agent-deck; then
+    info "Setting up a development conductor for automated session monitoring..."
+
+    # Create conductor if it doesn't exist
+    if ! agent-deck conductor list 2>/dev/null | grep -q "dev"; then
+      agent-deck conductor setup dev --description "Devflow development monitor" 2>/dev/null || true
+      ok "Development conductor created"
+    else
+      skip "Development conductor already exists"
+    fi
+  else
+    skip "agent-deck not installed — skipping conductor setup"
+  fi
+
+  # ── 5c. Agent Deck Session Groups ─────────────────────────────────────────
+  section "Agent Deck Session Groups"
+  if has_cmd agent-deck; then
+    local project_name
+    project_name="$(basename "$(git -C "${project_dir}" remote get-url origin 2>/dev/null | sed 's/.*\///' | sed 's/\.git$//')" 2>/dev/null || basename "${project_dir}")"
+
+    for group in "${project_name}" "${project_name}/features" "${project_name}/bugfixes" "${project_name}/reviews"; do
+      if ! agent-deck group list 2>/dev/null | grep -q "$group"; then
+        agent-deck group create "$group" 2>/dev/null || true
+      fi
+    done
+    ok "Session groups created: ${project_name}/{features,bugfixes,reviews}"
+  else
+    skip "agent-deck not installed — skipping group setup"
   fi
 
   # ── 6. Install skills ─────────────────────────────────────────────────────
@@ -362,4 +449,8 @@ OJSON
   detail "devflow seed                       — Seed memory from project files"
   detail "devflow status                     — Check status of all layers"
   detail "devflow skills list                — Browse available skills"
+  log ""
+  log "Integrations:"
+  info "  Web dashboard:   agent-deck web (or devflow web)"
+  info "  Chrome extension: Install from Chrome Web Store, enable with /chrome in Claude Code"
 }
