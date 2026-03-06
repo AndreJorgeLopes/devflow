@@ -79,6 +79,20 @@
       "category": "observability",
       "layer": 6,
       "files": ["observability/session-summary.md"]
+    },
+    {
+      "name": "update-visualizations",
+      "description": "Analyze recent changes and update affected architecture visualizations",
+      "category": "visualizations",
+      "layer": 5,
+      "files": ["visualizations/update-visualizations.md"]
+    },
+    {
+      "name": "visualizations-config",
+      "description": "Configure visualization location, style presets, and output preferences",
+      "category": "visualizations",
+      "layer": 5,
+      "files": ["visualizations/visualizations-config.md"]
     }
   ]
 }
