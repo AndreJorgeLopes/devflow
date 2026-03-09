@@ -50,4 +50,8 @@ if ! echo "${PATH}" | tr ':' '\n' | grep -qx "${BIN_DIR}"; then
 fi
 
 echo ""
-info "Done. Run 'devflow help' to get started."
+info "Done. Run 'devflow init' to set up all 6 layers (tools, plugins, commands, MCP, skills)."
+echo ""
+echo "  devflow init            # Initialize for the current directory"
+echo "  devflow init ~/myapp    # Initialize for a specific project"
+echo ""

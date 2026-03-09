@@ -45,8 +45,9 @@ make link  # symlinks to ~/.local/bin/devflow
 ## Quick Start
 
 ```bash
-# 1. Initialize (installs tools, configures MCP, copies templates, installs plugins)
+# 1. Initialize (installs tools, configures MCP, sets up commands & skills, installs plugins)
 #    Interactive prompt lets you choose LLM provider for Hindsight memory
+#    This single command handles everything — no separate plugin install needed.
 devflow init ~/projects/myapp
 
 # 2. Start Hindsight daemon + Docker services (Langfuse)
@@ -84,12 +85,14 @@ devflow version                 Print version
 devflow help                    Show help
 ```
 
-## Skills Marketplace
+## Skills & Commands
 
-Skills are Claude Code slash commands that integrate the 6 layers. Install them per-project:
+`devflow init` automatically installs all devflow slash commands and skills. After init, type `/devflow:` in Claude Code to see all available commands.
+
+You can also browse and install individual skills per-project:
 
 ```bash
-devflow skills list           # Browse 10 available skills
+devflow skills list           # Browse available skills
 devflow skills install new-feature  # Copy to .claude/commands/
 ```
 
@@ -106,38 +109,6 @@ devflow skills install new-feature  # Copy to .claude/commands/
 | `architecture-decision` | Process      | Document ADR with rationale and memory retention              |
 | `session-summary`       | Langfuse     | Generate session summary for observability                    |
 
-## Claude Code Plugin
-
-Devflow ships a Claude Code plugin that provides slash commands (`/new-feature`, `/create-pr`, `/finish-feature`, etc.) and skills.
-
-### End users — install via marketplace
-
-```bash
-# Register the local marketplace and install the plugin
-make plugin-install
-
-# Or manually:
-claude plugin marketplace add /path/to/devflow/devflow-plugin
-claude plugin install devflow@devflow-marketplace
-```
-
-After installation, restart Claude Code. Commands appear as `/devflow:new-feature`, `/devflow:create-pr`, etc.
-
-### Developers — symlink for live iteration
-
-If you're developing devflow, use symlinks instead of installing the plugin. Edits to command files in `devflow-plugin/commands/` are live on the next Claude Code restart — no reinstall needed.
-
-```bash
-make plugin-dev    # Creates symlinks, removes installed plugin if present
-make plugin-unlink # Removes symlinks
-```
-
-This creates:
-- `~/.claude/commands/devflow` → `devflow-plugin/commands/`
-- `~/.claude/skills/devflow-recall` → `devflow-plugin/skills/recall-before-task/`
-
-Each command's description includes a version badge (e.g. `[devflow v0.1.0]`) visible in the `/` menu, so you can spot if an old installed plugin version is shadowing the dev symlink.
-
 ## What `devflow init` Does
 
 1. **Checks prerequisites** — git, tmux, Homebrew (macOS)
@@ -145,9 +116,10 @@ Each command's description includes a version badge (e.g. `[devflow v0.1.0]`) vi
 3. **User-scoped config** — `~/.claude/CLAUDE.md` (memory workflow, process discipline), `~/.claude/AGENTS.md` (multi-agent coordination). These apply across ALL your projects without touching the team's project-level CLAUDE.md.
 4. **Project-scoped config** — `.worktrunk.toml` (worktree settings), `.devflow/checks/` (code review rules). These are per-repo.
 5. **Claude Code plugins** — Installs Agent Deck and Worktrunk plugins via `claude plugin`
-6. **Skills** — Installs Hindsight and Agent Deck skills for both Claude Code and OpenCode
-7. **Configures MCP** — Adds Hindsight as HTTP MCP server to Claude Code and/or OpenCode (user-scoped)
-8. **Shell integration** — Configures Worktrunk zsh integration
+6. **Devflow commands & skills** — Sets up devflow slash commands (`/devflow:new-feature`, `/devflow:create-pr`, etc.) and skills via symlinks to the install directory. Detects existing dev symlinks and skips if present.
+7. **Skills** — Installs Hindsight and Agent Deck skills for both Claude Code and OpenCode
+8. **Configures MCP** — Adds Hindsight as HTTP MCP server to Claude Code and/or OpenCode (user-scoped)
+9. **Shell integration** — Configures Worktrunk zsh integration
 
 All operations are idempotent — safe to run multiple times. User-scoped files use a `<!-- devflow -->` marker to detect existing sections.
 
@@ -257,6 +229,29 @@ devflow/
 - **Non-destructive init** — Safe to run multiple times. Appends to existing files, skips what's already there.
 - **Agent-agnostic** — Works with Claude Code, OpenCode, or any tool that reads CLAUDE.md and speaks MCP.
 - **Full plugin ecosystem** — Installs Claude Code plugins (Agent Deck, Worktrunk) and skills for both Claude Code and OpenCode.
+
+## Contributing
+
+### Developer Setup
+
+For developing devflow itself, use `make plugin-dev` instead of the normal install. This creates symlinks from `~/.claude/commands/devflow` and `~/.claude/skills/devflow-recall` directly to the source files, so edits are live on the next Claude Code restart — no reinstall needed.
+
+```bash
+git clone https://github.com/AndreJorgeLopes/devflow.git ~/dev/devflow
+cd ~/dev/devflow
+make link        # symlink CLI binary
+make plugin-dev  # symlink commands & skills for live iteration
+```
+
+To clean up:
+
+```bash
+make plugin-unlink  # remove command/skill symlinks
+```
+
+Each command's description includes a version badge (e.g. `[devflow v0.1.0]`) visible in the `/` menu. This helps detect if an old installed plugin version is shadowing the dev symlinks.
+
+A project-level `/plugin-sync` command is available inside the devflow repo to check symlink health and detect stale plugin installs.
 
 ## License
 
