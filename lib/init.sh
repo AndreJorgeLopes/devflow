@@ -198,12 +198,13 @@ devflow_init() {
     ok "Created ~/.claude/CLAUDE.md"
   fi
 
-  # User-scoped AGENTS.md
-  if [[ -f "${claude_home}/AGENTS.md" ]]; then
-    skip "~/.claude/AGENTS.md already exists"
+  # User-scoped AGENTS.md — symlink to CLAUDE.md so they stay in sync
+  if [[ -L "${claude_home}/AGENTS.md" ]]; then
+    skip "~/.claude/AGENTS.md already symlinked"
   else
-    cp "${templates_dir}/AGENTS.md.tmpl" "${claude_home}/AGENTS.md"
-    ok "Created ~/.claude/AGENTS.md"
+    rm -f "${claude_home}/AGENTS.md"
+    ln -s CLAUDE.md "${claude_home}/AGENTS.md"
+    ok "Symlinked ~/.claude/AGENTS.md -> CLAUDE.md"
   fi
 
   # ── 3b. Claude Code trust configuration ────────────────────────────────────
