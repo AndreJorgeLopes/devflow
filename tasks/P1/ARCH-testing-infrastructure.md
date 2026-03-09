@@ -5,25 +5,11 @@ priority: P1
 category: architecture
 status: open
 depends_on: []
-estimated_effort: XL
+estimated_effort: "XL (see child tasks)"
 files_to_touch:
   - Makefile
-  - tests/unit/*.bats
-  - tests/integration/*.bats
-  - tests/e2e/*.bats
-  - tests/helpers/*.bash
-  - tests/fixtures/
+  - tests/**
   - .github/workflows/ci.yml
-  - .github/workflows/release.yml
-  - lib/utils.sh
-  - lib/check.sh
-  - lib/init.sh
-  - lib/services.sh
-  - lib/skills.sh
-  - lib/seed.sh
-  - lib/worktree.sh
-  - lib/visualizations.sh
-  - bin/devflow
   - README.md
 ---
 
@@ -172,50 +158,18 @@ lint:             ## Run ShellCheck on lib/*.sh
 coverage:         ## Generate test coverage report (via kcov or similar)
 ```
 
-## Implementation Phases
+## Child Tasks
 
-### Phase 1: Foundation (S effort)
-1. Install bats-core (`brew install bats-core`)
-2. Create `tests/` directory structure
-3. Create `tests/helpers/common.bash` with setup/teardown
-4. Create `tests/helpers/mocks.bash` with `mock_cmd` function
-5. Write first test: `tests/unit/utils.bats` — test `has_cmd`, `project_root`, `devflow_root`
-6. Update Makefile with `test-unit` target
-7. Verify: `make test-unit` passes
+This task is broken into 6 implementation phases, each tracked as its own task:
 
-### Phase 2: Unit Tests for Core Libraries (L effort)
-1. `tests/unit/check.bats` — test `_detect_review_cli`, `_collect_check_rules`, `_run_review_claude`, `_run_review_opencode`, `devflow_check`
-2. `tests/unit/services.bats` — test `devflow_status` layer detection
-3. `tests/unit/skills.bats` — test `skills_list`, `skills_install`, `skills_convert`
-4. `tests/unit/init.bats` — test template copying, tool detection
-5. Create test fixtures: sample `.devflow/checks/` rules, sample diffs, minimal git repos
-6. Verify: `make test-unit` passes with all new tests
-
-### Phase 3: Integration Tests (M effort)
-1. `tests/integration/cli-commands.bats` — every devflow subcommand returns success
-2. `tests/integration/check-flow.bats` — devflow check with mocked claude/opencode
-3. `tests/integration/init-flow.bats` — devflow init in a temp directory
-4. `tests/integration/skills-flow.bats` — list/install/convert/validate cycle
-5. Add `test-integration` Makefile target
-6. Verify: `make test-integration` passes
-
-### Phase 4: E2E Tests (M effort)
-1. `tests/e2e/full-workflow.bats` — init → check → status → review
-2. `tests/e2e/plugin-lifecycle.bats` — convert → validate
-3. Add `test-e2e` Makefile target
-4. Verify: `make test-e2e` passes
-
-### Phase 5: CI Pipeline (S effort)
-1. Create `.github/workflows/ci.yml`
-2. Add ShellCheck linting step
-3. Add test badge to README.md
-4. Verify: push to branch, CI runs green
-
-### Phase 6: Observability and Coverage (S effort)
-1. Add test result summary in CI (bats TAP output → GitHub summary)
-2. Consider kcov or bashcov for coverage reporting
-3. Add CI status badge to README
-4. Document testing conventions in a `tests/README.md`
+| # | Task ID | Phase | Effort | Depends On |
+|---|---------|-------|--------|------------|
+| 1 | `ARCH-testing-foundation` | Foundation — bats-core, helpers, first test | S | — |
+| 2 | `ARCH-testing-unit-tests` | Unit Tests for Core Libraries | L | ARCH-testing-foundation |
+| 3 | `ARCH-testing-integration` | Integration Tests | M | ARCH-testing-foundation |
+| 4 | `ARCH-testing-e2e` | End-to-End Tests | M | ARCH-testing-integration |
+| 5 | `ARCH-testing-ci-pipeline` | CI Pipeline + ShellCheck | S | ARCH-testing-foundation |
+| 6 | `FEAT-testing-observability` | Test Observability & Coverage (P2) | S | ARCH-testing-ci-pipeline |
 
 ## Key Test Scenarios
 
@@ -233,37 +187,33 @@ coverage:         ## Generate test coverage report (via kcov or similar)
 - `devflow_check` falls back from claude to opencode
 - `devflow_check` reports error when no diff and no CLI
 
-### lib/services.sh
-- `devflow_status` shows correct Layer 4 status for each CLI combination
-- `devflow_up` checks for required CLI tools
-- `devflow_down` message includes updated tool names
+### lib/utils.sh (recently added functions)
+- `detect_vcs_provider` returns `github` or `gitlab` based on remote URL
+- `get_vcs_pr_term` returns `PR` for GitHub, `MR` for GitLab
 
-### lib/init.sh
+### lib/init.sh (recently updated)
 - Template copying uses `.devflow/checks/` (not `.continue/checks/`)
 - Tool detection finds claude/opencode (not cn)
+- Symlink creation for `~/.claude/commands/devflow` and `~/.claude/skills/devflow-recall`
 - Summary output shows correct paths
+
+### lib/services.sh
+- `devflow_status` shows correct Layer 4 status for each CLI combination
 
 ### bin/devflow
 - All subcommands dispatch correctly
 - Help text mentions Code Review (not Continue.dev)
 - Unknown commands produce error
 
-### Skills
-- `devflow skills list` shows all registered skills including dependency-update
-- `devflow skills convert` generates valid plugin
-- Plugin validates with `claude plugin validate`
-
 ## Acceptance Criteria
 
-- [ ] `make test-unit` runs 40+ unit tests, all pass
-- [ ] `make test-integration` runs 15+ integration tests, all pass
-- [ ] `make test-e2e` runs 5+ e2e tests, all pass
+- [ ] All 6 child tasks completed
+- [ ] `make test-all` runs 60+ tests, all pass
 - [ ] `make lint` runs ShellCheck with zero errors on lib/*.sh
 - [ ] `.github/workflows/ci.yml` runs on push and PR
 - [ ] CI badge in README shows passing status
 - [ ] No test requires real Docker, Hindsight, claude, or opencode (all mocked)
 - [ ] Tests run in <30 seconds total on macOS
-- [ ] Test helpers (mocks, fixtures) are documented in tests/README.md
 
 ## Verification
 
