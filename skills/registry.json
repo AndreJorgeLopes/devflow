@@ -100,6 +100,13 @@
       "category": "process-discipline",
       "layer": 5,
       "files": ["process-discipline/dependency-update.md"]
+    },
+    {
+      "name": "writing-plans",
+      "description": "Extends superpowers:writing-plans with agent-deck parallel session handoff",
+      "category": "superpowers-wrappers",
+      "layer": 5,
+      "files": ["superpowers-wrappers/writing-plans.md"]
     }
   ]
 }
