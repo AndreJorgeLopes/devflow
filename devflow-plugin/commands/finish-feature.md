@@ -1,5 +1,5 @@
 ---
-description: Finish a feature — run verification, create PR, retain learnings, and hand off cleanup to the terminal.
+description: [devflow v0.1.0] Finish a feature — run verification, create PR/MR (VCS-aware), retain learnings, and hand off cleanup to the terminal.
 ---
 
 You are finishing a feature. Run the full completion pipeline before handing off to the developer for worktree cleanup.
@@ -43,38 +43,70 @@ You are finishing a feature. Run the full completion pipeline before handing off
      - Reference the ticket ID if present in the branch name
    - Present the commit message to the user for approval before committing.
 
-4. **Push and create PR.** Push the branch and create a pull request:
+4. **CHECKPOINT — Diff review.** Before creating the PR/MR, present a summary of all changes for user approval:
+
+   ```
+   ## Ready to Create PR/MR
+
+   **Branch:** <branch-name>
+   **Base:** main (or master)
+   **Commits:** <count> — <list of commit messages>
+   **Files changed:** <count>
+   **Lines:** +<added> / -<removed>
+
+   ### Key changes
+   <3-5 bullet points summarizing what's in the diff>
+
+   ### Draft PR/MR title
+   <proposed title>
+
+   ### Draft PR/MR description
+   <proposed description in markdown>
+   ```
+
+   **Wait for explicit user approval** ("looks good", "go ahead", "create it", etc.) before proceeding.
+
+5. **Detect VCS provider and create PR/MR.** First detect the provider:
+
+   ```bash
+   git remote get-url origin
+   ```
+
+   - Contains `github.com` → GitHub, use `gh pr create`
+   - Contains `gitlab.com` or `gitlab.` → GitLab, use `glab mr create`
+   - Other → output compare URL for manual PR creation
+
+   Push and create:
 
    ```bash
    git push -u origin HEAD
    ```
 
-   Then create the PR using `gh`:
-
+   ### GitHub (`gh`)
    ```bash
    gh pr create --title "<title>" --body "<body>"
    ```
 
-   The PR body should include:
-   - Summary of changes (2-3 bullet points)
-   - Ticket reference if applicable
-   - Testing notes (what was verified)
+   ### GitLab (`glab`)
+   ```bash
+   glab mr create --title "<title>" --description "<body>"
+   ```
 
-   Present the PR URL to the user.
+   Present the PR/MR URL to the user.
 
-5. **Retain session learnings.** Review the session and retain important discoveries:
+6. **Retain session learnings.** Review the session and retain important discoveries:
    - Architecture decisions made during this feature
    - Gotchas or non-obvious patterns encountered
    - Bug root causes and fixes
    - Use Hindsight `retain` for each learning, tagged with the project name
 
-6. **Present the summary and hand off cleanup:**
+7. **Present the summary and hand off cleanup:**
 
    ```
    ## Feature Complete
 
    **Branch:** <branch-name>
-   **PR:** <pr-url>
+   **PR/MR:** <url>
    **Commits:** <count>
    **Files changed:** <count>
 
@@ -99,5 +131,6 @@ You are finishing a feature. Run the full completion pipeline before handing off
 - Never clean up the worktree from inside the agent — that's a terminal action.
 - If checks fail, stop and help fix. Do not skip verification.
 - Always retain learnings before ending the session.
+- Use "PR" for GitHub repos and "MR" for GitLab repos in all user-facing text.
 
 $ARGUMENTS

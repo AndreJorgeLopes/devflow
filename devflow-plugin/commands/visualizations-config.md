@@ -1,5 +1,5 @@
 ---
-description: Configure visualization location, style presets, and output preferences
+description: [devflow v0.1.0] Configure visualization location, style presets, and output preferences
 ---
 
 # Configure Visualizations
