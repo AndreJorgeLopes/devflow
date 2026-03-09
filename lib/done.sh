@@ -176,20 +176,40 @@ EOF
       local commits_ahead
       commits_ahead="$(git rev-list --count "${main_branch}..${wt_branch}" 2>/dev/null || echo "0")"
 
-      if [[ "$commits_ahead" -eq 0 ]] || [[ "$all" == "true" ]]; then
+      # Check for uncommitted changes in the worktree
+      local is_dirty=false
+      local dirty_files
+      dirty_files="$(git -C "$current_wt_path" status --porcelain 2>/dev/null || echo "")"
+      [[ -n "$dirty_files" ]] && is_dirty=true
+
+      local skip_reason=""
+      if [[ "$commits_ahead" -gt 0 ]]; then
+        skip_reason="${commits_ahead} commit(s) ahead of ${main_branch}"
+      fi
+      if [[ "$is_dirty" == "true" ]]; then
+        local dirty_count
+        dirty_count="$(echo "$dirty_files" | wc -l | tr -d ' ')"
+        if [[ -n "$skip_reason" ]]; then
+          skip_reason="${skip_reason} + ${dirty_count} uncommitted change(s)"
+        else
+          skip_reason="${dirty_count} uncommitted change(s)"
+        fi
+      fi
+
+      if [[ -z "$skip_reason" ]] || [[ "$all" == "true" ]]; then
         clean_branches+=("${wt_branch}")
         ((clean_count++))
         if [[ "$dry_run" == "true" ]]; then
-          if [[ "$commits_ahead" -eq 0 ]]; then
-            info "[dry-run] Would remove: ${current_wt_path} (${wt_branch}) — fully merged"
+          if [[ -z "$skip_reason" ]]; then
+            info "[dry-run] Would remove: ${current_wt_path} (${wt_branch}) — clean, fully merged"
           else
-            warn "[dry-run] Would remove: ${current_wt_path} (${wt_branch}) — ${commits_ahead} unmerged commit(s)"
+            warn "[dry-run] Would remove: ${current_wt_path} (${wt_branch}) — ${skip_reason}"
           fi
         fi
       else
         ((skip_count++))
         if [[ "$dry_run" == "true" ]]; then
-          skip "[dry-run] Keeping: ${current_wt_path} (${wt_branch}) — ${commits_ahead} commit(s) ahead of ${main_branch}"
+          skip "[dry-run] Keeping: ${current_wt_path} (${wt_branch}) — ${skip_reason}"
         fi
       fi
       current_wt_path=""
