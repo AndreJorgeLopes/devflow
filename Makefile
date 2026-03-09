@@ -4,7 +4,7 @@ LIBDIR := $(PREFIX)/share/devflow
 VERSION := 0.1.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test brew-local release help plugin-dev plugin-unlink plugin-install
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -49,6 +49,9 @@ test: ## Run smoke tests
 		echo "SKIP: devflow help (binary may not be ready yet)"; \
 	fi
 	@echo "=== done ==="
+
+test-unit: ## Run unit tests (bats)
+	@bats tests/unit/
 
 brew-local: ## Install via local Homebrew formula
 	brew install --formula Formula/devflow.rb
