@@ -24,6 +24,7 @@ source "${DEVFLOW_ROOT}/lib/skills.sh"
 source "${DEVFLOW_ROOT}/lib/seed.sh"
 source "${DEVFLOW_ROOT}/lib/worktree.sh"
 source "${DEVFLOW_ROOT}/lib/visualizations.sh"
+source "${DEVFLOW_ROOT}/lib/done.sh"
 
 # Override devflow_root to use our resolved path
 devflow_root() { echo "$DEVFLOW_ROOT"; }
@@ -48,6 +49,8 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}skills${RESET} remove <name>         Remove a skill from the project
   ${CYAN}skills${RESET} convert [opts]        Convert skills to a Claude Code plugin
   ${CYAN}seed${RESET} [project-dir]           Seed Hindsight memory from project files
+  ${CYAN}done${RESET} <branch-name>            Clean up a completed work session
+  ${CYAN}clean${RESET} [--dry-run] [--force]  Remove all worktrees except main
   ${CYAN}worktree${RESET} <name> [--agent]    Create a worktree, optionally launch agent
   ${CYAN}review${RESET}                       Run self-review via Claude Code
   ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)
@@ -124,6 +127,8 @@ main() {
     check)     devflow_check "$@" ;;
     skills)    devflow_skills "$@" ;;
     seed)      devflow_seed "$@" ;;
+    done)      devflow_done "$@" ;;
+    clean)     devflow_clean "$@" ;;
     worktree)  devflow_worktree "$@" ;;
     review)    devflow_review "$@" ;;
     visualizations|viz) devflow_visualizations "$@" ;;
