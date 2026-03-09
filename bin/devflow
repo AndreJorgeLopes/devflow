@@ -50,7 +50,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}skills${RESET} convert [opts]        Convert skills to a Claude Code plugin
   ${CYAN}seed${RESET} [project-dir]           Seed Hindsight memory from project files
   ${CYAN}done${RESET} <branch-name>            Clean up a completed work session
-  ${CYAN}clean${RESET} [--dry-run] [--force]  Remove all worktrees except main
+  ${CYAN}clean${RESET} [--dry-run] [--all]     Remove merged worktrees (--all for everything)
   ${CYAN}worktree${RESET} <name> [--agent]    Create a worktree, optionally launch agent
   ${CYAN}review${RESET}                       Run self-review via Claude Code
   ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)

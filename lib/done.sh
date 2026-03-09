@@ -99,25 +99,34 @@ EOF
   info "Remote branch is auto-deleted by GitHub when the PR is merged."
 }
 
-# devflow clean — remove all worktrees except main/master
+# devflow clean — remove worktrees fully merged into main
 devflow_clean() {
   local force=false
   local dry_run=false
+  local all=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --force)    force=true; shift ;;
       --dry-run)  dry_run=true; shift ;;
+      --all)      all=true; shift ;;
       -h|--help)
         cat <<EOF
 ${BOLD}Usage:${RESET} devflow clean [options]
 
-Remove all worktrees and their local branches (except main/master).
+Remove worktrees whose branches are fully merged into main.
+Worktrees with unmerged commits are kept safe by default.
 
 ${BOLD}Options:${RESET}
   --dry-run        Show what would be cleaned without doing it
+  --all            Clean ALL worktrees, even those with unmerged commits
   --force          Force removal even if worktrees have uncommitted changes
   -h, --help       Show this help
+
+${BOLD}Examples:${RESET}
+  devflow clean --dry-run     # Preview what would be removed
+  devflow clean               # Remove only fully-merged worktrees
+  devflow clean --all --force # Remove everything (nuclear option)
 EOF
         return 0
         ;;
@@ -125,49 +134,86 @@ EOF
     esac
   done
 
-  section "Cleaning all worktrees"
+  # Detect main branch name
+  local main_branch="main"
+  if ! git rev-parse --verify "$main_branch" >/dev/null 2>&1; then
+    main_branch="master"
+    if ! git rev-parse --verify "$main_branch" >/dev/null 2>&1; then
+      err "Could not find main or master branch"
+      return 1
+    fi
+  fi
+
+  # Fetch latest so merge-base checks are accurate
+  git fetch origin "$main_branch" >/dev/null 2>&1 || true
+  git update-ref "refs/heads/${main_branch}" "origin/${main_branch}" 2>/dev/null || true
+
+  section "Cleaning worktrees"
 
   local main_worktree
   main_worktree="$(git worktree list --porcelain | head -1 | sed 's/^worktree //')"
 
-  local count=0
-  local branches=()
+  local clean_count=0
+  local skip_count=0
+  local clean_branches=()
 
-  # Collect worktrees to remove (skip the main worktree)
+  # Collect worktrees, check which are fully merged
+  local current_wt_path=""
   while IFS= read -r line; do
     if [[ "$line" =~ ^worktree\ (.+)$ ]]; then
-      local wt_path="${BASH_REMATCH[1]}"
-      if [[ "$wt_path" == "$main_worktree" ]]; then
+      current_wt_path="${BASH_REMATCH[1]}"
+      if [[ "$current_wt_path" == "$main_worktree" ]]; then
+        current_wt_path=""
         continue
       fi
-      local wt_branch=""
-    elif [[ "$line" =~ ^branch\ refs/heads/(.+)$ ]]; then
-      wt_branch="${BASH_REMATCH[1]}"
+    elif [[ "$line" =~ ^branch\ refs/heads/(.+)$ ]] && [[ -n "$current_wt_path" ]]; then
+      local wt_branch="${BASH_REMATCH[1]}"
       if [[ "$wt_branch" == "main" ]] || [[ "$wt_branch" == "master" ]]; then
+        current_wt_path=""
         continue
       fi
-      branches+=("${wt_branch}")
-      ((count++))
-      if [[ "$dry_run" == "true" ]]; then
-        info "[dry-run] Would remove: ${wt_path} (${wt_branch})"
+
+      local commits_ahead
+      commits_ahead="$(git rev-list --count "${main_branch}..${wt_branch}" 2>/dev/null || echo "0")"
+
+      if [[ "$commits_ahead" -eq 0 ]] || [[ "$all" == "true" ]]; then
+        clean_branches+=("${wt_branch}")
+        ((clean_count++))
+        if [[ "$dry_run" == "true" ]]; then
+          if [[ "$commits_ahead" -eq 0 ]]; then
+            info "[dry-run] Would remove: ${current_wt_path} (${wt_branch}) — fully merged"
+          else
+            warn "[dry-run] Would remove: ${current_wt_path} (${wt_branch}) — ${commits_ahead} unmerged commit(s)"
+          fi
+        fi
+      else
+        ((skip_count++))
+        if [[ "$dry_run" == "true" ]]; then
+          skip "[dry-run] Keeping: ${current_wt_path} (${wt_branch}) — ${commits_ahead} commit(s) ahead of ${main_branch}"
+        fi
       fi
+      current_wt_path=""
     fi
   done < <(git worktree list --porcelain 2>/dev/null)
 
-  if [[ $count -eq 0 ]]; then
-    ok "No worktrees to clean (only main worktree exists)"
+  if [[ $clean_count -eq 0 ]]; then
+    if [[ $skip_count -gt 0 ]]; then
+      ok "No merged worktrees to clean (${skip_count} with unmerged work kept safe)"
+    else
+      ok "No worktrees to clean (only main worktree exists)"
+    fi
     return 0
   fi
 
   if [[ "$dry_run" == "true" ]]; then
     log ""
-    info "${count} worktree(s) would be removed. Run without --dry-run to execute."
+    info "${clean_count} worktree(s) would be removed, ${skip_count} kept."
     return 0
   fi
 
-  info "Found ${count} worktree(s) to clean"
+  info "Cleaning ${clean_count} worktree(s), keeping ${skip_count} with unmerged work"
 
-  for branch in "${branches[@]}"; do
+  for branch in "${clean_branches[@]}"; do
     log ""
     devflow_done "$branch" $(if [[ "$force" == "true" ]]; then echo "--force"; fi) || true
   done
@@ -175,5 +221,5 @@ EOF
   git worktree prune 2>/dev/null || true
 
   log ""
-  ok "All worktrees cleaned"
+  ok "Cleaned ${clean_count} worktree(s)"
 }
