@@ -316,6 +316,58 @@ with open(config_path, 'r+') as f:
     skip "agent-deck not installed — skipping group setup"
   fi
 
+  # ── 5d. Claude Code hooks ────────────────────────────────────────────────
+  section "Registering Claude Code hooks"
+
+  local settings_file="${HOME}/.claude/settings.json"
+  if [[ -f "$settings_file" ]]; then
+    python3 -c "
+import json, sys
+
+settings_path = sys.argv[1]
+hook_root = sys.argv[2]
+
+with open(settings_path) as f:
+    settings = json.load(f)
+
+hooks = settings.setdefault('hooks', {})
+changed = False
+
+# Stop hook — finish-feature prompt
+stop_hooks = hooks.setdefault('Stop', [])
+stop_cmd = hook_root + '/lib/hooks/stop-finish-prompt.sh'
+if not any('stop-finish-prompt' in str(entry) for entry in stop_hooks):
+    stop_hooks.append({'hooks': [{'type': 'command', 'command': stop_cmd}]})
+    changed = True
+    print('Added Stop hook: stop-finish-prompt')
+else:
+    print('Skip: Stop hook already registered')
+
+# UserPromptSubmit hook — fetch-rebase
+ups_hooks = hooks.setdefault('UserPromptSubmit', [])
+ups_cmd = hook_root + '/lib/hooks/prompt-fetch-rebase.sh'
+if not any('prompt-fetch-rebase' in str(entry) for entry in ups_hooks):
+    ups_hooks.append({'hooks': [{'type': 'command', 'command': ups_cmd}]})
+    changed = True
+    print('Added UserPromptSubmit hook: prompt-fetch-rebase')
+else:
+    print('Skip: UserPromptSubmit hook already registered')
+
+if changed:
+    with open(settings_path, 'w') as f:
+        json.dump(settings, f, indent=2)
+        f.write('\n')
+" "$settings_file" "$root" 2>&1 | while IFS= read -r line; do
+      case "$line" in
+        Added*) ok "$line" ;;
+        Skip*)  skip "$line" ;;
+        *)      info "$line" ;;
+      esac
+    done
+  else
+    warn "~/.claude/settings.json not found — run Claude Code once first, then re-run devflow init"
+  fi
+
   # ── 6. Install devflow commands & skills ──────────────────────────────────
   if has_cmd claude; then
     section "Installing devflow commands & skills"
