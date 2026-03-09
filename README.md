@@ -106,6 +106,38 @@ devflow skills install new-feature  # Copy to .claude/commands/
 | `architecture-decision` | Process      | Document ADR with rationale and memory retention              |
 | `session-summary`       | Langfuse     | Generate session summary for observability                    |
 
+## Claude Code Plugin
+
+Devflow ships a Claude Code plugin that provides slash commands (`/new-feature`, `/create-pr`, `/finish-feature`, etc.) and skills.
+
+### End users — install via marketplace
+
+```bash
+# Register the local marketplace and install the plugin
+make plugin-install
+
+# Or manually:
+claude plugin marketplace add /path/to/devflow/devflow-plugin
+claude plugin install devflow@devflow-marketplace
+```
+
+After installation, restart Claude Code. Commands appear as `/devflow:new-feature`, `/devflow:create-pr`, etc.
+
+### Developers — symlink for live iteration
+
+If you're developing devflow, use symlinks instead of installing the plugin. Edits to command files in `devflow-plugin/commands/` are live on the next Claude Code restart — no reinstall needed.
+
+```bash
+make plugin-dev    # Creates symlinks, removes installed plugin if present
+make plugin-unlink # Removes symlinks
+```
+
+This creates:
+- `~/.claude/commands/devflow` → `devflow-plugin/commands/`
+- `~/.claude/skills/devflow-recall` → `devflow-plugin/skills/recall-before-task/`
+
+Each command's description includes a version badge (e.g. `[devflow v0.1.0]`) visible in the `/` menu, so you can spot if an old installed plugin version is shadowing the dev symlink.
+
 ## What `devflow init` Does
 
 1. **Checks prerequisites** — git, tmux, Homebrew (macOS)
