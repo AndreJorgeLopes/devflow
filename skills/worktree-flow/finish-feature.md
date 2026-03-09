@@ -21,11 +21,11 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
 2. **Run verification checks.** Execute the full check pipeline:
 
-   ```bash
-   cn check
-   ```
+    ```bash
+    devflow check
+    ```
 
-   If `cn` is not available, run lint, types, and tests directly:
+    If `devflow check` is not available, run lint, types, and tests directly:
 
    ```bash
    yarn lint

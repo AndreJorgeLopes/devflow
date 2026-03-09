@@ -154,7 +154,7 @@ Output the report in this format:
 ### Error Hotspots
 - Bash: 12 failures (5.5%) — mostly permission errors
 - hindsight_retain: 4 timeouts (11.8%) ⚠️
-- cn check: 5 failures — review check rules
+- devflow check: 5 failures — review check rules
 
 ### Recommendations
 1. 🔧 Create a skill for "database migration" — you do it manually in 8 sessions

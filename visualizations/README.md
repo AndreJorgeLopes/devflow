@@ -13,7 +13,7 @@ tags: [devflow, visualizations, index, mermaid, style-guide]
 
 | Category | File | What it shows |
 |----------|------|---------------|
-| **Architecture** | [[devflow-ecosystem]] | The 6-layer tool ecosystem — Hindsight, Agent Deck, Worktrunk, Continue.dev, Skills, Langfuse |
+| **Architecture** | [[devflow-ecosystem]] | The 6-layer tool ecosystem — Hindsight, Agent Deck, Worktrunk, Code Review, Skills, Langfuse |
 | **Architecture** | runtime-architecture _(future)_ | Docker containers, Homebrew CLIs, config file locations |
 | **Architecture** | sync-architecture _(future)_ | Skills/MCP sync flow across 7 targets |
 | **Workflows** | [[development-workflow]] | Full SDD workflow: idea to merge request, TDD loop, review gates |
@@ -58,7 +58,7 @@ Consistent across all diagrams — each devflow component has a fixed color:
 | Hindsight | Purple | `#7c3aed` | `hindsightStyle` |
 | Agent Deck | Blue | `#3b82f6` | `agentDeckStyle` |
 | Worktrunk | Green | `#059669` | `worktrunkStyle` |
-| Continue.dev | Amber | `#d97706` | `continueStyle` |
+| Code Review | Amber | `#d97706` | `reviewStyle` |
 | Skills/Marketplace | Pink | `#be185d` | `skillsStyle` |
 | Langfuse | Cyan | `#0891b2` | `langfuseStyle` |
 | Conductor | Amber variant | `#f59e0b` | `conductorStyle` |
@@ -74,7 +74,7 @@ Copy this block into every diagram and apply the relevant classes:
 classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
 classDef agentDeckStyle fill:#3b82f6,color:#fff,stroke:#1e40af
 classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
-classDef continueStyle fill:#d97706,color:#fff,stroke:#b45309
+classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
 classDef skillsStyle fill:#be185d,color:#fff,stroke:#9d174d
 classDef langfuseStyle fill:#0891b2,color:#fff,stroke:#0e7490
 classDef conductorStyle fill:#f59e0b,color:#fff,stroke:#d97706

@@ -30,7 +30,7 @@ The skill handles everything INSIDE the agent session. The CLI handles everythin
 Task completion is fragmented and error-prone:
 
 - Developers forget to run verification before pushing
-- Code review checks (`cn check`) are skipped
+- Code review checks (`devflow check`) are skipped
 - Session learnings aren't retained to Hindsight (knowledge is lost)
 - Worktrees accumulate because cleanup is manual
 - Agent sessions linger in agent-deck after the work is done
@@ -76,7 +76,7 @@ Run all relevant verification commands. ALL must pass before proceeding.
 3. **Type check / Build**: Run the build command (e.g., `yarn build`, `tsc --noEmit`)
    - Fix all type errors before proceeding.
 
-4. **Code review checks**: Run `cn check` if available
+4. **Code review checks**: Run `devflow check` if available
    - Address any findings. These are automated review rules.
 
 If ANY verification step fails, fix the issue and re-run. Do not skip.
@@ -136,7 +136,7 @@ Output a completion summary:
 **Branch**: feat/MES-1234
 **PR**: https://github.com/org/repo/pull/123
 **Commits**: 3
-**Verification**: All passed (tests, lint, build, cn check)
+**Verification**: All passed (tests, lint, build, devflow check)
 
 ### To clean up the worktree, run:
 devflow done feat/MES-1234
@@ -286,7 +286,7 @@ Update `skills/registry.json` (or wherever skills are registered) to include the
 ## Acceptance Criteria
 
 - [ ] `skills/process-discipline/done.md` exists and follows the rigid skill format
-- [ ] The skill runs verification (tests, lint, build, cn check) before committing
+- [ ] The skill runs verification (tests, lint, build, devflow check) before committing
 - [ ] The skill commits, pushes, and creates a PR
 - [ ] The skill retains learnings to Hindsight
 - [ ] The skill outputs a summary with the `devflow done` command
@@ -303,7 +303,7 @@ Update `skills/registry.json` (or wherever skills are registered) to include the
 
 - The skill is type `rigid` — agents must follow it exactly, no shortcuts
 - The skill should detect the project's test/lint/build commands from `package.json`, `Makefile`, `pyproject.toml`, etc. A hardcoded command won't work across projects.
-- `cn check` may not be installed in all projects — the skill should check availability before running
+- `devflow check` may not be available in all projects — the skill should check availability before running
 - The `devflow done` CLI command should be safe to run even if the agent-side cleanup already happened (idempotent)
 - agent-deck's `remove` command may have different syntax — check `agent-deck help remove`
 - `wt drop` removes the worktree AND deletes the branch. `git worktree remove` only removes the worktree. Be careful about which to use.

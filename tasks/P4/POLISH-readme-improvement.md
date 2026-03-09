@@ -93,7 +93,7 @@ Proposed section order:
 6. **Commands Reference**: Existing command list, formatted as a table
 7. **Skills Marketplace**: Existing skills table
 8. **How `devflow init` Works**: Existing content, possibly in a `<details>` block
-9. **Layer Deep Dives**: Collapsible sections for Hindsight, Docker, Continue.dev
+9. **Layer Deep Dives**: Collapsible sections for Hindsight, Docker, Code Review
 10. **Project Structure**: Existing tree
 11. **Design Decisions**: Existing bullet list
 12. **Contributing**: Brief section (fork, branch, PR)
@@ -120,7 +120,7 @@ graph TB
     end
 
     subgraph "Layer 4: Code Review"
-        Continue[Continue.dev<br/>Pre-push checks]
+        Review[Code Review<br/>Pre-push checks]
     end
 
     subgraph "Layer 5: Process Discipline"
@@ -134,7 +134,7 @@ graph TB
     CLI --> Hindsight
     CLI --> AgentDeck
     CLI --> Worktrunk
-    CLI --> Continue
+    CLI --> Review
     CLI --> Config
     CLI --> Langfuse
 ````
