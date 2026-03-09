@@ -3,7 +3,7 @@ id: ARCH-pr-creation-vcs-detection
 title: "PR Creation With Correct VCS Tool"
 priority: P1
 category: architecture
-status: open
+status: done
 depends_on: []
 estimated_effort: S
 files_to_touch:

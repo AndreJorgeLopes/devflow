@@ -37,7 +37,7 @@ graph TD
     EXEC["Executing Plans<br/>(parallel session)"]
     LOOP["TDD Implementation Loop<br/>(per task)"]
     VERIFY["Verification<br/>(superpowers skill)"]
-    CHECK["Pre-Push Check<br/>cn check + self-review"]
+    CHECK["Pre-Push Check<br/>devflow check + self-review"]
     COMMIT["Commit + Push"]
     MR["Create Merge Request<br/>gh pr create"]
     RETAIN["Retain learnings<br/>retain('project: discovery')"]
@@ -72,7 +72,7 @@ graph TD
     classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
     classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
     classDef skillsStyle fill:#be185d,color:#fff,stroke:#9d174d
-    classDef continueStyle fill:#d97706,color:#fff,stroke:#b45309
+    classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
     classDef decisionStyle fill:#374151,color:#fff,stroke:#1f2937
     classDef terminalStyle fill:#6b7280,color:#fff,stroke:#4b5563
     classDef conductorStyle fill:#f59e0b,color:#fff,stroke:#d97706
@@ -81,8 +81,8 @@ graph TD
     class RECALL,RETAIN hindsightStyle
     class WORKTREE,CLEANUP worktrunkStyle
     class BRAIN,PLAN,SDD,EXEC,LOOP,VERIFY skillsStyle
-    class CHECK continueStyle
-    class MR,COMMIT continueStyle
+    class CHECK reviewStyle
+    class MR,COMMIT reviewStyle
     class CHOOSE decisionStyle
     class START,DONE terminalStyle
     class SESSION agentDeckStyle
@@ -223,7 +223,7 @@ graph TD
 
 This phase has two distinct parts:
 
-- **Agent actions** (inside the session): verification, cn check, commit, push, create PR, retain learnings
+- **Agent actions** (inside the session): verification, devflow check, commit, push, create PR, retain learnings
 - **Terminal actions** (human-initiated): `agent-deck worktree finish` or `wt drop` for cleanup
 
 ```mermaid
@@ -235,7 +235,7 @@ graph TD
         F_VERIFY["Run full verification<br/>(tests, lint, build)"]
         F_PASS{"All<br/>pass?"}
         F_FIX["Fix failures"]
-        F_CN["Pre-push check<br/>cn check"]
+        F_CN["Pre-push check<br/>devflow check"]
         F_SELF["Self-review vs CLAUDE.md<br/>(naming, architecture, security)"]
         F_COMMIT["Commit changes"]
         F_PUSH["git push -u origin HEAD"]
@@ -268,7 +268,7 @@ graph TD
     F_DROP --> F_DONE
 
     classDef verifyStyle fill:#059669,color:#fff,stroke:#047857
-    classDef continueStyle fill:#d97706,color:#fff,stroke:#b45309
+    classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
     classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
     classDef langfuseStyle fill:#0891b2,color:#fff,stroke:#0e7490
     classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
@@ -276,7 +276,7 @@ graph TD
     classDef terminalStyle fill:#6b7280,color:#fff,stroke:#4b5563
 
     class F_VERIFY,F_PASS,F_FIX verifyStyle
-    class F_CN,F_SELF,F_PUSH,F_GH,F_COMMIT continueStyle
+    class F_CN,F_SELF,F_PUSH,F_GH,F_COMMIT reviewStyle
     class F_RETAIN hindsightStyle
     class F_SUMMARY langfuseStyle
     class F_FINISH,F_DROP worktrunkStyle
@@ -288,7 +288,7 @@ graph TD
 
 ## 6. Tool Active at Each Phase
 
-| Phase              |   Hindsight (L1)    | Agent Deck (L2) | Conductor (L2) |   Worktrunk (L3)   | Continue.dev (L4) |  Skills (L5)   |  Langfuse (L6)  |
+| Phase              |   Hindsight (L1)    | Agent Deck (L2) | Conductor (L2) |   Worktrunk (L3)   | Code Review (L4)  |  Skills (L5)   |  Langfuse (L6)  |
 | ------------------ | :-----------------: | :-------------: | :------------: | :----------------: | :---------------: | :------------: | :-------------: |
 | **Start (CLI)**    |          —          |  wraps session  |       —        |  create worktree   |         —         |       —        |        —        |
 | **Recall (Agent)** |       recall        |        —        |    monitors    |         —          |         —         |       —        |     traces      |
@@ -297,7 +297,7 @@ graph TD
 | **TDD Loop**       | retain discoveries  |        —        | auto-responds  | isolated workspace |         —         |    TDD, SDD    |     traces      |
 | **Spec Review**    |          —          |        —        | auto-responds  |         —          |         —         | spec-reviewer  |     traces      |
 | **Quality Review** |          —          |        —        | auto-responds  |         —          |         —         | code-reviewer  |     traces      |
-| **Pre-Push**       |          —          |        —        |    monitors    |         —          |     cn check      | pre-push-check |     traces      |
+| **Pre-Push**       |          —          |        —        |    monitors    |         —          |  devflow check    | pre-push-check |     traces      |
 | **Create MR**      | context for PR body |        —        |    monitors    |         —          |         —         |   create-pr    |     traces      |
 | **Finish (Agent)** |  retain learnings   |        —        |    monitors    |         —          |         —         | finish-feature | session-summary |
 | **Cleanup (CLI)**  |          —          | worktree finish |       —        |  wt drop / merge   |         —         |       —        |        —        |

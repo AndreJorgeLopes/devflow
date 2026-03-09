@@ -155,7 +155,7 @@ Session ending. Consider running /devflow:update-visualizations to update archit
 | Hindsight | Purple | `#7c3aed` |
 | Agent Deck | Blue | `#3b82f6` |
 | Worktrunk | Green | `#059669` |
-| Continue.dev | Amber | `#d97706` |
+| Code Review | Amber | `#d97706` |
 | Skills/Marketplace | Pink | `#be185d` |
 | Langfuse | Cyan | `#0891b2` |
 | Conductor | Amber variant | `#f59e0b` |

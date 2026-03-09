@@ -42,7 +42,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}down${RESET}                         Stop Docker services
   ${CYAN}restart${RESET}                      Restart Docker services (down + up)
   ${CYAN}status${RESET}                       Show status of all layers
-  ${CYAN}check${RESET}                        Run Continue.dev checks on current diff
+  ${CYAN}check${RESET}                        Run code review checks on current diff
   ${CYAN}skills${RESET} list                  List available skills
   ${CYAN}skills${RESET} install <name>        Install a skill to the current project
   ${CYAN}skills${RESET} remove <name>         Remove a skill from the project
@@ -60,7 +60,7 @@ ${BOLD}LAYERS${RESET}
   1. Hindsight    — Memory MCP (Docker)
   2. Agent Deck   — Session wrapper (brew)
   3. Worktrunk    — Git worktrees (brew)
-  4. Continue.dev — Code review (npm)
+  4. Code Review  — AI-powered (claude/opencode)
   5. CLAUDE.md    — Process discipline (skills)
   6. Langfuse     — Observability (Docker)
 

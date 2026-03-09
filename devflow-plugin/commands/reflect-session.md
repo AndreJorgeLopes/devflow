@@ -1,5 +1,5 @@
 ---
-description: Reflect on the current session, extract learnings, and consolidate them into Hindsight for future recall.
+description: [devflow v0.1.0] Reflect on the current session, extract learnings, and consolidate them into Hindsight for future recall.
 ---
 
 You are wrapping up a session. Reflect on what happened and consolidate the valuable learnings.

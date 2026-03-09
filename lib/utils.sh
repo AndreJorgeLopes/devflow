@@ -134,3 +134,36 @@ hindsight_post() {
 hindsight_available() {
   curl -sf -o /dev/null "${HINDSIGHT_API}/health" 2>/dev/null
 }
+
+# ── VCS Detection ─────────────────────────────────────────────────────────────
+
+# detect_vcs_provider — Detect VCS provider from git remote URL
+# Returns: github, gitlab, bitbucket, azure, or unknown
+detect_vcs_provider() {
+  local remote_url
+  remote_url="$(git remote get-url origin 2>/dev/null || echo "")"
+
+  if [[ -z "$remote_url" ]]; then
+    echo "unknown"
+    return 1
+  fi
+
+  case "$remote_url" in
+    *github.com*)                        echo "github" ;;
+    *gitlab.com*|*gitlab.*)              echo "gitlab" ;;
+    *bitbucket.org*)                     echo "bitbucket" ;;
+    *dev.azure.com*|*visualstudio.com*)  echo "azure" ;;
+    *)                                   echo "unknown" ;;
+  esac
+}
+
+# get_vcs_pr_term — Return the correct term for a PR based on provider
+# Returns: PR (GitHub/generic), MR (GitLab)
+get_vcs_pr_term() {
+  local provider
+  provider="$(detect_vcs_provider)"
+  case "$provider" in
+    gitlab) echo "MR" ;;
+    *)      echo "PR" ;;
+  esac
+}

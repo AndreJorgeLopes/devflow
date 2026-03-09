@@ -11,7 +11,7 @@ AI dev environment orchestrator. Integrates 6 tools into one CLI so AI coding ag
 | 1   | [Hindsight](https://github.com/vectorize-io/hindsight)             | Three-tier persistent memory via MCP (L0 mental models, L1 observations, L2 facts). 29 MCP tools. | Local daemon (uvx) |
 | 2   | [Agent Deck](https://github.com/asheshgoplani/agent-deck)          | TUI session wrapper with Conductor auto-monitoring, MCP socket pooling, skills management.        | Homebrew           |
 | 3   | [Worktrunk](https://github.com/max-sixty/worktrunk)                | Git worktree lifecycle. `wt step copy-ignored` copies gitignored files to eliminate cold starts.  | Homebrew           |
-| 4   | [Continue.dev](https://github.com/continuedev/continue) (`cn` CLI) | Local pre-push AI code review checks. Individual markdown check files per rule.                   | npm                |
+| 4   | Code Review                                                        | Local pre-push AI code review checks. Individual markdown check files per rule.                   | claude / opencode  |
 | 5   | CLAUDE.md + Skills                                                 | Process discipline baked into agent config. Memory-aware templates, multi-agent coordination.     | Files              |
 | 6   | [Langfuse](https://github.com/langfuse/langfuse)                   | Multi-agent tracing, MCP call spans, cost tracking. Self-hosted.                                  | Docker             |
 
@@ -40,13 +40,14 @@ make link  # symlinks to ~/.local/bin/devflow
 ### Prerequisites
 
 - **Required**: git, tmux, Homebrew (macOS)
-- **Recommended**: Docker CLI + runtime (colima or Docker Desktop), Claude Code or OpenCode, jq, Node.js (for `cn` CLI), uv (for Hindsight)
+- **Recommended**: Docker CLI + runtime (colima or Docker Desktop), Claude Code or OpenCode, jq, uv (for Hindsight)
 
 ## Quick Start
 
 ```bash
-# 1. Initialize (installs tools, configures MCP, copies templates, installs plugins)
+# 1. Initialize (installs tools, configures MCP, sets up commands & skills, installs plugins)
 #    Interactive prompt lets you choose LLM provider for Hindsight memory
+#    This single command handles everything — no separate plugin install needed.
 devflow init ~/projects/myapp
 
 # 2. Start Hindsight daemon + Docker services (Langfuse)
@@ -73,7 +74,7 @@ devflow init [dir]              Initialize project with all 6 layers
 devflow up                      Start Docker services (Hindsight + Langfuse)
 devflow down                    Stop Docker services
 devflow status                  Health check across all layers
-devflow check                   Run Continue.dev checks on current diff
+devflow check                   Run code review checks on current diff
 devflow review                  Self-review via Claude Code against CLAUDE.md
 devflow seed [dir]              Seed Hindsight memory from project files
 devflow worktree <name> [--agent]  Create worktree, optionally launch agent
@@ -84,12 +85,14 @@ devflow version                 Print version
 devflow help                    Show help
 ```
 
-## Skills Marketplace
+## Skills & Commands
 
-Skills are Claude Code slash commands that integrate the 6 layers. Install them per-project:
+`devflow init` automatically installs all devflow slash commands and skills. After init, type `/devflow:` in Claude Code to see all available commands.
+
+You can also browse and install individual skills per-project:
 
 ```bash
-devflow skills list           # Browse 10 available skills
+devflow skills list           # Browse available skills
 devflow skills install new-feature  # Copy to .claude/commands/
 ```
 
@@ -98,10 +101,10 @@ devflow skills install new-feature  # Copy to .claude/commands/
 | `memory-recall`         | Hindsight    | Recall relevant memories before starting a task               |
 | `retain-learning`       | Hindsight    | Retain a discovery into persistent memory                     |
 | `reflect-session`       | Hindsight    | Reflect and consolidate session learnings                     |
-| `pre-push-check`        | Continue.dev | Run full pre-push review pipeline                             |
+| `pre-push-check`        | Code Review  | Run full pre-push review pipeline                             |
 | `new-feature`           | Worktrunk    | Start feature with worktree + memory recall + workspace setup |
 | `finish-feature`        | Worktrunk    | Finish feature with checks, commit, merge, learning retention |
-| `create-pr`             | Continue.dev | Full PR creation pipeline with self-review                    |
+| `create-pr`             | Code Review  | Full PR creation pipeline with self-review                    |
 | `spec-feature`          | Process      | Spec a feature with architecture recall and task breakdown    |
 | `architecture-decision` | Process      | Document ADR with rationale and memory retention              |
 | `session-summary`       | Langfuse     | Generate session summary for observability                    |
@@ -109,13 +112,14 @@ devflow skills install new-feature  # Copy to .claude/commands/
 ## What `devflow init` Does
 
 1. **Checks prerequisites** — git, tmux, Homebrew (macOS)
-2. **Installs tools** — Agent Deck (brew), Worktrunk (brew), Continue.dev CLI (npm), uv (brew), Hindsight (uvx)
+2. **Installs tools** — Agent Deck (brew), Worktrunk (brew), uv (brew), Hindsight (uvx)
 3. **User-scoped config** — `~/.claude/CLAUDE.md` (memory workflow, process discipline), `~/.claude/AGENTS.md` (multi-agent coordination). These apply across ALL your projects without touching the team's project-level CLAUDE.md.
-4. **Project-scoped config** — `.worktrunk.toml` (worktree settings), `.continue/checks/` (code review rules). These are per-repo.
+4. **Project-scoped config** — `.worktrunk.toml` (worktree settings), `.devflow/checks/` (code review rules). These are per-repo.
 5. **Claude Code plugins** — Installs Agent Deck and Worktrunk plugins via `claude plugin`
-6. **Skills** — Installs Hindsight and Agent Deck skills for both Claude Code and OpenCode
-7. **Configures MCP** — Adds Hindsight as HTTP MCP server to Claude Code and/or OpenCode (user-scoped)
-8. **Shell integration** — Configures Worktrunk zsh integration
+6. **Devflow commands & skills** — Sets up devflow slash commands (`/devflow:new-feature`, `/devflow:create-pr`, etc.) and skills via symlinks to the install directory. Detects existing dev symlinks and skips if present.
+7. **Skills** — Installs Hindsight and Agent Deck skills for both Claude Code and OpenCode
+8. **Configures MCP** — Adds Hindsight as HTTP MCP server to Claude Code and/or OpenCode (user-scoped)
+9. **Shell integration** — Configures Worktrunk zsh integration
 
 All operations are idempotent — safe to run multiple times. User-scoped files use a `<!-- devflow -->` marker to detect existing sections.
 
@@ -164,15 +168,19 @@ colima start
 devflow up
 ```
 
-## Continue.dev Checks
+## Code Review Checks
 
-`devflow init` installs 5 pre-built check files to `.continue/checks/`:
+`devflow init` installs 5 pre-built check files to `.devflow/checks/`:
 
 - `handler-factory.md` — Lambda handlers must use factory wrappers
 - `structured-logging.md` — No `console.log`, use structured logger
 - `joi-validation.md` — All inputs validated with Joi schemas
 - `no-any-types.md` — No `any` types or unsafe assertions
 - `error-handling.md` — Proper error handling patterns
+
+Each check file is a markdown prompt. `devflow check` sends the current diff plus each check prompt to an AI CLI for review. It uses `claude --print` (primary) or `opencode run` (fallback). Override the CLI with the `DEVFLOW_REVIEW_CLI` env var.
+
+No separate npm package is needed — code review uses whichever AI CLI you already have installed.
 
 These are **local only** — they run on your machine before push. They never appear as PR bot comments and are invisible to teammates.
 
@@ -196,7 +204,7 @@ devflow/
 │   ├── CLAUDE.md.tmpl
 │   ├── AGENTS.md.tmpl
 │   ├── .worktrunk.toml.tmpl
-│   └── .continue/checks/    # 5 review check files
+│   └── .devflow/checks/     # 5 review check files
 ├── skills/                  # Skills marketplace
 │   ├── registry.json
 │   ├── memory-recall/
@@ -221,6 +229,29 @@ devflow/
 - **Non-destructive init** — Safe to run multiple times. Appends to existing files, skips what's already there.
 - **Agent-agnostic** — Works with Claude Code, OpenCode, or any tool that reads CLAUDE.md and speaks MCP.
 - **Full plugin ecosystem** — Installs Claude Code plugins (Agent Deck, Worktrunk) and skills for both Claude Code and OpenCode.
+
+## Contributing
+
+### Developer Setup
+
+For developing devflow itself, use `make plugin-dev` instead of the normal install. This creates symlinks from `~/.claude/commands/devflow` and `~/.claude/skills/devflow-recall` directly to the source files, so edits are live on the next Claude Code restart — no reinstall needed.
+
+```bash
+git clone https://github.com/AndreJorgeLopes/devflow.git ~/dev/devflow
+cd ~/dev/devflow
+make link        # symlink CLI binary
+make plugin-dev  # symlink commands & skills for live iteration
+```
+
+To clean up:
+
+```bash
+make plugin-unlink  # remove command/skill symlinks
+```
+
+Each command's description includes a version badge (e.g. `[devflow v0.1.0]`) visible in the `/` menu. This helps detect if an old installed plugin version is shadowing the dev symlinks.
+
+A project-level `/plugin-sync` command is available inside the devflow repo to check symlink health and detect stale plugin installs.
 
 ## License
 

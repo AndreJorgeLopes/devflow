@@ -97,19 +97,13 @@ devflow_init() {
     _install_via_brew "worktrunk"
   fi
 
-  # Continue.dev CLI — distributed via npm, not Homebrew
-  if has_cmd cn; then
-    ok "continue.dev CLI (cn)"
+  # Code Review CLI — uses claude (primary) or opencode (fallback), no install needed
+  if has_cmd claude; then
+    ok "Code review CLI: claude"
+  elif has_cmd opencode; then
+    ok "Code review CLI: opencode (fallback)"
   else
-    if has_cmd npm; then
-      info "Installing continue.dev CLI via npm..."
-      npm install -g @continuedev/cli 2>/dev/null && ok "continue.dev CLI (cn) installed" || warn "Could not install cn — run: npm i -g @continuedev/cli"
-    elif has_cmd yarn; then
-      info "Installing continue.dev CLI via yarn..."
-      yarn global add @continuedev/cli 2>/dev/null && ok "continue.dev CLI (cn) installed" || warn "Could not install cn — run: npm i -g @continuedev/cli"
-    else
-      warn "continue.dev CLI (cn) not found — install with: npm i -g @continuedev/cli"
-    fi
+    warn "No code review CLI found — install Claude Code or OpenCode"
   fi
 
   # uv (Python) — needed for Hindsight
@@ -256,22 +250,22 @@ with open(config_path, 'r+') as f:
     ok "Created .worktrunk.toml"
   fi
 
-  # .continue/checks/ — review rules are per-project (team can customize)
-  if [[ -d "${templates_dir}/.continue/checks" ]]; then
-    mkdir -p "${project_dir}/.continue/checks"
+  # .devflow/checks/ — review rules are per-project (team can customize)
+  if [[ -d "${templates_dir}/.devflow/checks" ]]; then
+    mkdir -p "${project_dir}/.devflow/checks"
     local copied=0
-    for check_file in "${templates_dir}/.continue/checks/"*.md; do
+    for check_file in "${templates_dir}/.devflow/checks/"*.md; do
       local basename
       basename="$(basename "$check_file")"
-      if [[ ! -f "${project_dir}/.continue/checks/${basename}" ]]; then
-        cp "$check_file" "${project_dir}/.continue/checks/${basename}"
+      if [[ ! -f "${project_dir}/.devflow/checks/${basename}" ]]; then
+        cp "$check_file" "${project_dir}/.devflow/checks/${basename}"
         ((copied++))
       fi
     done
     if [[ $copied -gt 0 ]]; then
-      ok "Copied ${copied} check file(s) to .continue/checks/"
+      ok "Copied ${copied} check file(s) to .devflow/checks/"
     else
-      skip ".continue/checks/ already up to date"
+      skip ".devflow/checks/ already up to date"
     fi
   fi
 
@@ -322,8 +316,57 @@ with open(config_path, 'r+') as f:
     skip "agent-deck not installed — skipping group setup"
   fi
 
-  # ── 6. Install skills ─────────────────────────────────────────────────────
-  section "Installing skills"
+  # ── 6. Install devflow commands & skills ──────────────────────────────────
+  if has_cmd claude; then
+    section "Installing devflow commands & skills"
+
+    local commands_link="${HOME}/.claude/commands/devflow"
+    local skills_link="${HOME}/.claude/skills/devflow-recall"
+    local commands_target="${root}/devflow-plugin/commands"
+    local skills_target="${root}/devflow-plugin/skills/recall-before-task"
+
+    mkdir -p "${HOME}/.claude/commands" "${HOME}/.claude/skills"
+
+    # Commands symlink
+    if [[ -L "${commands_link}" ]]; then
+      local current_target
+      current_target="$(readlink "${commands_link}")"
+      if [[ "${current_target}" == "${commands_target}" ]]; then
+        ok "Devflow commands symlink healthy (${commands_link})"
+      else
+        warn "Commands symlink points to ${current_target}, expected ${commands_target}"
+        ln -sfn "${commands_target}" "${commands_link}"
+        ok "Commands symlink updated"
+      fi
+    elif [[ -d "${commands_link}" ]]; then
+      warn "${commands_link} is a directory, not a symlink — skipping (manual cleanup needed)"
+    else
+      ln -sfn "${commands_target}" "${commands_link}"
+      ok "Devflow commands installed (~/.claude/commands/devflow)"
+    fi
+
+    # Skills symlink
+    if [[ -L "${skills_link}" ]]; then
+      local current_skills_target
+      current_skills_target="$(readlink "${skills_link}")"
+      if [[ "${current_skills_target}" == "${skills_target}" ]]; then
+        ok "Devflow skills symlink healthy (${skills_link})"
+      else
+        ln -sfn "${skills_target}" "${skills_link}"
+        ok "Devflow skills symlink updated"
+      fi
+    elif [[ ! -e "${skills_link}" ]]; then
+      ln -sfn "${skills_target}" "${skills_link}"
+      ok "Devflow recall skill installed (~/.claude/skills/devflow-recall)"
+    else
+      skip "Devflow skill path exists but is not a symlink — skipping"
+    fi
+  else
+    skip "Claude Code not installed — skipping devflow commands"
+  fi
+
+  # ── 6b. Install third-party skills ──────────────────────────────────────
+  section "Installing third-party skills"
 
   # Hindsight skill for Claude Code
   if has_cmd claude; then
@@ -437,11 +480,12 @@ OJSON
   detail "~/.claude/AGENTS.md    — Multi-agent coordination"
   detail "MCP: Hindsight         — Persistent memory server"
   detail "Claude Code plugins    — agent-deck, worktrunk"
-  detail "Skills                 — Hindsight (Claude Code + OpenCode)"
+  detail "Devflow commands       — /devflow:new-feature, /devflow:create-pr, etc."
+  detail "Skills                 — Hindsight, devflow-recall (Claude Code + OpenCode)"
   log ""
   log "Project-scoped (${project_dir}):"
   detail ".worktrunk.toml        — Git worktree config"
-  detail ".continue/checks/      — Code review check files"
+  detail ".devflow/checks/       — Code review check files"
   log ""
   log "Next steps:"
   detail "uvx hindsight-embed daemon start   — Start Hindsight memory daemon"

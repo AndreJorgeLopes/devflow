@@ -1,5 +1,5 @@
 ---
-description: Run the full pre-push review pipeline — Continue.dev checks, self-review against CLAUDE.md, and a final report.
+description: Run the full pre-push review pipeline — code review checks, self-review against CLAUDE.md, and a final report.
 ---
 
 You are about to push code. Run the full pre-push quality pipeline before pushing.
@@ -8,13 +8,13 @@ You are about to push code. Run the full pre-push quality pipeline before pushin
 
 1. **Check what's being pushed**. Run `git diff --stat` and `git log --oneline origin/HEAD..HEAD` to understand the scope of changes.
 
-2. **Run Continue.dev checks**. Execute:
+2. **Run code review checks**. Execute:
 
    ```bash
-   cn check
+   devflow check
    ```
 
-   Capture and parse the output. If `cn` is not available, fall back to running the project's lint and type-check commands directly (e.g., `yarn lint`, `yarn build`).
+   Capture and parse the output. This uses Claude Code (primary) or OpenCode (fallback) to review against `.devflow/checks/*.md` rules. If neither CLI is available, fall back to running the project's lint and type-check commands directly (e.g., `yarn lint`, `yarn build`).
 
 3. **Self-review the diff against CLAUDE.md**. Read the project's `CLAUDE.md` file and review the staged changes against its rules:
    - Are naming conventions followed?
@@ -40,7 +40,7 @@ You are about to push code. Run the full pre-push quality pipeline before pushin
    **Branch:** [branch name]
    **Commits:** [number] commits ahead of origin
 
-   ### Continue.dev Results
+    ### Code Review Results
    - [PASS/FAIL] [details]
 
    ### CLAUDE.md Compliance

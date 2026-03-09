@@ -43,10 +43,10 @@ Research code-specific agent projects that could add specialized capabilities to
    - Evaluate its scaffolding and sandboxing approach.
    - Could it be triggered by `devflow work` for specific ticket types?
 
-4. **Cline/Continue**
-   - Already using Continue.dev for review. What else can it do?
+4. **Cline**
    - Investigate Cline's autonomous capabilities.
    - Check for MCP server compatibility.
+   - Evaluate how it complements the existing Code Review layer.
 
 5. **Cursor-like features**
    - Any plugins that add Cursor-style features (tab completion, inline edits) to our terminal workflow?

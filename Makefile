@@ -4,7 +4,7 @@ LIBDIR := $(PREFIX)/share/devflow
 VERSION := 0.1.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test brew-local release help
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -50,8 +50,36 @@ test: ## Run smoke tests
 	fi
 	@echo "=== done ==="
 
+test-unit: ## Run unit tests (bats)
+	@bats tests/unit/
+
 brew-local: ## Install via local Homebrew formula
 	brew install --formula Formula/devflow.rb
+
+plugin-dev: ## Symlink plugin commands/skills for live dev iteration
+	@mkdir -p $(HOME)/.claude/commands $(HOME)/.claude/skills
+	@ln -sfn $(CURDIR)/devflow-plugin/commands $(HOME)/.claude/commands/devflow
+	@ln -sfn $(CURDIR)/devflow-plugin/skills/recall-before-task $(HOME)/.claude/skills/devflow-recall
+	@claude plugin uninstall devflow@devflow-marketplace 2>/dev/null || true
+	@echo "Dev symlinks created:"
+	@echo "  ~/.claude/commands/devflow -> $(CURDIR)/devflow-plugin/commands"
+	@echo "  ~/.claude/skills/devflow-recall -> $(CURDIR)/devflow-plugin/skills/recall-before-task"
+	@echo "Restart Claude Code to pick up changes."
+
+plugin-unlink: ## Remove dev symlinks
+	@rm -f $(HOME)/.claude/commands/devflow
+	@rm -f $(HOME)/.claude/skills/devflow-recall
+	@echo "Dev symlinks removed."
+
+plugin-install: ## Register marketplace and install plugin (end users)
+	@if command -v claude >/dev/null 2>&1; then \
+		claude plugin marketplace add $(CURDIR)/devflow-plugin 2>/dev/null; \
+		claude plugin install devflow@devflow-marketplace 2>/dev/null \
+			&& echo "devflow plugin installed" \
+			|| echo "devflow plugin already installed or marketplace not found"; \
+	else \
+		echo "Claude Code not found — skipping plugin install"; \
+	fi
 
 release: ## Create a release tarball
 	@mkdir -p dist

@@ -5,7 +5,7 @@
     "1": "Hindsight (memory)",
     "2": "Agent Deck (session management)",
     "3": "Worktrunk (git worktrees)",
-    "4": "Continue.dev (code review)",
+    "4": "Code Review (claude/opencode)",
     "5": "Process discipline",
     "6": "Langfuse (observability)"
   },
@@ -93,6 +93,13 @@
       "category": "visualizations",
       "layer": 5,
       "files": ["visualizations/visualizations-config.md"]
+    },
+    {
+      "name": "dependency-update",
+      "description": "Check if Brewfile, Formula, or install script need updating when dependencies change",
+      "category": "process-discipline",
+      "layer": 5,
+      "files": ["process-discipline/dependency-update.md"]
     }
   ]
 }
