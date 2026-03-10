@@ -14,6 +14,7 @@ tags: [devflow, visualizations, index, mermaid, style-guide]
 | Category | File | What it shows |
 |----------|------|---------------|
 | **Architecture** | [[devflow-ecosystem]] | The 6-layer tool ecosystem — Hindsight, Agent Deck, Worktrunk, Code Review, Skills, Langfuse |
+| **Architecture** | [[code-review-architecture]] | Code review dispatch, check rules pipeline, devflow review dual-mode |
 | **Architecture** | runtime-architecture _(future)_ | Docker containers, Homebrew CLIs, config file locations |
 | **Architecture** | sync-architecture _(future)_ | Skills/MCP sync flow across 7 targets |
 | **Workflows** | [[development-workflow]] | Full SDD workflow: idea to merge request, TDD loop, review gates |
@@ -130,4 +131,4 @@ The command will:
 
 ---
 
-_Last updated: 2026-03-05_
+_Last updated: 2026-03-10_

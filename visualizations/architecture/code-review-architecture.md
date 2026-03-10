@@ -126,12 +126,14 @@ flowchart TD
         R_GH["gh pr diff <url>\n--color=never"]
         R_GL["glab mr diff <number>\n--repo <project-path>\n--color=never"]
         R_FAIL["Error:\nUnsupported URL"]
-        R_PROMPT["System prompt:\nReview PR/MR diff\n+ security checks"]
+        R_INFO["Fetch PR/MR metadata<br/>(title + description<br/>for review context)"]
+        R_PROMPT["System prompt:\nReview PR/MR diff\n+ PR description context\n+ security checks"]
         R_DETECT -->|"github.com/*/pull/*"| R_GH
         R_DETECT -->|"gitlab.*/*/merge_requests/*"| R_GL
         R_DETECT -->|"other"| R_FAIL
-        R_GH --> R_PROMPT
-        R_GL --> R_PROMPT
+        R_GH --> R_INFO
+        R_GL --> R_INFO
+        R_INFO --> R_PROMPT
     end
 
     START --> HAS_URL
@@ -142,7 +144,7 @@ flowchart TD
     R_PROMPT --> CLAUDE_EXEC
 
     CLAUDE_EXEC["claude --print\n--permission-mode plan\n--allowedTools Read,Glob,Grep"]
-    CLAUDE_EXEC --> OUTPUT["Review Output\n(findings + suggestions)"]
+    CLAUDE_EXEC --> OUTPUT["Structured Review Output\n(verdict + categorized findings\n+ suggestions)"]
 
     classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
     classDef cliStyle fill:#374151,color:#fff,stroke:#1f2937
@@ -152,7 +154,7 @@ flowchart TD
     class START cliStyle
     class HAS_URL,R_DETECT reviewStyle
     class L_PROJ,L_CLAUDE,L_DIFF,L_PROMPT inputStyle
-    class R_GH,R_GL,R_PROMPT inputStyle
+    class R_GH,R_GL,R_INFO,R_PROMPT inputStyle
     class CLAUDE_EXEC cliStyle
     class OUTPUT reviewStyle
     class R_FAIL errorStyle
