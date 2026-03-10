@@ -45,10 +45,12 @@ graph TD
 
     subgraph L4 [" Layer 4 — Code Review "]
         CR["Code Review<br/>(devflow check)<br/>.devflow/checks/*.md"]
+        RV["Self / PR Review<br/>(devflow review)<br/>local diff or PR/MR URL"]
         CR_CLAUDE["Claude Code CLI<br/>(claude --print)<br/>structured JSON output"]
         CR_OPENCODE["OpenCode CLI<br/>(opencode run)<br/>text output fallback"]
         CR -->|"primary"| CR_CLAUDE
         CR -->|"fallback"| CR_OPENCODE
+        RV -->|"always"| CR_CLAUDE
     end
 
     subgraph L5 [" Layer 5 — Process Discipline "]
@@ -63,6 +65,7 @@ graph TD
     CLI -->|"up / down"| LF
     CLI -->|"worktree --agent"| WT
     CLI -->|"check"| CR
+    CLI -->|"review [url]"| RV
     CLI -->|"skills install/remove"| SK
     CLI -->|"seed"| HS
     CLI -->|"init"| AD
@@ -83,7 +86,7 @@ graph TD
     class HS hindsightStyle
     class AD agentDeckStyle
     class WT worktrunkStyle
-    class CR,CR_CLAUDE,CR_OPENCODE reviewStyle
+    class CR,RV,CR_CLAUDE,CR_OPENCODE reviewStyle
     class SK skillsStyle
     class LF langfuseStyle
     class CLI cliStyle
@@ -248,7 +251,8 @@ graph TD
 | `devflow seed [dir]`                | Seed Hindsight memory from project files                                                          | L1     |
 | `devflow worktree <name> [--agent]` | Create worktree + copy deps + optionally launch agent                                             | L2, L3 |
 | `devflow check`                     | Run code review against .devflow/checks/ (Claude Code primary, OpenCode fallback)                 | L4     |
-| `devflow review`                    | Pipe git diff into Claude Code with review prompt                                                 | L4, L5 |
+| `devflow review`                    | Review local diff against CLAUDE.md conventions via Claude Code                                   | L4, L5 |
+| `devflow review <pr-url>`          | Fetch PR/MR diff (gh/glab) and review via Claude Code                                             | L4     |
 | `devflow web`                       | Open agent-deck web dashboard (:8420)                                                             | L2     |
 | `devflow conductor`                 | Manage conductors (start, stop, status)                                                           | L2     |
 | `devflow skills list`               | List all 10 skills from registry with install status                                              | L5     |
