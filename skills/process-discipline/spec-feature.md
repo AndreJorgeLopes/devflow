@@ -12,7 +12,7 @@ You are speccing a new feature. This command enforces a structured planning proc
    - Any constraints or requirements mentioned
    - If arguments are vague, ask clarifying questions before proceeding.
 
-2. **Recall architecture knowledge**. Use the `hindsight_recall` MCP tool to retrieve:
+2. **Recall architecture knowledge**. Use the Hindsight `recall` tool to retrieve:
    - Past architectural decisions related to this domain
    - Existing patterns used in similar features
    - Known gotchas in the affected area
@@ -78,7 +78,7 @@ You are speccing a new feature. This command enforces a structured planning proc
    - Are there constraints I'm missing?
    - Should we adjust the scope?
 
-7. **Retain the architectural decisions** from this spec using the `hindsight_retain` MCP tool, so they're available in future sessions.
+7. **Retain the architectural decisions** from this spec using the Hindsight `retain` tool, so they're available in future sessions.
 
 ## Important
 

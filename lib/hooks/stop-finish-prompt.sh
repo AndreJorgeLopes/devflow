@@ -34,7 +34,29 @@ if [[ "$commits_ahead" -eq 0 ]]; then
   exit 0
 fi
 
-# Brief, user-friendly message — Claude Code always shows a line for blocking hooks
+# Check if a PR/MR already exists for this branch — if so, allow stop
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/../utils.sh"
+
+provider="$(detect_vcs_provider 2>/dev/null)" || provider="unknown"
+pr_exists=false
+
+case "$provider" in
+  github)
+    count="$(gh pr list --head "$current_branch" --json number --jq 'length' 2>/dev/null || echo "0")"
+    [[ "$count" -gt 0 ]] && pr_exists=true
+    ;;
+  gitlab)
+    count="$(glab mr list --source-branch "$current_branch" --mine 2>/dev/null | grep -c "^!" || echo "0")"
+    [[ "$count" -gt 0 ]] && pr_exists=true
+    ;;
+esac
+
+if [[ "$pr_exists" == "true" ]]; then
+  exit 0
+fi
+
+# No PR/MR found — block stop and prompt for finish-feature
 echo '[INTENTIONAL "ERROR"] Unmerged work detected — prompting for finish-feature flow.' >&2
 
 exit 2

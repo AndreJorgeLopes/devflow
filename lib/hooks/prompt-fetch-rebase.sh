@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # devflow/lib/hooks/prompt-fetch-rebase.sh
 # Claude Code UserPromptSubmit hook — fetches origin, auto-rebases when safe,
-# asks user when conflicts are detected.
-# Protocol: reads JSON from stdin, exit 0 = allow, exit 2 = block with message
+# injects context for the AI when conflicts are detected.
+#
+# Protocol (UserPromptSubmit):
+#   exit 0 + stdout  → allow prompt, inject stdout as AI-visible context
+#   exit 2 + stderr  → BLOCK prompt entirely (user's message never reaches AI)
+#
+# This hook NEVER uses exit 2 — blocking creates infinite loops because
+# the AI can't act on the message or process user responses.
 
 set -euo pipefail
 
 # Read the hook payload from stdin
 payload="$(cat)"
 
-# Extract session ID for the opt-out flag file
+# Extract session ID for the opt-out and notified flag files
 session_id="$(echo "$payload" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id', 'unknown'))" 2>/dev/null || echo "unknown")"
 optout_file="/tmp/devflow-no-rebase-${session_id}"
+notified_file="/tmp/devflow-rebase-notified-${session_id}"
 
 # If user opted out of rebase for this session, skip entirely
 if [[ -f "$optout_file" ]]; then
@@ -50,8 +57,6 @@ fi
 
 main_ahead="$(git rev-list --count "${merge_base}..${main_branch}" 2>/dev/null || echo "0")"
 if [[ "$main_ahead" -eq 0 ]]; then
-  # Main hasn't moved — nothing to do
-  echo "Periodic fetch: branch is up to date with ${main_branch}." >&2
   exit 0
 fi
 
@@ -68,41 +73,42 @@ fi
 if [[ -z "$overlap" ]]; then
   # No overlapping files — safe to auto-rebase
   if git rebase "${main_branch}" >/dev/null 2>&1; then
-    echo "Periodic fetch: rebased on ${main_branch} (${main_ahead} new commits, no conflicts with your changes)." >&2
+    rm -f "$notified_file"
+    echo "[devflow] Auto-rebased on ${main_branch} (${main_ahead} new commits, no conflicts with your changes)."
   else
-    # Rebase failed unexpectedly — abort and warn
     git rebase --abort >/dev/null 2>&1 || true
-    echo "Periodic fetch: ${main_ahead} new commits on ${main_branch}. Auto-rebase failed — you may want to rebase manually." >&2
+    echo "[devflow] ${main_ahead} new commits on ${main_branch}. Auto-rebase failed — you may want to rebase manually."
   fi
   exit 0
 fi
 
-# Overlapping files detected — ask the user
+# Overlapping files detected — only notify once per session to avoid spamming.
+# The AI handles the interaction and creates the opt-out file if needed.
+if [[ -f "$notified_file" ]]; then
+  exit 0
+fi
+touch "$notified_file"
+
+# Inject context for the AI via stdout (exit 0 = allow prompt through)
 file_count="$(echo "$overlap" | wc -l | tr -d ' ')"
 file_list="$(echo "$overlap" | head -10)"
+more_note=""
+if [[ "$file_count" -gt 10 ]]; then
+  more_note="... and $((file_count - 10)) more files
+"
+fi
 
-cat >&2 <<PROMPT
-**Heads up:** \`${main_branch}\` has ${main_ahead} new commit(s) that touch ${file_count} file(s) you've also changed:
+cat <<CONTEXT
+[devflow] Upstream conflict warning: \`${main_branch}\` has ${main_ahead} new commit(s) that touch ${file_count} file(s) you've also changed:
 
-\`\`\`
 ${file_list}
-\`\`\`
+${more_note}
+Ask the user how they'd like to handle this before continuing with their request:
+1. Let me handle it — rebase and resolve merge conflicts
+2. I'll fix it myself — stop and let the user resolve manually
+3. Ignore for this session — stop checking until next session
 
-$(if [[ "$file_count" -gt 10 ]]; then echo "... and $((file_count - 10)) more files"; fi)
+If the user picks option 3, run: touch ${optout_file}
+CONTEXT
 
-Ask the user how they'd like to handle this:
-
-> 1. **Let me handle it** — I'll rebase and resolve any merge conflicts for you
-> 2. **I'll fix it myself** — stop and let the user resolve manually
-> 3. **Ignore for this session** — stop fetching and rebasing until the next session
-
-**Important:** If the user picks option 3, run this command to set the opt-out flag:
-\`\`\`bash
-touch ${optout_file}
-\`\`\`
-Then acknowledge: "Got it — I won't check for upstream changes for the rest of this session."
-
-Wait for the user to choose before proceeding.
-PROMPT
-
-exit 2
+exit 0

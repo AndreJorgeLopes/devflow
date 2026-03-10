@@ -20,7 +20,7 @@ View or reset the PR/MR description strategy preference for the current project.
 3. **If a strategy is found:** Display the current strategy to the user and ask via `AskUserQuestion`:
    - **Keep** — Leave the current preference as-is (stop here)
    - **Change** — Pick a new strategy (continue to step 4)
-   - **Clear** — Remove the preference entirely by calling `delete_memory` on the matched memory, confirm deletion, and stop
+   - **Clear** — Remove the preference entirely by calling the Hindsight `delete_memory` tool on the matched memory, confirm deletion, and stop
 
 4. **If "Change" was chosen, or no existing strategy was found:** Present the strategy selector via `AskUserQuestion` with these options:
    - **Auto-generate (Recommended)** — Use the default devflow template (Summary / Changes / Testing / Ticket / Checklist), filled from diff analysis
@@ -44,7 +44,7 @@ View or reset the PR/MR description strategy preference for the current project.
    - For repo-template with a specific file: `retain("<project>: PR description strategy = repo-template:<relative-path>", tags=["pr-strategy", "<project>"])`
    - For custom: `retain("<project>: PR description strategy = custom:<path>", tags=["pr-strategy", "<project>"])`
 
-   If an old memory was found in step 2, delete it first with `delete_memory` before retaining the new one.
+   If an old memory was found in step 2, delete it first with the Hindsight `delete_memory` tool before retaining the new one.
 
 8. **Confirm** the saved preference to the user. State which strategy was stored and for which project.
 
