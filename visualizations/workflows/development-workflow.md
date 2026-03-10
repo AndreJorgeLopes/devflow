@@ -41,7 +41,7 @@ graph TD
     COMMIT["Commit + Push"]
     MR["Create Merge Request<br/>gh pr create"]
     RETAIN["Retain learnings<br/>retain('project: discovery')"]
-    CLEANUP["Developer at terminal:<br/>agent-deck worktree finish / wt drop"]
+    CLEANUP["Worktree Cleanup<br/>(agent-offered: delete or keep)"]
     DONE(["Done"])
 
     COND["Conductor<br/>(parallel process)<br/>monitors all sessions"]
@@ -221,10 +221,7 @@ graph TD
 
 ## 5. Phase 4 — Finishing & Merge Request
 
-This phase has two distinct parts:
-
-- **Agent actions** (inside the session): verification, devflow check, commit, push, create PR, retain learnings
-- **Terminal actions** (human-initiated): `agent-deck worktree finish` or `wt drop` for cleanup
+This phase runs entirely inside the agent session: verification, devflow check, commit, visualization updates, PR description strategy, PR/MR creation, retain learnings, and optional worktree cleanup. Post-PR continuation is enforced by hooks (PostToolUse nudge + Stop hook PR detection + explicit skill instruction).
 
 ```mermaid
 %%{init: {'flowchart': {'rankSpacing': 50, 'nodeSpacing': 30, 'diagramPadding': 15}}}%%
@@ -238,15 +235,18 @@ graph TD
         F_CN["Pre-push check<br/>devflow check"]
         F_SELF["Self-review vs CLAUDE.md<br/>(naming, architecture, security)"]
         F_COMMIT["Commit changes"]
+        F_VIZ{"Visualizations<br/>exist?"}
+        F_VIZ_UPDATE["Check & update diagrams<br/>(analyze diff, propose updates)"]
+        F_VIZ_COMMIT["Commit visualization updates"]
+        F_PRSTRAT["Resolve PR description strategy<br/>(recall preference / ask user)"]
+        F_CHECKPOINT["CHECKPOINT: Present diff<br/>(wait for user approval)"]
         F_PUSH["git push -u origin HEAD"]
-        F_GH["gh pr create<br/>(title, summary, key changes)"]
+        F_GH["Create PR/MR<br/>(gh pr create / glab mr create)"]
         F_RETAIN["Retain session learnings<br/>retain('project: ...')"]
-        F_SUMMARY["Log session summary<br/>to Langfuse"]
-    end
-
-    subgraph TerminalActions [" Terminal Actions (human-initiated) "]
-        F_FINISH["agent-deck worktree finish<br/>(merge + cleanup)"]
-        F_DROP["wt drop branch<br/>(discard worktree)"]
+        F_SUMMARY["Present feature summary"]
+        F_CLEANUP_Q{"Worktree<br/>cleanup?"}
+        F_DELETE["devflow done branch<br/>(delete worktree)"]
+        F_KEEP["Keep for review feedback"]
     end
 
     F_DONE(["Done"])
@@ -258,14 +258,21 @@ graph TD
     F_PASS -->|"Yes"| F_CN
     F_CN --> F_SELF
     F_SELF --> F_COMMIT
-    F_COMMIT --> F_PUSH
+    F_COMMIT --> F_VIZ
+    F_VIZ -->|"No"| F_PRSTRAT
+    F_VIZ -->|"Yes"| F_VIZ_UPDATE
+    F_VIZ_UPDATE --> F_VIZ_COMMIT
+    F_VIZ_COMMIT --> F_PRSTRAT
+    F_PRSTRAT --> F_CHECKPOINT
+    F_CHECKPOINT --> F_PUSH
     F_PUSH --> F_GH
     F_GH --> F_RETAIN
     F_RETAIN --> F_SUMMARY
-    F_SUMMARY --> F_FINISH
-    F_FINISH --> F_DONE
-    F_SUMMARY --> F_DROP
-    F_DROP --> F_DONE
+    F_SUMMARY --> F_CLEANUP_Q
+    F_CLEANUP_Q -->|"Delete now"| F_DELETE
+    F_CLEANUP_Q -->|"Keep"| F_KEEP
+    F_DELETE --> F_DONE
+    F_KEEP --> F_DONE
 
     classDef verifyStyle fill:#059669,color:#fff,stroke:#047857
     classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
@@ -274,14 +281,16 @@ graph TD
     classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
     classDef decisionStyle fill:#374151,color:#fff,stroke:#1f2937
     classDef terminalStyle fill:#6b7280,color:#fff,stroke:#4b5563
+    classDef skillsStyle fill:#be185d,color:#fff,stroke:#9d174d
 
     class F_VERIFY,F_PASS,F_FIX verifyStyle
-    class F_CN,F_SELF,F_PUSH,F_GH,F_COMMIT reviewStyle
+    class F_CN,F_SELF,F_PUSH,F_GH,F_COMMIT,F_CHECKPOINT reviewStyle
     class F_RETAIN hindsightStyle
     class F_SUMMARY langfuseStyle
-    class F_FINISH,F_DROP worktrunkStyle
-    class F_PASS decisionStyle
+    class F_DELETE,F_KEEP worktrunkStyle
+    class F_PASS,F_VIZ,F_CLEANUP_Q decisionStyle
     class F_START,F_DONE terminalStyle
+    class F_VIZ_UPDATE,F_VIZ_COMMIT,F_PRSTRAT skillsStyle
 ```
 
 ---
@@ -299,8 +308,11 @@ graph TD
 | **Quality Review** |          —          |        —        | auto-responds  |         —          |         —         | code-reviewer  |     traces      |
 | **Pre-Push**       |          —          |        —        |    monitors    |         —          |  devflow check    | pre-push-check |     traces      |
 | **Create MR**      | context for PR body |        —        |    monitors    |         —          |         —         |   create-pr    |     traces      |
+| **Viz Check**      |          —          |        —        |    monitors    |         —          |         —         | finish-feature |        —        |
+| **PR Strategy**    |  recall preference  |        —        |    monitors    |         —          |         —         | finish-feature |        —        |
+| **Create MR**      | context for PR body |        —        |    monitors    |         —          |         —         | finish-feature |     traces      |
 | **Finish (Agent)** |  retain learnings   |        —        |    monitors    |         —          |         —         | finish-feature | session-summary |
-| **Cleanup (CLI)**  |          —          | worktree finish |       —        |  wt drop / merge   |         —         |       —        |        —        |
+| **Cleanup (Agent)**|          —          |        —        |       —        |    devflow done    |         —         | finish-feature |        —        |
 
 ---
 
