@@ -8,8 +8,8 @@ You are about to start a task. Before doing anything else, recall relevant memor
 
 1. **Parse the task description** from the arguments below. Identify the key topics, technologies, file paths, and domain concepts mentioned.
 
-2. **Recall memories** using the Hindsight MCP tools. Make multiple recall calls to cover different aspects:
-   - Use the `hindsight_recall` MCP tool with the full task description as the query.
+2. **Recall memories** using the Hindsight tools. Make multiple recall calls to cover different aspects:
+   - Use the Hindsight `recall` tool with the full task description as the query.
    - If the task mentions specific files or modules, make an additional recall for those paths.
    - If the task mentions a domain concept (e.g., "authentication", "worktrees", "CI pipeline"), recall for that concept.
 

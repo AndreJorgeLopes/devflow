@@ -45,7 +45,7 @@ You are wrapping up a session. Reflect on what happened and consolidate the valu
 
 4. **Ask the user** which learnings to retain. Default is all of them unless the user removes some.
 
-5. **Retain each approved learning** using the `hindsight_retain` MCP tool. Store each one individually with proper categorization.
+5. **Retain each approved learning** using the Hindsight `retain` tool. Store each one individually with proper categorization.
 
 6. **Confirm** the number of memories retained and list their titles.
 
