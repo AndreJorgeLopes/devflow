@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # devflow/lib/hooks/stop-finish-prompt.sh
 # Claude Code Stop hook — prompts user to run finish-feature flow
-# Protocol: reads JSON from stdin, exit 0 = allow stop, exit 2 = block (re-activate)
+# Protocol: exit 2 = block stop and re-activate agent, stderr = message to agent
 
 set -euo pipefail
 
@@ -34,18 +34,7 @@ if [[ "$commits_ahead" -eq 0 ]]; then
   exit 0
 fi
 
-# We're on a feature branch with commits — prompt the user
-cat >&2 <<'PROMPT'
-You just finished your response on a feature branch with commits ahead of main.
-
-Before ending the session, ask the user:
-
-> **Ready to wrap up?** You have work on this branch that hasn't been merged yet. Would you like to:
->
-> 1. **Run the finish-feature flow** — verification, PR creation, session summary, and visualizations (`/devflow:finish-feature`)
-> 2. **Continue working** — ask a follow-up question or keep iterating
-
-Wait for the user to choose before proceeding. Do NOT run finish-feature automatically.
-PROMPT
+# Brief, user-friendly message — Claude Code always shows a line for blocking hooks
+echo '[INTENTIONAL "ERROR"] Unmerged work detected — prompting for finish-feature flow.' >&2
 
 exit 2
