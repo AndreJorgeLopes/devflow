@@ -82,6 +82,27 @@ EOF
 
 # ── Review ────────────────────────────────────────────────────────────────────
 
+# _review_fetch_pr_info <url> — fetch PR/MR metadata (title + description)
+# Outputs the metadata as formatted text to stdout.
+_review_fetch_pr_info() {
+  local url="$1"
+
+  case "$url" in
+    *github.com/*/pull/*)
+      gh pr view "$url" --json title,body \
+        --template '## PR: {{.title}}{{"\n\n"}}{{.body}}' 2>/dev/null || true
+      ;;
+    *gitlab.com/*/merge_requests/*|*gitlab.*/*/merge_requests/*)
+      local mr_number project_path
+      mr_number="${url##*/merge_requests/}"
+      mr_number="${mr_number%%[?#]*}"
+      project_path="$(echo "$url" | sed -E 's|https?://[^/]+/||; s|/-/merge_requests/.*||')"
+      glab mr view "$mr_number" --repo "$project_path" 2>/dev/null \
+        | head -50 || true
+      ;;
+  esac
+}
+
 # _review_diff_from_url <url> — fetch the diff for a PR/MR URL
 # Supports GitHub (gh) and GitLab (glab) URLs.
 _review_diff_from_url() {
@@ -95,12 +116,9 @@ _review_diff_from_url() {
       ;;
     *gitlab.com/*/merge_requests/*|*gitlab.*/*/merge_requests/*)
       need_cmd glab
-      # Extract the MR number from the URL (last path segment, strip query/anchor)
-      local mr_number
+      local mr_number project_path
       mr_number="${url##*/merge_requests/}"
       mr_number="${mr_number%%[?#]*}"
-      # Extract the project path: between gitlab host and /-/merge_requests
-      local project_path
       project_path="$(echo "$url" | sed -E 's|https?://[^/]+/||; s|/-/merge_requests/.*||')"
       glab mr diff "$mr_number" --repo "$project_path" --color=never \
         || die "Failed to fetch MR diff. Check the URL and your glab auth."
@@ -140,16 +158,34 @@ devflow_review() {
 
   local diff source_label system_prompt
 
+  local output_format
+  output_format="Format your response as structured markdown:"
+  output_format+=" Start with a one-line summary verdict (PASS/FAIL/NEEDS WORK)."
+  output_format+=" Then list findings grouped by category (## Correctness, ## Naming, ## Architecture, ## Error Handling, ## Security, ## Tests)."
+  output_format+=" Skip categories with no findings. For each finding, include the file path, line number, severity (critical/warning/nit), and a concrete suggestion."
+  output_format+=" End with a ## Summary section with overall assessment."
+
   if [[ -n "$url" ]]; then
     # ── Remote PR/MR review ────────────────────────────────────────────────
     section "Reviewing PR/MR"
+
+    log "Fetching PR/MR metadata..."
+    local pr_info
+    pr_info="$(_review_fetch_pr_info "$url")"
+
     log "Fetching diff from: $url"
     diff="$(_review_diff_from_url "$url")"
     source_label="$url"
 
-    system_prompt="You are a code reviewer. Review the PR/MR diff provided."
+    system_prompt="You are a code reviewer. You will receive a PR/MR diff and the author's PR description."
+    system_prompt+=" Use the PR description to understand the author's intent, then evaluate whether the diff actually achieves it."
     system_prompt+=" Check for: correctness, naming conventions, architecture violations, missing error handling, test coverage gaps, security issues."
     system_prompt+=" Be specific and actionable. Reference file names and line numbers from the diff."
+    system_prompt+=" ${output_format}"
+
+    if [[ -n "$pr_info" ]]; then
+      system_prompt+=" --- PR/MR DESCRIPTION --- ${pr_info}"
+    fi
   else
     # ── Local self-review ──────────────────────────────────────────────────
     section "Running self-review"
@@ -166,6 +202,7 @@ devflow_review() {
     system_prompt="You are a code reviewer. Review the git diff provided against the project CLAUDE.md conventions."
     system_prompt+=" Check for: naming conventions, architecture violations, missing error handling, test coverage gaps."
     system_prompt+=" Be specific and actionable. Reference file names and line numbers from the diff."
+    system_prompt+=" ${output_format}"
   fi
 
   log "Invoking Claude Code for review ($source_label)..."
@@ -173,7 +210,7 @@ devflow_review() {
     --system-prompt "$system_prompt" \
     --permission-mode plan \
     --allowedTools "Read,Glob,Grep" \
-    "Review this git diff." \
+    "Review this diff." \
     || die "Claude Code review failed. Make sure Claude Code is installed and authenticated."
 }
 
