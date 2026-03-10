@@ -42,7 +42,7 @@ You are documenting an architectural decision. This command ensures decisions ar
 
 3. **Present the ADR** to the user for review and approval.
 
-4. **Retain into Hindsight**. Use the `hindsight_retain` MCP tool to store the decision as a **Mental Model** or **Decision** memory:
+4. **Retain into Hindsight**. Use the Hindsight `retain` tool to store the decision as a **Mental Model** or **Decision** memory:
    - Title: concise decision statement
    - Category: "Decision" or "Mental Model"
    - Content: the full ADR text

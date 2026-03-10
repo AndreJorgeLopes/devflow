@@ -354,6 +354,16 @@ if not any('prompt-fetch-rebase' in str(entry) for entry in ups_hooks):
 else:
     print('Skip: UserPromptSubmit hook already registered')
 
+# PostToolUse hook — post-PR continuation prompt
+ptu_hooks = hooks.setdefault('PostToolUse', [])
+ptu_cmd = hook_root + '/lib/hooks/post-pr-continue.sh'
+if not any('post-pr-continue' in str(entry) for entry in ptu_hooks):
+    ptu_hooks.append({'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': ptu_cmd}]})
+    changed = True
+    print('Added PostToolUse hook: post-pr-continue')
+else:
+    print('Skip: PostToolUse hook already registered')
+
 if changed:
     with open(settings_path, 'w') as f:
         json.dump(settings, f, indent=2)
