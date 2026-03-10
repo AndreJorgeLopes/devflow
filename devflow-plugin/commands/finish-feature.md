@@ -43,7 +43,33 @@ You are finishing a feature. Run the full completion pipeline before handing off
      - Reference the ticket ID if present in the branch name
    - Present the commit message to the user for approval before committing.
 
-4. **CHECKPOINT — Diff review.** Before creating the PR/MR, present a summary of all changes for user approval:
+4. **Resolve PR description strategy.** Determine which template to use for the PR/MR description:
+
+   - Detect the project name:
+     ```bash
+     basename "$(git rev-parse --show-toplevel)"
+     ```
+   - Recall from Hindsight: query `"<project>: PR description strategy"` with tags `["pr-strategy"]`.
+   - **If no stored strategy found:** Ask the user via `AskUserQuestion` with these options:
+     - **Auto-generate (Recommended)** — Use devflow default template, fill sections from diff analysis.
+     - **Use repo template** — Search codebase for PR/MR templates at standard locations.
+     - **Custom path** — Specify a template file to use.
+   - **If "Use repo template":** Search these locations using Glob:
+     1. `.github/PULL_REQUEST_TEMPLATE.md`
+     2. `.github/PULL_REQUEST_TEMPLATE/*.md`
+     3. `.gitlab/merge_request_templates/*.md`
+     4. `PULL_REQUEST_TEMPLATE.md` (root)
+     5. `docs/pull_request_template.md`
+     - If multiple found, use `AskUserQuestion` to pick one.
+     - If none found, warn and fall back to auto-generate.
+   - **If "Custom path":** Ask the user for the path, verify it exists with the Read tool.
+   - Retain the choice via Hindsight: `retain("<project>: PR description strategy = <choice>", tags=["pr-strategy", "<project>"])`.
+   - **If strategy is repo-template or custom:** Read the template file, parse its markdown headings (`##`, `###`) as section boundaries. Use these sections as the structure for the PR description in the next step instead of the default template. Preserve static content (checkboxes, boilerplate). Fill each section with content from the diff analysis. If a section can't be auto-filled, leave a `<!-- TODO: fill this -->` marker.
+   - **If strategy is auto-generate:** Use the default devflow template structure (Summary/Changes/Testing/Ticket/Checklist).
+
+   > **Note to agent:** The PR description strategy is now resolved. Use the determined template structure when generating the draft PR/MR description in the next step.
+
+5. **CHECKPOINT — Diff review.** Before creating the PR/MR, present a summary of all changes for user approval:
 
    ```
    ## Ready to Create PR/MR
@@ -61,12 +87,12 @@ You are finishing a feature. Run the full completion pipeline before handing off
    <proposed title>
 
    ### Draft PR/MR description
-   <proposed description in markdown>
+   <proposed description in markdown — use the template structure determined in step 4>
    ```
 
    **Wait for explicit user approval** ("looks good", "go ahead", "create it", etc.) before proceeding.
 
-5. **Detect VCS provider and create PR/MR.** First detect the provider:
+6. **Detect VCS provider and create PR/MR.** First detect the provider:
 
    ```bash
    git remote get-url origin
@@ -87,20 +113,24 @@ You are finishing a feature. Run the full completion pipeline before handing off
    gh pr create --title "<title>" --body "<body>"
    ```
 
+   If `gh pr create` fails, retry once. If the second attempt also fails, surface the error to the user.
+
    ### GitLab (`glab`)
    ```bash
    glab mr create --title "<title>" --description "<body>"
    ```
 
+   If `glab mr create` fails, check for a recovery file at `~/.config/glab-cli/recover/` and retry with `--recover`. If no recovery file exists or the retry also fails, surface the error to the user.
+
    Present the PR/MR URL to the user.
 
-6. **Retain session learnings.** Review the session and retain important discoveries:
+7. **Retain session learnings.** Review the session and retain important discoveries:
    - Architecture decisions made during this feature
    - Gotchas or non-obvious patterns encountered
    - Bug root causes and fixes
    - Use Hindsight `retain` for each learning, tagged with the project name
 
-7. **Present the summary and hand off cleanup:**
+8. **Present the summary and hand off cleanup:**
 
    ```
    ## Feature Complete
