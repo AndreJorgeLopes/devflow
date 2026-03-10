@@ -74,8 +74,8 @@ ${BOLD}EXAMPLES${RESET}
   devflow worktree feat/add-auth --agent claude
   devflow skills install code-review
   devflow check
+  devflow review
   devflow review https://github.com/org/repo/pull/42
-  devflow review https://gitlab.com/org/repo/-/merge_requests/99
 
 EOF
 }
