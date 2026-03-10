@@ -148,11 +148,8 @@ You are finishing a feature. Run the full completion pipeline before handing off
    ### Learnings Retained
    - [list of retained memories]
 
-   ### Cleanup (run from your terminal)
-   To remove the worktree after PR is merged:
-     agent-deck worktree finish "<session>"
-     # or manually:
-     wt drop <branch-name>
+   ### Cleanup (run from your terminal after PR is merged)
+     devflow done <branch-name>
    ```
 
 ## Important
