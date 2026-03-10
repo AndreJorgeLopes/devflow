@@ -37,9 +37,21 @@ If yes:
       -c claude \
       -g "<chosen-group-path-from-json>" \
       --no-parent \
+      --no-wait \
       -m "Read the plan at docs/plans/<plan-filename>.md and use superpowers:executing-plans to implement it task-by-task."
 
    If "No group" was chosen, omit `-g` entirely.
 
+   **CRITICAL flag reference:**
+   - `-m` or `--message` = initial prompt to send (**NOT `-p`**, which is "parent session")
+   - `-t` = session title
+   - `-c` = tool/command to run (e.g., `claude`)
+   - `-g` = assign to a group
+   - `--no-parent` = don't link to a parent session
+   - `--no-wait` = don't block waiting for agent readiness (avoids timeout errors)
+   - Do **NOT** use `--worktree` if the worktree already exists — pass the path as the positional argument
+
 7. **IMPORTANT:** Use the current worktree path as the positional argument — do NOT use `--worktree`, as the worktree already exists.
-8. Confirm the session was created and tell the user to attach via agent-deck TUI or `agent-deck session attach "<session-name>"`.
+8. Confirm the session was created and tell the user to check it via agent-deck TUI or `agent-deck session attach "<session-id>"`.
+
+   **Note:** `agent-deck list` lists all sessions. `agent-deck group list` lists all groups. Neither supports a `-g` flag for filtering — they already show everything.
