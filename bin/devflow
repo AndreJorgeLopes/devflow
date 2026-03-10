@@ -52,7 +52,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}done${RESET} <branch-name>            Clean up a completed work session
   ${CYAN}clean${RESET} [--dry-run] [--all]     Remove merged worktrees (--all for everything)
   ${CYAN}worktree${RESET} <name> [--agent]    Create a worktree, optionally launch agent
-  ${CYAN}review${RESET}                       Run self-review via Claude Code
+  ${CYAN}review${RESET} [<pr-url>]             Review local diff or a PR/MR by URL
   ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)
   ${CYAN}web${RESET} [args]                   Open agent-deck web UI
   ${CYAN}conductor${RESET} [args]             Run agent-deck conductor
@@ -74,26 +74,48 @@ ${BOLD}EXAMPLES${RESET}
   devflow worktree feat/add-auth --agent claude
   devflow skills install code-review
   devflow check
+  devflow review https://github.com/org/repo/pull/42
+  devflow review https://gitlab.com/org/repo/-/merge_requests/99
 
 EOF
 }
 
 # ── Review ────────────────────────────────────────────────────────────────────
-devflow_review() {
-  section "Running self-review"
 
-  if ! has_cmd claude; then
-    die "Claude Code is not installed. Install from https://claude.ai/download"
-  fi
+# _review_diff_from_url <url> — fetch the diff for a PR/MR URL
+# Supports GitHub (gh) and GitLab (glab) URLs.
+_review_diff_from_url() {
+  local url="$1"
 
-  local proj
-  proj="$(project_root)"
+  case "$url" in
+    *github.com/*/pull/*)
+      need_cmd gh
+      gh pr diff "$url" --color=never \
+        || die "Failed to fetch PR diff. Check the URL and your gh auth."
+      ;;
+    *gitlab.com/*/merge_requests/*|*gitlab.*/*/merge_requests/*)
+      need_cmd glab
+      # Extract the MR number from the URL (last path segment, strip query/anchor)
+      local mr_number
+      mr_number="${url##*/merge_requests/}"
+      mr_number="${mr_number%%[?#]*}"
+      # Extract the project path: between gitlab host and /-/merge_requests
+      local project_path
+      project_path="$(echo "$url" | sed -E 's|https?://[^/]+/||; s|/-/merge_requests/.*||')"
+      glab mr diff "$mr_number" --repo "$project_path" --color=never \
+        || die "Failed to fetch MR diff. Check the URL and your glab auth."
+      ;;
+    *)
+      die "Unsupported URL: $url (expected a GitHub PR or GitLab MR URL)"
+      ;;
+  esac
+}
 
-  if [[ ! -f "${proj}/CLAUDE.md" ]]; then
-    die "No CLAUDE.md found in project root. Run 'devflow init' first."
-  fi
-
+# _review_diff_local <project_dir> — get the local working-tree diff
+_review_diff_local() {
+  local proj="$1"
   local diff
+
   diff=$(git -C "$proj" diff HEAD 2>/dev/null || git -C "$proj" diff 2>/dev/null || echo "")
 
   if [[ -z "$diff" ]]; then
@@ -106,17 +128,52 @@ devflow_review() {
     die "No changes to review (no uncommitted or staged changes)."
   fi
 
-  local system_prompt
-  system_prompt="You are a code reviewer. Review the git diff provided against the project CLAUDE.md conventions."
-  system_prompt+=" Check for: naming conventions, architecture violations, missing error handling, test coverage gaps."
-  system_prompt+=" Be specific and actionable. Reference file names and line numbers from the diff."
+  echo "$diff"
+}
 
-  log "Invoking Claude Code for review..."
+devflow_review() {
+  local url="${1:-}"
+
+  if ! has_cmd claude; then
+    die "Claude Code is not installed. Install from https://claude.ai/download"
+  fi
+
+  local diff source_label system_prompt
+
+  if [[ -n "$url" ]]; then
+    # ── Remote PR/MR review ────────────────────────────────────────────────
+    section "Reviewing PR/MR"
+    log "Fetching diff from: $url"
+    diff="$(_review_diff_from_url "$url")"
+    source_label="$url"
+
+    system_prompt="You are a code reviewer. Review the PR/MR diff provided."
+    system_prompt+=" Check for: correctness, naming conventions, architecture violations, missing error handling, test coverage gaps, security issues."
+    system_prompt+=" Be specific and actionable. Reference file names and line numbers from the diff."
+  else
+    # ── Local self-review ──────────────────────────────────────────────────
+    section "Running self-review"
+    local proj
+    proj="$(project_root)"
+
+    if [[ ! -f "${proj}/CLAUDE.md" ]]; then
+      die "No CLAUDE.md found in project root. Run 'devflow init' first."
+    fi
+
+    diff="$(_review_diff_local "$proj")"
+    source_label="local changes"
+
+    system_prompt="You are a code reviewer. Review the git diff provided against the project CLAUDE.md conventions."
+    system_prompt+=" Check for: naming conventions, architecture violations, missing error handling, test coverage gaps."
+    system_prompt+=" Be specific and actionable. Reference file names and line numbers from the diff."
+  fi
+
+  log "Invoking Claude Code for review ($source_label)..."
   echo "$diff" | claude --print \
     --system-prompt "$system_prompt" \
     --permission-mode plan \
     --allowedTools "Read,Glob,Grep" \
-    "Review this git diff against the project's CLAUDE.md conventions." \
+    "Review this git diff." \
     || die "Claude Code review failed. Make sure Claude Code is installed and authenticated."
 }
 
