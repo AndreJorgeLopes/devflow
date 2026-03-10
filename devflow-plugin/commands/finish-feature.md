@@ -199,14 +199,21 @@ You are finishing a feature. Run the full completion pipeline before handing off
    - **Keep for review feedback** — Leave the worktree intact in case you need to address PR/MR review comments. Run `devflow done <branch-name>` from your terminal when you're done.
 
    **If "Delete worktree now":**
-   Tell the user you will now run `devflow done <branch-name>` and explain:
+   Tell the user you will now clean up the worktree and explain:
 
    > "The branch has been pushed to origin and the PR/MR exists on the remote — deleting the local worktree won't affect it. If you need to make changes later (e.g., review feedback), you can re-create the worktree with `devflow worktree <branch-name>`."
 
-   Then run:
+   First, determine the main worktree path (where `main`/`master` lives), then move there before removing:
    ```bash
+   # Find the main worktree (the one without [branch] suffix, or the bare repo root)
+   main_worktree="$(git worktree list --porcelain | grep '^worktree ' | head -1 | sed 's/^worktree //')"
+   # Move out of the current worktree into the main one
+   cd "$main_worktree"
+   # Now safe to remove the feature worktree
    devflow done <branch-name>
    ```
+
+   > **Why move first?** You cannot delete a worktree while your shell is inside it. Moving to the main worktree first ensures `devflow done` can cleanly remove the directory and local branch.
 
    **If "Keep for review feedback":**
    Tell the user:
