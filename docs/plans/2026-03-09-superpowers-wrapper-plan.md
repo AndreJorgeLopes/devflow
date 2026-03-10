@@ -55,10 +55,10 @@ If yes:
 6. After the user picks a group (or root), run:
 
     agent-deck launch <current-worktree-path> \
-      -t "<ticket-or-branch> — Implementation" \
-      -c claude \
-      -g "<chosen-group-path-from-json>" \
       --no-parent \
+      --no-wait \
+      -t "<ticket-or-branch> — Implementation" \
+      -g "<chosen-group-path-from-json>" \
       -m "Read the plan at docs/plans/<plan-filename>.md and use superpowers:executing-plans to implement it task-by-task."
 
    If "No group" was chosen, omit `-g` entirely.
