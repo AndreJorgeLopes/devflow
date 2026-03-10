@@ -43,7 +43,47 @@ You are finishing a feature. Run the full completion pipeline before handing off
      - Reference the ticket ID if present in the branch name
    - Present the commit message to the user for approval before committing.
 
-4. **Resolve PR description strategy.** Determine which template to use for the PR/MR description:
+4. **Check and update visualizations.** If this project has architecture visualizations, check if any need updating.
+
+   First, check if a visualization directory exists:
+   ```bash
+   # Check common locations
+   ls -d visualizations/ docs/visualizations/ docs/diagrams/ 2>/dev/null | head -1
+   ```
+
+   Also check for config:
+   ```bash
+   cat .devflow/visualizations.json 2>/dev/null || cat ~/.config/devflow/visualizations.json 2>/dev/null
+   ```
+
+   **If no visualization directory or config found:** Skip this step with a one-line note: "No visualization directory found, skipping visualization check."
+
+   **If visualizations exist:**
+   - Read the visualization skill for guidance: `Read skills/visualizations/update-visualizations.md`
+   - Analyze the full feature branch diff (`git diff main..HEAD` or `git diff master..HEAD`) to identify changes that affect architecture, workflows, or integrations
+   - Read the visualization index (`<viz-path>/README.md`) and any potentially affected diagram files
+   - Map changes to affected visualizations using the heuristics from the skill's Step 4
+   - **If no diagrams need updating:** Say "No visualization updates needed" and move on
+   - **If diagrams need updating:** Present a TLDR to the user:
+     ```
+     ## Visualization Updates Proposed
+
+     **[diagram-file.md]:** <1-2 sentence gist of what would change>
+     **[another-diagram.md]:** <1-2 sentence gist>
+
+     Confirm to apply these updates, or skip to continue without changes.
+     ```
+   - **Wait for user confirmation** before making any changes
+   - If confirmed: update the diagram files, then stage and commit:
+     ```bash
+     git add <viz-path>/
+     git commit -m "docs: update visualizations for [brief feature description]"
+     ```
+   - Do NOT trigger first-run visualization setup (creating folders, README, defaults) inside this flow
+
+   > **Note:** This step uses plain-text summaries since mermaid diagrams cannot be rendered in the terminal. Describe what was added, removed, or modified in each diagram.
+
+5. **Resolve PR description strategy.** Determine which template to use for the PR/MR description:
 
    - Detect the project name:
      ```bash
@@ -69,7 +109,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    > **Note to agent:** The PR description strategy is now resolved. Use the determined template structure when generating the draft PR/MR description in the next step.
 
-5. **CHECKPOINT — Diff review.** Before creating the PR/MR, present a summary of all changes for user approval:
+6. **CHECKPOINT — Diff review.** Before creating the PR/MR, present a summary of all changes for user approval:
 
    ```
    ## Ready to Create PR/MR
@@ -87,12 +127,12 @@ You are finishing a feature. Run the full completion pipeline before handing off
    <proposed title>
 
    ### Draft PR/MR description
-   <proposed description in markdown — use the template structure determined in step 4>
+   <proposed description in markdown — use the template structure determined in step 5>
    ```
 
    **Wait for explicit user approval** ("looks good", "go ahead", "create it", etc.) before proceeding.
 
-6. **Detect VCS provider and create PR/MR.** First detect the provider:
+7. **Detect VCS provider and create PR/MR.** First detect the provider:
 
    ```bash
    git remote get-url origin
@@ -124,17 +164,17 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    Present the PR/MR URL to the user.
 
-   > **CRITICAL: Do NOT stop after creating the PR/MR.** Steps 7-9 below are mandatory.
+   > **CRITICAL: Do NOT stop after creating the PR/MR.** Steps 8-10 below are mandatory.
    > The feature is not complete until you have retained learnings, presented the summary,
    > and offered worktree cleanup. Continue immediately.
 
-7. **Retain session learnings.** Review the session and retain important discoveries:
+8. **Retain session learnings.** Review the session and retain important discoveries:
    - Architecture decisions made during this feature
    - Gotchas or non-obvious patterns encountered
    - Bug root causes and fixes
    - Use Hindsight `retain` for each learning, tagged with the project name
 
-8. **Present the summary:**
+9. **Present the summary:**
 
    ```
    ## Feature Complete
@@ -153,7 +193,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
    - [list of retained memories]
    ```
 
-9. **Offer worktree cleanup.** After the summary, ask the user via `AskUserQuestion`:
+10. **Offer worktree cleanup.** After the summary, ask the user via `AskUserQuestion`:
 
    - **Delete worktree now (Recommended)** — The branch is pushed to origin and the PR/MR is created. Removing the worktree is safe — it won't affect the PR/MR or the remote branch. The local branch reference is kept so you can re-create the worktree if you need to address review comments (`devflow worktree <branch-name>`).
    - **Keep for review feedback** — Leave the worktree intact in case you need to address PR/MR review comments. Run `devflow done <branch-name>` from your terminal when you're done.
@@ -180,5 +220,6 @@ You are finishing a feature. Run the full completion pipeline before handing off
 - Always retain learnings before ending the session.
 - Use "PR" for GitHub repos and "MR" for GitLab repos in all user-facing text.
 - Do NOT add a "Generated with Claude Code" or similar AI-attribution footer to the PR/MR description.
+- The visualization check (step 4) is a lightweight pass — skip silently if no viz directory exists.
 
 $ARGUMENTS
