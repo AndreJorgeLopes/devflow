@@ -124,6 +124,10 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    Present the PR/MR URL to the user.
 
+   > **CRITICAL: Do NOT stop after creating the PR/MR.** Steps 7-9 below are mandatory.
+   > The feature is not complete until you have retained learnings, presented the summary,
+   > and offered worktree cleanup. Continue immediately.
+
 7. **Retain session learnings.** Review the session and retain important discoveries:
    - Architecture decisions made during this feature
    - Gotchas or non-obvious patterns encountered
