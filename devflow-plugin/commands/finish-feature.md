@@ -130,7 +130,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
    - Bug root causes and fixes
    - Use Hindsight `retain` for each learning, tagged with the project name
 
-8. **Present the summary and hand off cleanup:**
+8. **Present the summary:**
 
    ```
    ## Feature Complete
@@ -147,15 +147,31 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    ### Learnings Retained
    - [list of retained memories]
-
-   ### Cleanup (run from your terminal after PR is merged)
-     devflow done <branch-name>
    ```
+
+9. **Offer worktree cleanup.** After the summary, ask the user via `AskUserQuestion`:
+
+   - **Delete worktree now (Recommended)** — The branch is pushed to origin and the PR/MR is created. Removing the worktree is safe — it won't affect the PR/MR or the remote branch. The local branch reference is kept so you can re-create the worktree if you need to address review comments (`devflow worktree <branch-name>`).
+   - **Keep for review feedback** — Leave the worktree intact in case you need to address PR/MR review comments. Run `devflow done <branch-name>` from your terminal when you're done.
+
+   **If "Delete worktree now":**
+   Tell the user you will now run `devflow done <branch-name>` and explain:
+
+   > "The branch has been pushed to origin and the PR/MR exists on the remote — deleting the local worktree won't affect it. If you need to make changes later (e.g., review feedback), you can re-create the worktree with `devflow worktree <branch-name>`."
+
+   Then run:
+   ```bash
+   devflow done <branch-name>
+   ```
+
+   **If "Keep for review feedback":**
+   Tell the user:
+
+   > "Worktree kept. When the PR/MR is merged, clean up with: `devflow done <branch-name>`"
 
 ## Important
 
 - Never merge to `main` from inside the agent — use PRs.
-- Never clean up the worktree from inside the agent — that's a terminal action.
 - If checks fail, stop and help fix. Do not skip verification.
 - Always retain learnings before ending the session.
 - Use "PR" for GitHub repos and "MR" for GitLab repos in all user-facing text.
