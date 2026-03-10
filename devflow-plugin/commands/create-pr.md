@@ -173,5 +173,6 @@ You are creating a pull request or merge request. This command runs the full pip
 - Always push the branch before creating the PR/MR.
 - If the diff is large (>500 lines), suggest splitting into smaller PRs.
 - Use "PR" for GitHub and "MR" for GitLab in all user-facing text.
+- Do NOT add a "Generated with Claude Code" or similar AI-attribution footer to the PR/MR description.
 
 $ARGUMENTS

@@ -162,5 +162,6 @@ You are finishing a feature. Run the full completion pipeline before handing off
 - If checks fail, stop and help fix. Do not skip verification.
 - Always retain learnings before ending the session.
 - Use "PR" for GitHub repos and "MR" for GitLab repos in all user-facing text.
+- Do NOT add a "Generated with Claude Code" or similar AI-attribution footer to the PR/MR description.
 
 $ARGUMENTS
