@@ -23,7 +23,7 @@ You need to retain a new learning into long-term memory via Hindsight.
    - **Context**: What project/area/file this relates to
    - **Why it matters**: One sentence on why this is worth remembering
 
-4. **Store the memory** using the `hindsight_retain` MCP tool. Pass the structured content as the memory payload.
+4. **Store the memory** using the Hindsight `retain` tool. Pass the structured content as the memory payload.
 
 5. **Confirm** to the user what was retained, showing the title and category.
 
