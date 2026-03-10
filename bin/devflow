@@ -106,10 +106,17 @@ devflow_review() {
     die "No changes to review (no uncommitted or staged changes)."
   fi
 
+  local system_prompt
+  system_prompt="You are a code reviewer. Review the git diff provided against the project CLAUDE.md conventions."
+  system_prompt+=" Check for: naming conventions, architecture violations, missing error handling, test coverage gaps."
+  system_prompt+=" Be specific and actionable. Reference file names and line numbers from the diff."
+
   log "Invoking Claude Code for review..."
   echo "$diff" | claude --print \
-    "Review this diff against the project's CLAUDE.md conventions. Check for: naming conventions, architecture violations, missing error handling, test coverage gaps. Be specific and actionable." \
-    2>/dev/null \
+    --system-prompt "$system_prompt" \
+    --permission-mode plan \
+    --allowedTools "Read,Glob,Grep" \
+    "Review this git diff against the project's CLAUDE.md conventions." \
     || die "Claude Code review failed. Make sure Claude Code is installed and authenticated."
 }
 
