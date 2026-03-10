@@ -54,7 +54,8 @@ graph TD
     end
 
     subgraph L5 [" Layer 5 — Process Discipline "]
-        SK["CLAUDE.md + Skills<br/>(10 skills · 6 categories)<br/>Slash commands"]
+        SK["CLAUDE.md + Skills<br/>(11 skills · 6 categories)<br/>Slash commands"]
+        HK["Hooks<br/>(lib/hooks/)<br/>Stop · PostToolUse · UserPromptSubmit"]
     end
 
     subgraph L6 [" Layer 6 — Observability "]
@@ -67,6 +68,8 @@ graph TD
     CLI -->|"check"| CR
     CLI -->|"review [url]"| RV
     CLI -->|"skills install/remove"| SK
+    CLI -->|"init (registers)"| HK
+    HK -->|"guards &<br/>nudges"| SK
     CLI -->|"seed"| HS
     CLI -->|"init"| AD
     CLI -->|"conductor"| COND
@@ -87,7 +90,7 @@ graph TD
     class AD agentDeckStyle
     class WT worktrunkStyle
     class CR,RV,CR_CLAUDE,CR_OPENCODE reviewStyle
-    class SK skillsStyle
+    class SK,HK skillsStyle
     class LF langfuseStyle
     class CLI cliStyle
     class COND conductorStyle
@@ -108,6 +111,7 @@ graph LR
     CR["Code Review<br/>(devflow check)"]
     SK["Skills<br/>(Process)"]
     LF["Langfuse<br/>(Traces)"]
+    HK["Hooks<br/>(Process Guards)"]
     AGENT["AI Agent<br/>(Claude Code /<br/>OpenCode)"]
     HUMAN["Developer<br/>(Escalation target)"]
 
@@ -124,6 +128,8 @@ graph LR
     SK -->|"triggers<br/>devflow check"| CR
     SK -->|"creates / cleans<br/>worktrees"| WT
     SK -->|"logs session<br/>summary"| LF
+    HK -->|"blocks stop on<br/>unfinished features"| AGENT
+    HK -->|"nudges continuation<br/>after PR creation"| AGENT
     LF -.->|"collects traces<br/>from agent"| AGENT
 
     classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
@@ -140,7 +146,7 @@ graph LR
     class AD agentDeckStyle
     class WT worktrunkStyle
     class CR reviewStyle
-    class SK skillsStyle
+    class SK,HK skillsStyle
     class LF langfuseStyle
     class AGENT agentStyle
     class COND conductorStyle
@@ -159,11 +165,12 @@ Each skill is a slash command that orchestrates across multiple layers:
 | `/retain-learning`       | 1     | L1      | Store a discovery into Hindsight                      |
 | `/reflect-session`       | 1     | L1      | End-of-session reflection and memory consolidation    |
 | `/new-feature`           | 1     | L1      | POST-LAUNCH setup guide for new feature workspace     |
-| `/finish-feature`        | 4     | L4 + L1 | devflow check + retain learnings (terminal action)    |
+| `/finish-feature`        | 4     | L4 + L1 + L5 | devflow check + PR creation + viz check + retain learnings |
 | `/pre-push-check`        | 4     | L4 + L5 | devflow check + CLAUDE.md compliance self-review      |
 | `/create-pr`             | 4     | L4 + L1 | Self-review + devflow check + gh pr create            |
 | `/spec-feature`          | 5     | L1 + L5 | Architecture recall + spec doc + task breakdown       |
 | `/architecture-decision` | 5     | L1 + L5 | ADR + Hindsight retention + CLAUDE.md update          |
+| `/pr-strategy`           | 5     | L1 + L5 | View or reset PR description strategy preference          |
 | `/session-summary`       | 6     | L6 + L1 | Metrics, quality scores, Langfuse trace logging       |
 
 ---
@@ -204,6 +211,8 @@ graph TD
         CHECKS[".devflow/checks/*.md<br/>(per-project review rules)"]
         TOML[".worktrunk.toml<br/>(per-project worktree config)"]
         SKILLS["~/.claude/commands/*<br/>(installed skills)"]
+        HOOKS["lib/hooks/*.sh<br/>(Stop · PostToolUse ·<br/>UserPromptSubmit)"]
+        SETTINGS["~/.claude/settings.json<br/>(hooks registration)"]
     end
 
     AD_C -->|"MCP connection"| HS_C
@@ -217,6 +226,7 @@ graph TD
     SKILLS -->|"orchestrate"| CR_C
     SKILLS -->|"orchestrate"| HS_C
     SKILLS -->|"orchestrate"| LF_WEB
+    HOOKS -->|"registered in"| SETTINGS
 
     classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
     classDef agentDeckStyle fill:#3b82f6,color:#fff,stroke:#1e40af
@@ -234,7 +244,7 @@ graph TD
     class WT_C,TOML worktrunkStyle
     class CR_C,CR_CL,CR_OC,CHECKS reviewStyle
     class LF_DB,LF_WEB langfuseStyle
-    class CLAUDE,AGENTS,TRUST,SKILLS skillsStyle
+    class CLAUDE,AGENTS,TRUST,SKILLS,HOOKS,SETTINGS skillsStyle
 ```
 
 ---
