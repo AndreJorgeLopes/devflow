@@ -167,3 +167,61 @@ get_vcs_pr_term() {
     *)      echo "PR" ;;
   esac
 }
+
+# ── Merge Detection ──────────────────────────────────────────────────────────
+
+# is_branch_merged <main_branch> <feature_branch>
+# Returns 0 if the feature branch is fully merged (or squash-merged) into main.
+# 3-layer detection:
+#   1. rev-list: 0 commits ahead → merged
+#   2. merge-tree: identical tree after merge → content-equivalent (squash)
+#   3. VCS CLI: check if PR/MR was merged on the remote
+is_branch_merged() {
+  local main_branch="$1" feature_branch="$2"
+
+  # Layer 1: rev-list — if 0 commits ahead, it's a normal merge
+  local ahead
+  ahead="$(git rev-list --count "${main_branch}..${feature_branch}" 2>/dev/null || echo "")"
+  if [[ "$ahead" == "0" ]]; then
+    return 0
+  fi
+
+  # Layer 2: merge-tree — if merging produces same tree as main, content is equivalent
+  if [[ -n "$ahead" ]]; then
+    local merge_tree_out
+    if merge_tree_out="$(git merge-tree --write-tree --no-messages "$main_branch" "$feature_branch" 2>/dev/null)"; then
+      local main_tree
+      main_tree="$(git rev-parse "${main_branch}^{tree}" 2>/dev/null || echo "")"
+      if [[ -n "$main_tree" ]] && [[ "$merge_tree_out" == "$main_tree" ]]; then
+        return 0
+      fi
+    fi
+    # merge-tree conflict or unsupported → fall through
+  fi
+
+  # Layer 3: VCS CLI — check if PR/MR was merged on the remote
+  local provider
+  provider="$(detect_vcs_provider)"
+  case "$provider" in
+    github)
+      if has_cmd gh; then
+        local merged_count
+        merged_count="$(gh pr list --head "$feature_branch" --state merged --json number --jq 'length' 2>/dev/null || echo "")"
+        if [[ -n "$merged_count" ]] && [[ "$merged_count" -gt 0 ]]; then
+          return 0
+        fi
+      fi
+      ;;
+    gitlab)
+      if has_cmd glab; then
+        local mr_output
+        mr_output="$(glab mr list --source-branch "$feature_branch" --merged 2>/dev/null || echo "")"
+        if [[ -n "$mr_output" ]] && [[ "$mr_output" != *"No merge requests"* ]]; then
+          return 0
+        fi
+      fi
+      ;;
+  esac
+
+  return 1
+}
