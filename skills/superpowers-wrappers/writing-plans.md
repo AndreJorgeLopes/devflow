@@ -21,18 +21,20 @@ Print the manual command the user can run in a new terminal (same worktree direc
 
 ### Agent-deck auto-launch (offer after manual command)
 
-Ask: **"Want me to launch this automatically via agent-deck?"**
+Use the `AskUserQuestion` tool to ask: **"Want me to launch this automatically via agent-deck?"**
+(Options: "Yes", "No")
 
 If yes:
 
 1. Run `agent-deck group list --json` and parse the JSON output
 2. Collect all groups and subgroups, **filtering out** any named `DONE` or `done` (case-insensitive)
-3. Present the filtered list with a numbered menu, plus **"No group (root level)"**
+3. Use the `AskUserQuestion` tool to present the filtered groups as options, plus **"No group (root level)"**
 4. **CRITICAL: Use the exact group `path` from the JSON output** (e.g., `devflow`, not `Devflow`). The non-JSON display capitalizes names, but group names are case-sensitive. Using the wrong case creates a duplicate group.
 5. Determine the session title: prefer the **ticket/feature ID** from the branch name (e.g., `MES-1234` from `feat/MES-1234-some-feature`) or the branch name itself. Append ` — Implementation` as suffix.
 6. After the user picks a group (or root), run:
 
     agent-deck launch <current-worktree-path> \
+      -c claude \
       --no-parent \
       --no-wait \
       -t "<ticket-or-branch> — Implementation" \
@@ -42,9 +44,9 @@ If yes:
    If "No group" was chosen, omit `-g` entirely.
 
    **CRITICAL flag reference:**
+   - `-c` = tool/command to run — **MUST be `claude`**, otherwise agent-deck launches a plain shell and `-m` is sent as a shell command instead of a Claude prompt
    - `-m` or `--message` = initial prompt to send (**NOT `-p`**, which is "parent session")
    - `-t` = session title
-   - `-c` = tool/command to run (e.g., `claude`)
    - `-g` = assign to a group
    - `--no-parent` = don't link to a parent session
    - `--no-wait` = don't block waiting for agent readiness (avoids timeout errors)
