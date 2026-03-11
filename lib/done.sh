@@ -173,19 +173,19 @@ EOF
         continue
       fi
 
-      local commits_ahead
-      commits_ahead="$(git rev-list --count "${main_branch}..${wt_branch}" 2>/dev/null || echo "0")"
+      # Check merge status (handles normal merge, squash-merge, and VCS CLI)
+      local skip_reason=""
+      if ! is_branch_merged "$main_branch" "$wt_branch"; then
+        local commits_ahead
+        commits_ahead="$(git rev-list --count "${main_branch}..${wt_branch}" 2>/dev/null || echo "?")"
+        skip_reason="${commits_ahead} commit(s) ahead of ${main_branch}"
+      fi
 
       # Check for uncommitted changes in the worktree
       local is_dirty=false
       local dirty_files
       dirty_files="$(git -C "$current_wt_path" status --porcelain 2>/dev/null || echo "")"
       [[ -n "$dirty_files" ]] && is_dirty=true
-
-      local skip_reason=""
-      if [[ "$commits_ahead" -gt 0 ]]; then
-        skip_reason="${commits_ahead} commit(s) ahead of ${main_branch}"
-      fi
       if [[ "$is_dirty" == "true" ]]; then
         local dirty_count
         dirty_count="$(echo "$dirty_files" | wc -l | tr -d ' ')"
