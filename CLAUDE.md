@@ -78,6 +78,15 @@ The expected feature lifecycle within a single session is: **new-feature → imp
 - After implementation, `finish-feature` runs verification, creates the PR/MR, retains learnings, and offers cleanup.
 - On feature branches, always complete work with `/devflow:finish-feature` before ending the session.
 
+## Worktree Convention
+
+Git only allows one worktree per branch. To support multiple concurrent worktrees:
+- **Never check out `main`/`master` as a tracked branch** in any worktree. Use detached HEAD instead.
+- `devflow worktree` auto-detaches any worktree that has main locked before creating a new one.
+- Feature worktrees always create NEW branches from main (`git worktree add <path> -b <branch> main`).
+- When done, remove worktrees with `devflow done <branch>` — don't leave them lingering on main.
+- This matches the pattern used by OpenCode/Superpowers, Agent-deck, and Claude Code's worktree isolation.
+
 ## Skill Interaction Rules
 
 ### MANDATORY: Use `AskUserQuestion` for all user choices

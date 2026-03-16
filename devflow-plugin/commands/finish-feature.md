@@ -203,17 +203,20 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    > "The branch has been pushed to origin and the PR/MR exists on the remote — deleting the local worktree won't affect it. If you need to make changes later (e.g., review feedback), you can re-create the worktree with `devflow worktree <branch-name>`."
 
-   First, determine the main worktree path (where `main`/`master` lives), then move there before removing:
+   First, determine the primary worktree path, move there, then remove:
    ```bash
-   # Find the main worktree (the one without [branch] suffix, or the bare repo root)
+   # Find the primary worktree (first entry = the original git clone)
    main_worktree="$(git worktree list --porcelain | grep '^worktree ' | head -1 | sed 's/^worktree //')"
-   # Move out of the current worktree into the main one
+   # Move out of the current worktree into the primary one
    cd "$main_worktree"
+   # Ensure main branch isn't locked (detach if needed — git only allows one worktree per branch)
+   git checkout --detach 2>/dev/null || true
    # Now safe to remove the feature worktree
    devflow done <branch-name>
    ```
 
-   > **Why move first?** You cannot delete a worktree while your shell is inside it. Moving to the main worktree first ensures `devflow done` can cleanly remove the directory and local branch.
+   > **Why move first?** You cannot delete a worktree while your shell is inside it. Moving to the primary worktree first ensures `devflow done` can cleanly remove the directory and local branch.
+   > **Why detach?** Git only allows one worktree per branch. If the primary worktree is on `main`, other worktrees can't reference it. Detaching frees the branch name without losing any files.
 
    **If "Keep for review feedback":**
    Tell the user:

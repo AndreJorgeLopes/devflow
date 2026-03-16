@@ -22,6 +22,32 @@ _detect_project_group() {
   echo "$group"
 }
 
+# _ensure_main_unlocked — detach any worktree that has main/master checked out
+# Git only allows one worktree per branch. If main is checked out somewhere,
+# no other worktree can use it. Detaching frees the branch name without losing
+# any work (files stay the same, just HEAD becomes detached).
+_ensure_main_unlocked() {
+  local main_branch="main"
+  if ! git rev-parse --verify "$main_branch" >/dev/null 2>&1; then
+    main_branch="master"
+    if ! git rev-parse --verify "$main_branch" >/dev/null 2>&1; then
+      return 0  # No main/master branch, nothing to unlock
+    fi
+  fi
+
+  # Find which worktree (if any) has main checked out
+  local locked_wt
+  locked_wt="$(git worktree list --porcelain | grep -B1 "branch refs/heads/${main_branch}" | grep "^worktree " | sed 's/^worktree //')" || true
+
+  if [[ -z "$locked_wt" ]]; then
+    return 0  # main is not checked out anywhere
+  fi
+
+  # Detach that worktree so main is freed
+  info "Detaching ${locked_wt} from ${main_branch} (freeing branch for worktree operations)"
+  git -C "$locked_wt" checkout --detach 2>/dev/null || true
+}
+
 devflow_worktree() {
   local name=""
   local agent=""
@@ -85,9 +111,12 @@ devflow_worktree() {
 
   section "Creating worktree: ${name}"
 
-  # Step 1: Create the worktree with wt (includes copy-ignored)
-  log "Running: wt step -c ${name}"
-  wt step -c "$name"
+  # Ensure main/master isn't locked by another worktree (detach if needed)
+  _ensure_main_unlocked
+
+  # Create the worktree with wt
+  log "Running: wt switch --create ${name}"
+  wt switch --create "$name"
 
   local wt_exit=$?
   if [[ $wt_exit -ne 0 ]]; then
@@ -96,7 +125,7 @@ devflow_worktree() {
 
   ok "Worktree '${name}' created"
 
-  # Step 2: If agent requested, register with agent-deck and launch
+  # If agent requested, register with agent-deck and launch
   if [[ -n "$agent" ]]; then
     if ! has_cmd agent-deck; then
       warn "agent-deck not installed — worktree created but agent not launched"
