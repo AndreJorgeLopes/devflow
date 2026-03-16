@@ -21,7 +21,7 @@ lib/                     # Core command implementations (bash)
   hooks/                 # Claude Code hook scripts (registered via init.sh step 5d)
     prompt-fetch-rebase.sh   # UserPromptSubmit — auto-fetch + rebase
     post-pr-continue.sh      # PostToolUse — nudge agent after PR creation
-    stop-finish-prompt.sh    # Stop — prompt finish-feature on unfinished branches
+    stop-finish-prompt.sh    # Stop — no-op stub (finish-feature moved to skill-level)
 devflow-plugin/          # Claude Code plugin (marketplace-ready)
   commands/              # 16+ markdown command/skill files
   .claude-plugin/        # Plugin metadata (plugin.json, marketplace.json)
@@ -69,6 +69,14 @@ Hook scripts live in `lib/hooks/`, registered in `~/.claude/settings.json` via `
 Protocol: stdin receives JSON payload, exit codes control behavior (0=allow, 2=block+re-activate for Stop hooks).
 - `exit 2` is ONLY valid for Stop hooks — never for UserPromptSubmit (causes infinite blocking).
 - Stop hooks use `stop_hook_active` JSON field to prevent infinite re-activation loops.
+- **Stop hook is a no-op.** The finish-feature prompt was removed from the stop hook because it fires on ALL agent stops (including subagents, reviews, etc.). Finish-feature transition is now handled at the skill level in `new-feature.md`.
+
+## Feature Lifecycle
+
+The expected feature lifecycle within a single session is: **new-feature → implement → finish-feature**.
+- `new-feature` sets up context, recalls memories, runs scope-check, and starts brainstorming.
+- After implementation, `finish-feature` runs verification, creates the PR/MR, retains learnings, and offers cleanup.
+- On feature branches, always complete work with `/devflow:finish-feature` before ending the session.
 
 ## Skill Interaction Rules
 
