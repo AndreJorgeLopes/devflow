@@ -107,6 +107,13 @@
       "category": "superpowers-wrappers",
       "layer": 5,
       "files": ["superpowers-wrappers/writing-plans.md"]
+    },
+    {
+      "name": "best-roi-task",
+      "description": "Find the best ROI task in a Jira Epic — highest points for least effort, unassigned To Do only",
+      "category": "process-discipline",
+      "layer": 5,
+      "files": ["process-discipline/best-roi-task.md"]
     }
   ]
 }
