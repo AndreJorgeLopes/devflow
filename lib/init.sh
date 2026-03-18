@@ -281,6 +281,63 @@ with open(config_path, 'r+') as f:
     claude plugin install worktrunk@worktrunk 2>/dev/null \
       && ok "worktrunk plugin installed" \
       || skip "worktrunk plugin already installed or not available"
+
+    # Devflow plugin — dev mode uses local directory, end users get GitHub with auto-update
+    local devflow_is_dev=false
+    if [[ -d "${root}/.git" ]] && git -C "${root}" remote get-url origin 2>/dev/null | grep -qi "devflow"; then
+      devflow_is_dev=true
+    fi
+
+    python3 -c "
+import json, sys
+
+settings_path = sys.argv[1]
+devflow_root = sys.argv[2]
+is_dev = sys.argv[3] == 'true'
+
+with open(settings_path) as f:
+    settings = json.load(f)
+
+extra = settings.setdefault('extraKnownMarketplaces', {})
+
+if is_dev:
+    # Dev mode: local directory source — always prevails for contributors
+    plugin_path = devflow_root + '/devflow-plugin'
+    extra['devflow-marketplace'] = {
+        'source': {'source': 'directory', 'path': plugin_path},
+        'autoUpdate': True
+    }
+    print('DEV: devflow-marketplace configured with local directory source')
+else:
+    # End user: GitHub source with auto-update
+    extra['devflow-marketplace'] = {
+        'source': {'source': 'github', 'repo': 'AndreJorgeLopes/devflow'},
+        'autoUpdate': True
+    }
+    print('USER: devflow-marketplace configured with GitHub source + auto-update')
+
+with open(settings_path, 'w') as f:
+    json.dump(settings, f, indent=2)
+    f.write('\n')
+" "$settings_file" "$root" "$devflow_is_dev" 2>&1 | while IFS= read -r line; do
+      case "$line" in
+        DEV:*)  ok "${line#DEV: }" ;;
+        USER:*) ok "${line#USER: }" ;;
+        *)      info "$line" ;;
+      esac
+    done
+
+    if $devflow_is_dev; then
+      # Dev mode: uninstall plugin to avoid duplicates with symlinks (step 6)
+      claude plugin uninstall devflow@devflow-marketplace 2>/dev/null \
+        && ok "devflow plugin uninstalled (dev mode uses symlinks instead)" \
+        || skip "devflow plugin not installed (dev mode uses symlinks)"
+    else
+      # End user: install plugin from marketplace
+      claude plugin install devflow@devflow-marketplace 2>/dev/null \
+        && ok "devflow plugin installed" \
+        || skip "devflow plugin already installed or up to date"
+    fi
   else
     skip "Claude Code not installed — skipping plugin install"
   fi
@@ -389,49 +446,65 @@ if changed:
   fi
 
   # ── 6. Install devflow commands & skills ──────────────────────────────────
+  # Dev mode: symlinks for instant iteration (no plugin cache copy delay)
+  # End user mode: plugin handles discovery — symlinks would cause duplicates
   if has_cmd claude; then
     section "Installing devflow commands & skills"
 
     local commands_link="${HOME}/.claude/commands/devflow"
     local skills_link="${HOME}/.claude/skills/devflow-recall"
-    local commands_target="${root}/devflow-plugin/commands"
-    local skills_target="${root}/devflow-plugin/skills/recall-before-task"
 
-    mkdir -p "${HOME}/.claude/commands" "${HOME}/.claude/skills"
+    if $devflow_is_dev; then
+      local commands_target="${root}/devflow-plugin/commands"
+      local skills_target="${root}/devflow-plugin/skills/recall-before-task"
 
-    # Commands symlink
-    if [[ -L "${commands_link}" ]]; then
-      local current_target
-      current_target="$(readlink "${commands_link}")"
-      if [[ "${current_target}" == "${commands_target}" ]]; then
-        ok "Devflow commands symlink healthy (${commands_link})"
+      mkdir -p "${HOME}/.claude/commands" "${HOME}/.claude/skills"
+
+      # Commands symlink
+      if [[ -L "${commands_link}" ]]; then
+        local current_target
+        current_target="$(readlink "${commands_link}")"
+        if [[ "${current_target}" == "${commands_target}" ]]; then
+          ok "Devflow commands symlink healthy (${commands_link})"
+        else
+          warn "Commands symlink points to ${current_target}, expected ${commands_target}"
+          ln -sfn "${commands_target}" "${commands_link}"
+          ok "Commands symlink updated"
+        fi
+      elif [[ -d "${commands_link}" ]]; then
+        warn "${commands_link} is a directory, not a symlink — skipping (manual cleanup needed)"
       else
-        warn "Commands symlink points to ${current_target}, expected ${commands_target}"
         ln -sfn "${commands_target}" "${commands_link}"
-        ok "Commands symlink updated"
+        ok "Devflow commands installed (~/.claude/commands/devflow)"
       fi
-    elif [[ -d "${commands_link}" ]]; then
-      warn "${commands_link} is a directory, not a symlink — skipping (manual cleanup needed)"
-    else
-      ln -sfn "${commands_target}" "${commands_link}"
-      ok "Devflow commands installed (~/.claude/commands/devflow)"
-    fi
 
-    # Skills symlink
-    if [[ -L "${skills_link}" ]]; then
-      local current_skills_target
-      current_skills_target="$(readlink "${skills_link}")"
-      if [[ "${current_skills_target}" == "${skills_target}" ]]; then
-        ok "Devflow skills symlink healthy (${skills_link})"
-      else
+      # Skills symlink
+      if [[ -L "${skills_link}" ]]; then
+        local current_skills_target
+        current_skills_target="$(readlink "${skills_link}")"
+        if [[ "${current_skills_target}" == "${skills_target}" ]]; then
+          ok "Devflow skills symlink healthy (${skills_link})"
+        else
+          ln -sfn "${skills_target}" "${skills_link}"
+          ok "Devflow skills symlink updated"
+        fi
+      elif [[ ! -e "${skills_link}" ]]; then
         ln -sfn "${skills_target}" "${skills_link}"
-        ok "Devflow skills symlink updated"
+        ok "Devflow recall skill installed (~/.claude/skills/devflow-recall)"
+      else
+        skip "Devflow skill path exists but is not a symlink — skipping"
       fi
-    elif [[ ! -e "${skills_link}" ]]; then
-      ln -sfn "${skills_target}" "${skills_link}"
-      ok "Devflow recall skill installed (~/.claude/skills/devflow-recall)"
     else
-      skip "Devflow skill path exists but is not a symlink — skipping"
+      # End user mode: remove stale symlinks to avoid duplicates with the plugin
+      if [[ -L "${commands_link}" ]]; then
+        rm -f "${commands_link}"
+        ok "Removed dev symlink (plugin handles commands now)"
+      fi
+      if [[ -L "${skills_link}" ]]; then
+        rm -f "${skills_link}"
+        ok "Removed dev symlink (plugin handles skills now)"
+      fi
+      skip "Devflow commands & skills provided by plugin (no symlinks needed)"
     fi
   else
     skip "Claude Code not installed — skipping devflow commands"

@@ -73,7 +73,7 @@ plugin-unlink: ## Remove dev symlinks
 
 plugin-install: ## Register marketplace and install plugin (end users)
 	@if command -v claude >/dev/null 2>&1; then \
-		claude plugin marketplace add $(CURDIR)/devflow-plugin 2>/dev/null; \
+		claude plugin marketplace add AndreJorgeLopes/devflow 2>/dev/null; \
 		claude plugin install devflow@devflow-marketplace 2>/dev/null \
 			&& echo "devflow plugin installed" \
 			|| echo "devflow plugin already installed or marketplace not found"; \

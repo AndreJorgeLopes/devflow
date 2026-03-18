@@ -1,0 +1,13 @@
+{
+  "name": "devflow-marketplace",
+  "owner": { "name": "Andre Jorge Lopes" },
+  "metadata": { "description": "Devflow AI dev environment skills", "version": "0.1.0" },
+  "plugins": [
+    {
+      "name": "devflow",
+      "description": "AI development workflow skills",
+      "source": "./devflow-plugin",
+      "version": "0.1.0"
+    }
+  ]
+}
