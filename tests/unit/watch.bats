@@ -190,3 +190,13 @@ EOF
   assert_output --partial "lib/utils.sh"
   assert_output --partial "1.0.0"
 }
+
+# ── devflow_watch (dry-run) ────────────────────────────────────
+
+@test "devflow_watch exits 0 when config file is missing" {
+  # Ensure no config file exists
+  rm -f "${BATS_TEST_TMPDIR}/.devflow/sensitive-files.conf"
+  run devflow_watch --dry-run --project "${BATS_TEST_TMPDIR}"
+  assert_success
+  assert_output --partial "No sensitive-files.conf"
+}

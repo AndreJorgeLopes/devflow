@@ -155,3 +155,237 @@ check_version_consistency() {
   echo "All versions consistent: $makefile_version"
   return 0
 }
+
+# ── Notification ─────────────────────────────────────────────────────────────
+
+# _watch_notify <message> [--headless]
+# Send notification via platform-appropriate method.
+_watch_notify() {
+  local message="$1"
+  local headless="${2:-}"
+
+  # Always log
+  local log_dir="${HOME}/.devflow"
+  mkdir -p "$log_dir"
+  echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $message" >> "${log_dir}/watch.log"
+
+  if [[ "$headless" == "--headless" ]]; then
+    # Cron mode — OS-native notifications only
+    case "$(uname -s)" in
+      Darwin)
+        osascript -e "display notification \"$message\" with title \"devflow watchdog\"" 2>/dev/null || true
+        ;;
+      Linux)
+        if command -v notify-send >/dev/null 2>&1; then
+          notify-send "devflow watchdog" "$message" 2>/dev/null || true
+        fi
+        ;;
+    esac
+  else
+    # Interactive mode — terminal bell + stderr
+    printf '\a' 2>/dev/null || true
+    warn "$message"
+  fi
+}
+
+# _write_pending_json <file> <entries_json>
+# Write or append to a pending JSON file.
+_write_pending_json() {
+  local file="$1"
+  local entry="$2"
+  local dir
+  dir="$(dirname "$file")"
+  mkdir -p "$dir"
+
+  if [[ -f "$file" ]]; then
+    # Append to existing array
+    python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+data.append(json.loads(sys.argv[2]))
+with open(sys.argv[1], 'w') as f:
+    json.dump(data, f, indent=2)
+" "$file" "$entry" 2>/dev/null || echo "[$entry]" > "$file"
+  else
+    echo "[$entry]" > "$file"
+  fi
+}
+
+# ── Watcher Core ─────────────────────────────────────────────────────────────
+
+# devflow_watch [setup|remove] [--headless] [--immediate] [--dry-run] [--derive-config]
+devflow_watch() {
+  local subcmd=""
+  local headless=""
+  local immediate=""
+  local dry_run=""
+  local derive_config=""
+  local project_dir=""
+
+  # Parse args
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      setup)          subcmd="setup"; shift ;;
+      remove)         subcmd="remove"; shift ;;
+      --headless)     headless="--headless"; shift ;;
+      --immediate)    immediate="1"; shift ;;
+      --dry-run)      dry_run="1"; shift ;;
+      --derive-config) derive_config="1"; shift ;;
+      --project)      project_dir="$2"; shift 2 ;;
+      *)              warn "Unknown option: $1"; shift ;;
+    esac
+  done
+
+  # Route subcommands
+  case "$subcmd" in
+    setup)  _watch_setup "$project_dir" ;;
+    remove) _watch_remove "$project_dir" ;;
+    "")     _watch_run "$project_dir" "$headless" "$immediate" "$dry_run" ;;
+  esac
+}
+
+# _watch_run — core watcher logic
+_watch_run() {
+  local project_dir="${1:-$(pwd)}"
+  local headless="${2:-}"
+  local immediate="${3:-}"
+  local dry_run="${4:-}"
+
+  local conf_file="${project_dir}/.devflow/sensitive-files.conf"
+
+  # Step 0: Check config exists
+  if [[ ! -f "$conf_file" ]]; then
+    [[ -n "$headless" ]] || info "No sensitive-files.conf found, skipping."
+    return 0
+  fi
+
+  # Step 1: Fetch (unless --immediate)
+  if [[ -z "$immediate" ]]; then
+    git -C "$project_dir" fetch origin main --quiet 2>/dev/null || true
+  fi
+
+  # Step 2: Compare SHAs
+  local local_sha origin_sha
+  local_sha="$(git -C "$project_dir" rev-parse main 2>/dev/null || echo "")"
+  origin_sha="$(git -C "$project_dir" rev-parse origin/main 2>/dev/null || echo "")"
+
+  if [[ -z "$local_sha" ]] || [[ -z "$origin_sha" ]]; then
+    return 0
+  fi
+
+  # Check last-checked SHA to avoid re-processing
+  local sha_file="${project_dir}/.devflow/.last-checked-sha"
+  if [[ -f "$sha_file" ]]; then
+    local last_checked
+    last_checked="$(cat "$sha_file")"
+    if [[ "$last_checked" == "$origin_sha" ]]; then
+      return 0
+    fi
+  fi
+
+  if [[ "$local_sha" == "$origin_sha" ]]; then
+    # Update tracking and exit
+    mkdir -p "$(dirname "$sha_file")"
+    echo "$origin_sha" > "$sha_file"
+    return 0
+  fi
+
+  # Step 3: Get changed files
+  local changed_files
+  changed_files="$(git -C "$project_dir" diff --name-only "${local_sha}..${origin_sha}" 2>/dev/null || echo "")"
+  if [[ -z "$changed_files" ]]; then
+    mkdir -p "$(dirname "$sha_file")"
+    echo "$origin_sha" > "$sha_file"
+    return 0
+  fi
+
+  # Step 4: Match against config
+  local flagged
+  flagged="$(get_flagged_targets "$conf_file" "$changed_files")"
+  if [[ -z "$flagged" ]]; then
+    mkdir -p "$(dirname "$sha_file")"
+    echo "$origin_sha" > "$sha_file"
+    return 0
+  fi
+
+  if [[ -n "$dry_run" ]]; then
+    echo "DRY RUN — Flagged targets:"
+    echo "$flagged" | while IFS='|' read -r ctype target sources cmd; do
+      echo "  [$ctype] $target (sources: $sources)"
+    done
+    return 0
+  fi
+
+  # Step 5-6: Run checks in parallel
+  local mechanical_stale=""
+  local semantic_flagged=""
+  local pids=()
+  local result_dir="${TMPDIR:-/tmp}/devflow-watch-$$"
+  mkdir -p "$result_dir"
+
+  while IFS='|' read -r check_type target sources cmd_or_prompt; do
+    if [[ "$check_type" == "mechanical" ]]; then
+      (
+        cd "$project_dir"
+        if ! eval "$cmd_or_prompt" >/dev/null 2>&1; then
+          echo "$target" >> "${result_dir}/mechanical_stale"
+        fi
+      ) &
+      pids+=($!)
+    elif [[ "$check_type" == "semantic" ]]; then
+      echo "${target}|${cmd_or_prompt}" >> "${result_dir}/semantic_flagged"
+    fi
+  done <<< "$flagged"
+
+  # Wait for all parallel mechanical checks
+  for pid in "${pids[@]}"; do
+    wait "$pid" 2>/dev/null || true
+  done
+
+  # Step 7-8: Record results
+  local pending_dir="${project_dir}/.devflow"
+  mkdir -p "$pending_dir"
+  local issues_found=0
+
+  if [[ -f "${result_dir}/mechanical_stale" ]]; then
+    while IFS= read -r stale_target; do
+      local entry_json
+      entry_json="$(python3 -c "import json,sys; print(json.dumps({'target': sys.argv[1], 'type': 'mechanical', 'detected_at': sys.argv[2]}))" "$stale_target" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")"
+      _write_pending_json "${pending_dir}/pending-fixes.json" "$entry_json"
+      issues_found=$((issues_found + 1))
+    done < "${result_dir}/mechanical_stale"
+  fi
+
+  if [[ -f "${result_dir}/semantic_flagged" ]]; then
+    while IFS='|' read -r sem_target sem_prompt; do
+      local entry_json
+      entry_json="$(python3 -c "import json,sys; print(json.dumps({'target': sys.argv[1], 'prompt': sys.argv[2], 'detected_at': sys.argv[3]}))" "$sem_target" "$sem_prompt" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")"
+      _write_pending_json "${pending_dir}/pending-reviews.json" "$entry_json"
+      issues_found=$((issues_found + 1))
+    done < "${result_dir}/semantic_flagged"
+  fi
+
+  # Cleanup temp dir
+  rm -rf "$result_dir"
+
+  # Step 9: Notify
+  if [[ "$issues_found" -gt 0 ]]; then
+    _watch_notify "${issues_found} sensitive file(s) may be stale after merge to main" "$headless"
+  fi
+
+  # Step 10: Fast-forward local main (only if on main and clean)
+  local current_branch
+  current_branch="$(git -C "$project_dir" branch --show-current 2>/dev/null || echo "")"
+  if [[ "$current_branch" == "main" ]]; then
+    local status_output
+    status_output="$(git -C "$project_dir" status --porcelain 2>/dev/null || echo "dirty")"
+    if [[ -z "$status_output" ]]; then
+      git -C "$project_dir" merge --ff-only origin/main >/dev/null 2>&1 || true
+    fi
+  fi
+
+  # Step 11: Update tracking SHA
+  mkdir -p "$(dirname "$sha_file")"
+  echo "$origin_sha" > "$sha_file"
+}
