@@ -72,3 +72,69 @@ EOF
   line_count="$(echo "$output" | wc -l | tr -d ' ')"
   assert [ "$line_count" -eq 3 ]
 }
+
+# ── match_sources ──────────────────────────────────────────────
+
+@test "match_sources matches exact filename" {
+  local changed_files="Makefile
+lib/utils.sh"
+  local sources="Makefile"
+  run match_sources "$sources" "$changed_files"
+  assert_success
+}
+
+@test "match_sources matches glob pattern" {
+  local changed_files="lib/watch.sh
+lib/utils.sh"
+  local sources="lib/*.sh"
+  run match_sources "$sources" "$changed_files"
+  assert_success
+}
+
+@test "match_sources matches comma-separated sources" {
+  local changed_files="install.sh"
+  local sources="Makefile,install.sh"
+  run match_sources "$sources" "$changed_files"
+  assert_success
+}
+
+@test "match_sources returns failure when no match" {
+  local changed_files="README.md
+docs/plan.md"
+  local sources="lib/*.sh,Makefile"
+  run match_sources "$sources" "$changed_files"
+  assert_failure
+}
+
+@test "match_sources handles nested glob patterns" {
+  local changed_files="lib/hooks/prompt-fetch-rebase.sh"
+  local sources="lib/hooks/*.sh"
+  run match_sources "$sources" "$changed_files"
+  assert_success
+}
+
+# ── get_flagged_targets ────────────────────────────────────────
+
+@test "get_flagged_targets returns targets with matching sources" {
+  cat > "$CONF_FILE" <<'EOF'
+mechanical | lib/utils.sh | Makefile | devflow check-version
+mechanical | plugin.json | Makefile | devflow check-version
+semantic | README.md | install.sh | Check instructions.
+EOF
+  local changed_files="Makefile"
+  run get_flagged_targets "$CONF_FILE" "$changed_files"
+  assert_success
+  assert_output --partial "lib/utils.sh"
+  assert_output --partial "plugin.json"
+  refute_output --partial "README.md"
+}
+
+@test "get_flagged_targets returns empty when no sources match" {
+  cat > "$CONF_FILE" <<'EOF'
+mechanical | lib/utils.sh | Makefile | devflow check-version
+EOF
+  local changed_files="README.md"
+  run get_flagged_targets "$CONF_FILE" "$changed_files"
+  assert_success
+  assert_output ""
+}

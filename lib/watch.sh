@@ -35,3 +35,51 @@ parse_sensitive_config() {
     echo "${check_type}|${target}|${sources}|${cmd_or_prompt}"
   done < "$conf_file"
 }
+
+# ── Pattern Matcher ──────────────────────────────────────────────────────────
+
+# match_sources <sources_csv> <changed_files>
+# Returns 0 if any changed file matches any source pattern.
+# <sources_csv>: comma-separated glob patterns (e.g., "lib/*.sh,Makefile")
+# <changed_files>: newline-separated list of changed file paths
+match_sources() {
+  local sources_csv="$1"
+  local changed_files="$2"
+
+  # Split sources by comma
+  local IFS=','
+  local patterns
+  read -ra patterns <<< "$sources_csv"
+
+  while IFS= read -r changed_file; do
+    [[ -z "$changed_file" ]] && continue
+    for pattern in "${patterns[@]}"; do
+      pattern="$(echo "$pattern" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      # Use bash pattern matching (glob)
+      # shellcheck disable=SC2254
+      if [[ "$changed_file" == $pattern ]]; then
+        return 0
+      fi
+    done
+  done <<< "$changed_files"
+
+  return 1
+}
+
+# get_flagged_targets <conf_file> <changed_files>
+# Returns config entries whose sources match the changed files.
+# Output: same pipe-delimited format as parse_sensitive_config
+get_flagged_targets() {
+  local conf_file="$1"
+  local changed_files="$2"
+  local entries
+
+  entries="$(parse_sensitive_config "$conf_file")"
+  [[ -z "$entries" ]] && return 0
+
+  while IFS='|' read -r check_type target sources cmd_or_prompt; do
+    if match_sources "$sources" "$changed_files"; then
+      echo "${check_type}|${target}|${sources}|${cmd_or_prompt}"
+    fi
+  done <<< "$entries"
+}
