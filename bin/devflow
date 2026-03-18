@@ -25,6 +25,7 @@ source "${DEVFLOW_ROOT}/lib/seed.sh"
 source "${DEVFLOW_ROOT}/lib/worktree.sh"
 source "${DEVFLOW_ROOT}/lib/visualizations.sh"
 source "${DEVFLOW_ROOT}/lib/done.sh"
+source "${DEVFLOW_ROOT}/lib/watch.sh"
 
 # Override devflow_root to use our resolved path
 devflow_root() { echo "$DEVFLOW_ROOT"; }
@@ -53,6 +54,8 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}clean${RESET} [--dry-run] [--all]     Remove merged worktrees (--all for everything)
   ${CYAN}worktree${RESET} <name> [--agent]    Create a worktree, optionally launch agent
   ${CYAN}review${RESET} [<pr-url>]             Review local diff or a PR/MR by URL
+  ${CYAN}watch${RESET} [setup|remove]       Sensitive file watchdog (background watcher)
+  ${CYAN}check-version${RESET}              Check version consistency across all files
   ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)
   ${CYAN}web${RESET} [args]                   Open agent-deck web UI
   ${CYAN}conductor${RESET} [args]             Run agent-deck conductor
@@ -232,6 +235,8 @@ main() {
     clean)     devflow_clean "$@" ;;
     worktree)  devflow_worktree "$@" ;;
     review)    devflow_review "$@" ;;
+    watch)          devflow_watch "$@" ;;
+    check-version)  check_version_consistency "$(project_root)" ;;
     visualizations|viz) devflow_visualizations "$@" ;;
     web)       need_cmd agent-deck; agent-deck web "$@" ;;
     conductor) need_cmd agent-deck; agent-deck conductor "$@" ;;

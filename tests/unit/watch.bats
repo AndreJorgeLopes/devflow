@@ -138,3 +138,55 @@ EOF
   assert_success
   assert_output ""
 }
+
+# ── check_version_consistency ──────────────────────────────────
+
+@test "check_version_consistency passes when all versions match" {
+  # Create a mock project structure in tmp
+  local proj="${BATS_TEST_TMPDIR}/project"
+  mkdir -p "$proj/lib" "$proj/devflow-plugin/.claude-plugin" "$proj/devflow-plugin/commands"
+
+  cat > "$proj/Makefile" <<'EOF'
+VERSION := 1.2.3
+EOF
+  cat > "$proj/lib/utils.sh" <<'EOF'
+DEVFLOW_VERSION="1.2.3"
+EOF
+  cat > "$proj/devflow-plugin/.claude-plugin/plugin.json" <<'EOF'
+{ "version": "1.2.3" }
+EOF
+  cat > "$proj/devflow-plugin/.claude-plugin/marketplace.json" <<'EOF'
+{ "version": "1.2.3" }
+EOF
+  cat > "$proj/devflow-plugin/commands/test.md" <<'EOF'
+---
+description: [devflow v1.2.3] Test command
+---
+EOF
+
+  run check_version_consistency "$proj"
+  assert_success
+}
+
+@test "check_version_consistency fails when utils.sh version differs" {
+  local proj="${BATS_TEST_TMPDIR}/project2"
+  mkdir -p "$proj/lib" "$proj/devflow-plugin/.claude-plugin" "$proj/devflow-plugin/commands"
+
+  cat > "$proj/Makefile" <<'EOF'
+VERSION := 1.2.3
+EOF
+  cat > "$proj/lib/utils.sh" <<'EOF'
+DEVFLOW_VERSION="1.0.0"
+EOF
+  cat > "$proj/devflow-plugin/.claude-plugin/plugin.json" <<'EOF'
+{ "version": "1.2.3" }
+EOF
+  cat > "$proj/devflow-plugin/.claude-plugin/marketplace.json" <<'EOF'
+{ "version": "1.2.3" }
+EOF
+
+  run check_version_consistency "$proj"
+  assert_failure
+  assert_output --partial "lib/utils.sh"
+  assert_output --partial "1.0.0"
+}
