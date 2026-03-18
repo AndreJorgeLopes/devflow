@@ -56,6 +56,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)
   ${CYAN}web${RESET} [args]                   Open agent-deck web UI
   ${CYAN}conductor${RESET} [args]             Run agent-deck conductor
+  ${CYAN}root${RESET}                         Print devflow installation path
   ${CYAN}version${RESET}                      Print version
   ${CYAN}help${RESET}                         Show this help
 
@@ -235,6 +236,7 @@ main() {
     visualizations|viz) devflow_visualizations "$@" ;;
     web)       need_cmd agent-deck; agent-deck web "$@" ;;
     conductor) need_cmd agent-deck; agent-deck conductor "$@" ;;
+    root)      devflow_root "$@" ;;
     version)   echo "devflow v${DEVFLOW_VERSION}" ;;
     help|-h|--help) usage ;;
     *)         err "Unknown command: $cmd"; usage; exit 1 ;;
