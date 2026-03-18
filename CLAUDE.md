@@ -18,12 +18,14 @@ lib/                     # Core command implementations (bash)
   worktree.sh            # devflow worktree — wrapper around worktrunk + agent launch
   done.sh                # devflow done/clean — cleanup after PR merge
   visualizations.sh      # devflow visualizations — diagram management
+  watch.sh               # devflow watch — sensitive file watchdog
   hooks/                 # Claude Code hook scripts (registered via init.sh step 5d)
     prompt-fetch-rebase.sh   # UserPromptSubmit — auto-fetch + rebase
+    pending-reviews-notify.sh # UserPromptSubmit — notify about stale sensitive files
     post-pr-continue.sh      # PostToolUse — nudge agent after PR creation
     stop-finish-prompt.sh    # Stop — no-op stub (finish-feature moved to skill-level)
 devflow-plugin/          # Claude Code plugin (marketplace-ready)
-  commands/              # 16+ markdown command/skill files
+  commands/              # 17+ markdown command/skill files (includes check-sensitive.md)
   .claude-plugin/        # Plugin metadata (plugin.json, marketplace.json)
 skills/                  # Categorized skill files (NOT auto-discovered — require explicit Read)
 templates/               # Init templates (CLAUDE.md.tmpl, AGENTS.md.tmpl, etc.)
@@ -77,6 +79,15 @@ The expected feature lifecycle within a single session is: **new-feature → imp
 - `new-feature` sets up context, recalls memories, runs scope-check, and starts brainstorming.
 - After implementation, `finish-feature` runs verification, creates the PR/MR, retains learnings, and offers cleanup.
 - On feature branches, always complete work with `/devflow:finish-feature` before ending the session.
+
+## Sensitive File Watchdog
+
+`devflow watch` monitors files that must stay in sync with source code changes.
+- Config: `.devflow/sensitive-files.conf` (pipe-delimited, bash-native format)
+- Background: `devflow watch setup` installs a 5-min cron + git post-merge hook
+- In-session: finish-feature checks sensitive files before PR creation
+- Manual: `/devflow:check-sensitive` runs all checks on demand
+- Mechanical checks (version strings) auto-fixable; semantic checks (docs) need AI review
 
 ## Worktree Convention
 
