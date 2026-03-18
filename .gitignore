@@ -12,3 +12,10 @@ dist/
 .idea/
 .vscode/
 *.swp
+
+# Devflow watchdog state
+.devflow/.last-checked-sha
+.devflow/.dev-setup
+.devflow/pending-reviews.json
+.devflow/pending-fixes.json
+.devflow/.pending-notified

@@ -4,7 +4,7 @@ LIBDIR := $(PREFIX)/share/devflow
 VERSION := 0.1.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -73,12 +73,26 @@ plugin-unlink: ## Remove dev symlinks
 
 plugin-install: ## Register marketplace and install plugin (end users)
 	@if command -v claude >/dev/null 2>&1; then \
-		claude plugin marketplace add $(CURDIR)/devflow-plugin 2>/dev/null; \
+		claude plugin marketplace add AndreJorgeLopes/devflow 2>/dev/null; \
 		claude plugin install devflow@devflow-marketplace 2>/dev/null \
 			&& echo "devflow plugin installed" \
 			|| echo "devflow plugin already installed or marketplace not found"; \
 	else \
 		echo "Claude Code not found — skipping plugin install"; \
+	fi
+
+check-version: ## Check version consistency across all files
+	@bash -c 'source lib/utils.sh; source lib/watch.sh; check_version_consistency .'
+
+check-formula: ## Check Formula SHA matches latest tarball
+	@if [ ! -f Formula/devflow.rb ]; then echo "No Formula/devflow.rb found"; exit 0; fi
+	@if [ ! -d dist ]; then echo "No dist/ directory — run 'make release' first"; exit 1; fi
+	@TARBALL_SHA=$$(shasum -a 256 dist/devflow-$(VERSION).tar.gz 2>/dev/null | cut -d' ' -f1); \
+	FORMULA_SHA=$$(grep 'sha256' Formula/devflow.rb | head -1 | sed 's/.*"\(.*\)".*/\1/'); \
+	if [ "$$TARBALL_SHA" = "$$FORMULA_SHA" ]; then \
+		echo "Formula SHA matches tarball"; \
+	else \
+		echo "MISMATCH: Formula has $$FORMULA_SHA, tarball is $$TARBALL_SHA" >&2; exit 1; \
 	fi
 
 release: ## Create a release tarball

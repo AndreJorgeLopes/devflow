@@ -84,7 +84,37 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    > **Note:** This step uses plain-text summaries since mermaid diagrams cannot be rendered in the terminal. Describe what was added, removed, or modified in each diagram.
 
-5. **Resolve PR description strategy.** Determine which template to use for the PR/MR description:
+5. **Check sensitive files.** If `.devflow/sensitive-files.conf` exists, check if any sensitive files need updating based on your branch changes.
+
+   First, check if the config exists:
+   ```bash
+   cat .devflow/sensitive-files.conf 2>/dev/null | head -1
+   ```
+
+   **If no config found:** Skip silently — say "No sensitive file config, skipping check."
+
+   **If config exists:**
+   - Check for pending reviews/fixes from the background watcher:
+     ```bash
+     cat .devflow/pending-fixes.json 2>/dev/null || echo "[]"
+     cat .devflow/pending-reviews.json 2>/dev/null || echo "[]"
+     ```
+   - Run `devflow check-version` to verify version consistency
+   - For semantic entries in the config, dispatch parallel subagents (using the Agent tool) to evaluate each target:
+     - Each subagent reads the target file + source files and applies the check prompt from the config
+     - Returns: `ok` or `stale` with a suggested fix
+   - Present the summary:
+     ```
+     Sensitive File Check:
+     ✓ Version consistency (all files at v0.1.0)
+     ⚠ CLAUDE.md — Project Structure section may be stale
+       Suggested fix: Add "lib/watch.sh" to the structure tree
+     ```
+   - If any fixes are suggested, use the `AskUserQuestion` tool: "Apply suggested fixes before continuing?" (Options: "Yes, apply all", "Skip fixes")
+   - If applied, stage and include in the next commit
+   - Clear `.devflow/pending-fixes.json` and `.devflow/pending-reviews.json` after processing
+
+6. **Resolve PR description strategy.** Determine which template to use for the PR/MR description:
 
    - Detect the project name:
      ```bash
@@ -110,7 +140,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    > **Note to agent:** The PR description strategy is now resolved. Use the determined template structure when generating the draft PR/MR description in the next step.
 
-6. **CHECKPOINT — Diff review.** Before creating the PR/MR, present a summary of all changes for user approval:
+7. **CHECKPOINT — Diff review.** Before creating the PR/MR, present a summary of all changes for user approval:
 
    ```
    ## Ready to Create PR/MR
@@ -128,12 +158,12 @@ You are finishing a feature. Run the full completion pipeline before handing off
    <proposed title>
 
    ### Draft PR/MR description
-   <proposed description in markdown — use the template structure determined in step 5>
+   <proposed description in markdown — use the template structure determined in step 6>
    ```
 
    **Wait for explicit user approval** ("looks good", "go ahead", "create it", etc.) before proceeding.
 
-7. **Detect VCS provider and create PR/MR.** First detect the provider:
+8. **Detect VCS provider and create PR/MR.** First detect the provider:
 
    ```bash
    git remote get-url origin
@@ -165,17 +195,17 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    Present the PR/MR URL to the user.
 
-   > **CRITICAL: Do NOT stop after creating the PR/MR.** Steps 8-10 below are mandatory.
+   > **CRITICAL: Do NOT stop after creating the PR/MR.** Steps 9-11 below are mandatory.
    > The feature is not complete until you have retained learnings, presented the summary,
    > and offered worktree cleanup. Continue immediately.
 
-8. **Retain session learnings.** Review the session and retain important discoveries:
+9. **Retain session learnings.** Review the session and retain important discoveries:
    - Architecture decisions made during this feature
    - Gotchas or non-obvious patterns encountered
    - Bug root causes and fixes
    - Use Hindsight `retain` for each learning, tagged with the project name
 
-9. **Present the summary:**
+10. **Present the summary:**
 
    ```
    ## Feature Complete
@@ -194,7 +224,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
    - [list of retained memories]
    ```
 
-10. **Offer worktree cleanup.** After the summary, ask the user via `AskUserQuestion`:
+11. **Offer worktree cleanup.** After the summary, ask the user via `AskUserQuestion`:
 
    - **Delete worktree now (Recommended)** — The branch is pushed to origin and the PR/MR is created. Removing the worktree is safe — it won't affect the PR/MR or the remote branch. The local branch reference is kept so you can re-create the worktree if you need to address review comments (`devflow worktree <branch-name>`).
    - **Keep for review feedback** — Leave the worktree intact in case you need to address PR/MR review comments. Run `devflow done <branch-name>` from your terminal when you're done.
