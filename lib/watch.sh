@@ -389,3 +389,144 @@ _watch_run() {
   mkdir -p "$(dirname "$sha_file")"
   echo "$origin_sha" > "$sha_file"
 }
+
+# ── Setup / Remove ───────────────────────────────────────────────────────────
+
+# _watch_setup [project_dir] — install cron job + post-merge hook
+_watch_setup() {
+  local project_dir="${1:-$(pwd)}"
+  project_dir="$(cd "$project_dir" && pwd)"  # resolve to absolute
+
+  local devflow_bin
+  devflow_bin="$(command -v devflow 2>/dev/null || echo "${DEVFLOW_ROOT:-$(devflow_root)}/bin/devflow")"
+
+  section "Sensitive File Watchdog Setup"
+  echo ""
+  info "This will:"
+  echo "  - Add a cron job (every 5 min) to fetch origin and check for stale files"
+  echo "  - Install a git post-merge hook for immediate checks when you pull"
+  echo "  - Only affects this project ($project_dir)"
+  echo "  - To remove: devflow watch remove"
+  echo ""
+  printf "Proceed? [y/N] "
+  read -r confirm
+  if [[ "$confirm" != "y" ]] && [[ "$confirm" != "Y" ]]; then
+    info "Aborted."
+    return 0
+  fi
+
+  # 1. Install cron job
+  local cron_entry="*/5 * * * * cd ${project_dir} && ${devflow_bin} watch --headless --project ${project_dir} 2>&1 >> \${HOME}/.devflow/watch.log"
+  local cron_marker="# devflow-watch:${project_dir}"
+
+  if crontab -l 2>/dev/null | grep -qF "devflow-watch:${project_dir}"; then
+    skip "Cron entry already exists"
+  else
+    (crontab -l 2>/dev/null || true; echo "${cron_marker}"; echo "${cron_entry}") | crontab -
+    ok "Cron job installed (every 5 minutes)"
+  fi
+
+  # 2. Install post-merge hook
+  local hook_file="${project_dir}/.git/hooks/post-merge"
+  local marker_start="# --- devflow-watch start ---"
+  local marker_end="# --- devflow-watch end ---"
+
+  if [[ -f "$hook_file" ]] && grep -qF "$marker_start" "$hook_file"; then
+    skip "Post-merge hook already installed"
+  else
+    mkdir -p "$(dirname "$hook_file")"
+    if [[ ! -f "$hook_file" ]]; then
+      echo "#!/usr/bin/env bash" > "$hook_file"
+    fi
+    cat >> "$hook_file" <<HOOK
+
+${marker_start}
+${devflow_bin} watch --immediate --project ${project_dir} 2>/dev/null || true
+${marker_end}
+HOOK
+    chmod +x "$hook_file"
+    ok "Post-merge hook installed"
+  fi
+
+  # 3. Store marker
+  mkdir -p "${project_dir}/.devflow"
+  echo "setup_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${project_dir}/.devflow/.dev-setup"
+  echo "project=${project_dir}" >> "${project_dir}/.devflow/.dev-setup"
+
+  # 4. Create default config if missing
+  if [[ ! -f "${project_dir}/.devflow/sensitive-files.conf" ]]; then
+    info "No sensitive-files.conf found. Creating default config..."
+    cat > "${project_dir}/.devflow/sensitive-files.conf" <<'CONF'
+# .devflow/sensitive-files.conf
+# Format: CHECK_TYPE | TARGET | SOURCES (comma-separated globs) | CHECK_CMD_OR_PROMPT
+# CHECK_TYPE: mechanical (auto-fixable) | semantic (needs AI/human review)
+# Makefile VERSION is the authoritative version source.
+
+# Version-bearing targets
+mechanical | lib/utils.sh | Makefile | devflow check-version
+mechanical | devflow-plugin/.claude-plugin/plugin.json | Makefile | devflow check-version
+mechanical | devflow-plugin/.claude-plugin/marketplace.json | Makefile | devflow check-version
+mechanical | devflow-plugin/commands/*.md | Makefile | devflow check-version
+
+# Docs derived from code
+semantic | CLAUDE.md | lib/*.sh,lib/hooks/*.sh,devflow-plugin/commands/*.md,Makefile | Compare the Project Structure section in CLAUDE.md against the actual file tree. Flag discrepancies.
+semantic | README.md | install.sh,Formula/devflow.rb,Makefile | Verify README install instructions match the actual install.sh and Makefile targets.
+
+# Templates + generated
+mechanical | Formula/devflow.rb | Makefile | devflow check-formula
+CONF
+    ok "Default sensitive-files.conf created"
+  fi
+
+  echo ""
+  log "Watchdog setup complete."
+}
+
+# _watch_remove [project_dir] — remove cron job + post-merge hook
+_watch_remove() {
+  local project_dir="${1:-$(pwd)}"
+  project_dir="$(cd "$project_dir" && pwd)"
+
+  section "Removing Sensitive File Watchdog"
+
+  # 1. Remove cron entry
+  if crontab -l 2>/dev/null | grep -qF "devflow-watch:${project_dir}"; then
+    # Remove both marker and command lines in a single pass
+    crontab -l 2>/dev/null \
+      | grep -vF "devflow-watch:${project_dir}" \
+      | grep -vF "${project_dir}" \
+      | crontab -
+    ok "Cron entry removed"
+  else
+    skip "No cron entry found for this project"
+  fi
+
+  # 2. Remove post-merge hook section
+  local hook_file="${project_dir}/.git/hooks/post-merge"
+  local marker_start="# --- devflow-watch start ---"
+  local marker_end="# --- devflow-watch end ---"
+
+  if [[ -f "$hook_file" ]] && grep -qF "$marker_start" "$hook_file"; then
+    # Remove between markers (inclusive)
+    sed -i'' -e "/${marker_start}/,/${marker_end}/d" "$hook_file"
+    # Remove empty trailing newlines
+    sed -i'' -e :a -e '/^\n*$/{$d;N;ba;}' "$hook_file"
+    ok "Post-merge hook section removed"
+    # If hook file is now just the shebang, remove it
+    local line_count
+    line_count="$(wc -l < "$hook_file" | tr -d ' ')"
+    if [[ "$line_count" -le 1 ]]; then
+      rm -f "$hook_file"
+      detail "Empty post-merge hook file removed"
+    fi
+  else
+    skip "No devflow-watch section in post-merge hook"
+  fi
+
+  # 3. Remove marker
+  rm -f "${project_dir}/.devflow/.dev-setup"
+  ok "Setup marker removed"
+
+  echo ""
+  log "Watchdog removed for ${project_dir}."
+}
