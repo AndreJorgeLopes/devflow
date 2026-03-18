@@ -59,7 +59,8 @@ You are finishing a feature. Run the full completion pipeline before handing off
    **If no visualization directory or config found:** Skip this step with a one-line note: "No visualization directory found, skipping visualization check."
 
    **If visualizations exist:**
-   - Read the visualization skill for guidance: `Read skills/visualizations/update-visualizations.md`
+   - Resolve the devflow root by running: `devflow root 2>/dev/null || readlink -f ~/.claude/commands/devflow | sed 's|/devflow-plugin/commands$||'`
+   - Read the visualization skill for guidance: `Read <DEVFLOW_ROOT>/skills/visualizations/update-visualizations.md`
    - Analyze the full feature branch diff (`git diff main..HEAD` or `git diff master..HEAD`) to identify changes that affect architecture, workflows, or integrations
    - Read the visualization index (`<viz-path>/README.md`) and any potentially affected diagram files
    - Map changes to affected visualizations using the heuristics from the skill's Step 4
