@@ -108,3 +108,111 @@ _semver_bump() {
     *)     echo "Unknown bump type: $bump_type" >&2; return 1 ;;
   esac
 }
+
+# ── Version Bump ─────────────────────────────────────────────────────────────
+
+# bump_all_versions <new_version> [project_dir]
+# Updates all version-bearing files to the new version using sed.
+# This is the write-side counterpart to check_version_consistency (read-side).
+bump_all_versions() {
+  local new_version="$1"
+  local proj="${2:-.}"
+
+  # Portable sed -i wrapper (works on both macOS and GNU/Linux)
+  _sed_inplace() {
+    local pattern="$1" file="$2"
+    sed "$pattern" "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+  }
+
+  # Makefile: VERSION := X.Y.Z
+  if [[ -f "$proj/Makefile" ]]; then
+    _sed_inplace "s/^VERSION := .*/VERSION := ${new_version}/" "$proj/Makefile"
+  fi
+
+  # lib/utils.sh: DEVFLOW_VERSION="X.Y.Z"
+  if [[ -f "$proj/lib/utils.sh" ]]; then
+    _sed_inplace "s/DEVFLOW_VERSION=\"[^\"]*\"/DEVFLOW_VERSION=\"${new_version}\"/" "$proj/lib/utils.sh"
+  fi
+
+  # plugin.json: "version": "X.Y.Z"
+  if [[ -f "$proj/devflow-plugin/.claude-plugin/plugin.json" ]]; then
+    _sed_inplace "s/\"version\": \"[^\"]*\"/\"version\": \"${new_version}\"/" "$proj/devflow-plugin/.claude-plugin/plugin.json"
+  fi
+
+  # marketplace.json: "version": "X.Y.Z"
+  if [[ -f "$proj/devflow-plugin/.claude-plugin/marketplace.json" ]]; then
+    _sed_inplace "s/\"version\": \"[^\"]*\"/\"version\": \"${new_version}\"/" "$proj/devflow-plugin/.claude-plugin/marketplace.json"
+  fi
+
+  # Command description badges: [devflow vX.Y.Z]
+  local cmd_file
+  for cmd_file in "$proj"/devflow-plugin/commands/*.md; do
+    [[ -f "$cmd_file" ]] || continue
+    _sed_inplace "s/\[devflow v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\]/[devflow v${new_version}]/" "$cmd_file"
+  done
+
+  echo "All version files updated to ${new_version}"
+}
+
+# ── CLI Commands ─────────────────────────────────────────────────────────────
+
+# devflow_version_bump <new_version>
+# CLI wrapper for bump_all_versions with validation.
+devflow_version_bump() {
+  local new_version="${1:?Usage: devflow version-bump <new_version>}"
+  local proj
+  proj="$(project_root)"
+
+  section "Bumping version to ${new_version}"
+  bump_all_versions "$new_version" "$proj"
+  check_version_consistency "$proj" && ok "Version consistency validated"
+}
+
+# devflow_release_preview
+# Shows what the next release would look like without creating it.
+devflow_release_preview() {
+  local proj
+  proj="$(project_root)"
+
+  section "Release Preview"
+
+  # Current version
+  local current_version
+  current_version="$(grep '^VERSION' "$proj/Makefile" | head -1 | cut -d= -f2 | tr -d ' ')"
+  info "Current version: v${current_version}"
+
+  # Parse commits
+  local parse_output
+  parse_output="$(_parse_conventional_commits "$proj")"
+  local bump_type
+  bump_type="$(echo "$parse_output" | head -1)"
+
+  if [[ "$bump_type" == "none" ]]; then
+    info "No releasable commits since last tag. Nothing to release."
+    return 0
+  fi
+
+  # Compute new version
+  local new_version
+  new_version="$(_semver_bump "$current_version" "$bump_type")"
+  ok "Next version: v${new_version} (${bump_type} bump)"
+
+  # Show categorized commits
+  echo ""
+  info "Commits to include:"
+  echo "$parse_output" | tail -n +2 | while IFS='|' read -r category msg; do
+    case "$category" in
+      feat)  echo "  ${GREEN}feat${RESET}: $msg" ;;
+      fix)   echo "  ${YELLOW}fix${RESET}: $msg" ;;
+      other) echo "  ${DIM}$msg${RESET}" ;;
+    esac
+  done
+
+  # Validate current version consistency
+  echo ""
+  if check_version_consistency "$proj" >/dev/null 2>&1; then
+    ok "Version files are consistent"
+  else
+    fail "Version files are inconsistent — run 'devflow check-version' for details"
+  fi
+}

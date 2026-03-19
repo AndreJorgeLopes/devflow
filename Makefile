@@ -4,7 +4,7 @@ LIBDIR := $(PREFIX)/share/devflow
 VERSION := 0.1.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -94,6 +94,10 @@ check-formula: ## Check Formula SHA matches latest tarball
 	else \
 		echo "MISMATCH: Formula has $$FORMULA_SHA, tarball is $$TARBALL_SHA" >&2; exit 1; \
 	fi
+
+version-bump: ## Bump version (usage: make version-bump V=0.2.0)
+	@if [ -z "$(V)" ]; then echo "Usage: make version-bump V=0.2.0"; exit 1; fi
+	@bash scripts/bump-version.sh $(V)
 
 release: ## Create a release tarball
 	@mkdir -p dist

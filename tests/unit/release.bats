@@ -134,3 +134,97 @@ BREAKING CHANGE: removes old endpoint" --quiet
   run _semver_bump "0.1.0" "none"
   assert_failure
 }
+
+# ── bump_all_versions (scripts/bump-version.sh) ───────────────
+
+@test "bump_all_versions updates all version files" {
+  local proj="${BATS_TEST_TMPDIR}/bump-project"
+  mkdir -p "$proj/lib" "$proj/devflow-plugin/.claude-plugin" "$proj/devflow-plugin/commands"
+
+  cat > "$proj/Makefile" <<'MF'
+VERSION := 0.1.0
+TARBALL := devflow-$(VERSION).tar.gz
+MF
+  cat > "$proj/lib/utils.sh" <<'US'
+DEVFLOW_VERSION="0.1.0"
+US
+  cat > "$proj/devflow-plugin/.claude-plugin/plugin.json" <<'PJ'
+{
+  "name": "devflow",
+  "version": "0.1.0"
+}
+PJ
+  cat > "$proj/devflow-plugin/.claude-plugin/marketplace.json" <<'MJ'
+{
+  "version": "0.1.0"
+}
+MJ
+  cat > "$proj/devflow-plugin/commands/test-cmd.md" <<'CMD'
+---
+description: "[devflow v0.1.0] Test command"
+---
+CMD
+
+  run bump_all_versions "0.2.0" "$proj"
+  assert_success
+
+  # Verify each file was updated
+  run grep 'VERSION := 0.2.0' "$proj/Makefile"
+  assert_success
+  run grep 'DEVFLOW_VERSION="0.2.0"' "$proj/lib/utils.sh"
+  assert_success
+  run grep '"version": "0.2.0"' "$proj/devflow-plugin/.claude-plugin/plugin.json"
+  assert_success
+  run grep '"version": "0.2.0"' "$proj/devflow-plugin/.claude-plugin/marketplace.json"
+  assert_success
+  run grep '\[devflow v0.2.0\]' "$proj/devflow-plugin/commands/test-cmd.md"
+  assert_success
+}
+
+@test "bump_all_versions is idempotent" {
+  local proj="${BATS_TEST_TMPDIR}/bump-idem"
+  mkdir -p "$proj/lib" "$proj/devflow-plugin/.claude-plugin" "$proj/devflow-plugin/commands"
+  cat > "$proj/Makefile" <<'MF'
+VERSION := 0.2.0
+MF
+  cat > "$proj/lib/utils.sh" <<'US'
+DEVFLOW_VERSION="0.2.0"
+US
+  cat > "$proj/devflow-plugin/.claude-plugin/plugin.json" <<'PJ'
+{ "version": "0.2.0" }
+PJ
+  cat > "$proj/devflow-plugin/.claude-plugin/marketplace.json" <<'MJ'
+{ "version": "0.2.0" }
+MJ
+
+  run bump_all_versions "0.2.0" "$proj"
+  assert_success
+  run grep 'VERSION := 0.2.0' "$proj/Makefile"
+  assert_success
+}
+
+# ── formula update ─────────────────────────────────────────────
+
+@test "formula_update_replaces_url_and_sha" {
+  local proj="${BATS_TEST_TMPDIR}/formula-test"
+  mkdir -p "$proj/Formula"
+  cat > "$proj/Formula/devflow.rb" <<'FORMULA'
+class Devflow < Formula
+  url "https://github.com/AndreJorgeLopes/devflow/archive/refs/tags/v0.1.0.tar.gz"
+  version "0.1.0"
+  sha256 "PLACEHOLDER"
+end
+FORMULA
+  local new_url="https://github.com/AndreJorgeLopes/devflow/releases/download/v0.2.0/devflow-0.2.0.tar.gz"
+  local new_sha="abc123def456"
+  sed "s|url \".*\"|url \"${new_url}\"|" "$proj/Formula/devflow.rb" > "$proj/Formula/devflow.rb.tmp" && mv "$proj/Formula/devflow.rb.tmp" "$proj/Formula/devflow.rb"
+  sed "s|sha256 \".*\"|sha256 \"${new_sha}\"|" "$proj/Formula/devflow.rb" > "$proj/Formula/devflow.rb.tmp" && mv "$proj/Formula/devflow.rb.tmp" "$proj/Formula/devflow.rb"
+  sed "s|version \".*\"|version \"0.2.0\"|" "$proj/Formula/devflow.rb" > "$proj/Formula/devflow.rb.tmp" && mv "$proj/Formula/devflow.rb.tmp" "$proj/Formula/devflow.rb"
+
+  run grep 'url' "$proj/Formula/devflow.rb"
+  assert_output --partial "releases/download/v0.2.0"
+  run grep 'sha256' "$proj/Formula/devflow.rb"
+  assert_output --partial "abc123def456"
+  run grep 'version' "$proj/Formula/devflow.rb"
+  assert_output --partial "0.2.0"
+}
