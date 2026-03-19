@@ -1,0 +1,159 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump_override:
+        description: "Force bump type (major/minor/patch), or leave empty for auto-detect"
+        required: false
+      dry_run:
+        description: "Preview what would happen without releasing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # Skip if this is a release bot commit
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+
+    steps:
+      - name: Checkout code (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version bump
+        id: bump
+        run: |
+          source lib/utils.sh
+          source lib/release.sh
+
+          # Get bump type from conventional commits
+          PARSE_OUTPUT="$(_parse_conventional_commits .)"
+          BUMP_TYPE="$(echo "$PARSE_OUTPUT" | head -1)"
+
+          # Override from workflow_dispatch if provided
+          if [[ -n "${{ inputs.bump_override }}" ]]; then
+            BUMP_TYPE="${{ inputs.bump_override }}"
+          fi
+
+          if [[ "$BUMP_TYPE" == "none" ]]; then
+            echo "No releasable commits. Skipping release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Get current version and compute new
+          CURRENT="$(grep '^VERSION' Makefile | head -1 | cut -d= -f2 | tr -d ' ')"
+          NEW_VERSION="$(_semver_bump "$CURRENT" "$BUMP_TYPE")"
+
+          echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+          echo "current_version=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          # Generate release notes body
+          NOTES="## What's New"$'\n\n'
+          FEATS="$(echo "$PARSE_OUTPUT" | grep '^feat|' | cut -d'|' -f2 || true)"
+          FIXES="$(echo "$PARSE_OUTPUT" | grep '^fix|' | cut -d'|' -f2 || true)"
+          OTHERS="$(echo "$PARSE_OUTPUT" | grep '^other|' | cut -d'|' -f2 || true)"
+
+          if [[ -n "$FEATS" ]]; then
+            NOTES+="### Features"$'\n'
+            while IFS= read -r line; do NOTES+="- ${line}"$'\n'; done <<< "$FEATS"
+            NOTES+=$'\n'
+          fi
+          if [[ -n "$FIXES" ]]; then
+            NOTES+="### Fixes"$'\n'
+            while IFS= read -r line; do NOTES+="- ${line}"$'\n'; done <<< "$FIXES"
+            NOTES+=$'\n'
+          fi
+          if [[ -n "$OTHERS" ]]; then
+            NOTES+="### Other Changes"$'\n'
+            while IFS= read -r line; do NOTES+="- ${line}"$'\n'; done <<< "$OTHERS"
+            NOTES+=$'\n'
+          fi
+
+          NOTES+="---"$'\n\n'
+          NOTES+="## Install / Update"$'\n\n'
+          NOTES+='**Quick install:**'$'\n'
+          NOTES+='```bash'$'\n'
+          NOTES+='curl -fsSL https://raw.githubusercontent.com/AndreJorgeLopes/devflow/main/install.sh | bash'$'\n'
+          NOTES+='```'$'\n\n'
+          NOTES+='**Homebrew:**'$'\n'
+          NOTES+='```bash'$'\n'
+          NOTES+='brew upgrade devflow'$'\n'
+          NOTES+='```'$'\n\n'
+          NOTES+='**From source:**'$'\n'
+          NOTES+='```bash'$'\n'
+          NOTES+='git pull && make install'$'\n'
+          NOTES+='```'$'\n\n'
+          NOTES+='**Then run:** `devflow init` to update hooks and config.'
+
+          # Write notes to a file (multi-line output is tricky in GHA)
+          echo "$NOTES" > /tmp/release-notes.md
+          echo "Release: v${NEW_VERSION} (${BUMP_TYPE} bump from v${CURRENT})"
+
+      - name: Exit if no release needed
+        if: steps.bump.outputs.skip == 'true'
+        run: echo "No release needed. Exiting."
+
+      - name: Bump versions and build (dry-run check)
+        if: steps.bump.outputs.skip != 'true' && inputs.dry_run == true
+        run: |
+          echo "DRY RUN — Would release v${{ steps.bump.outputs.new_version }}"
+          echo "Bump type: ${{ steps.bump.outputs.bump_type }}"
+          cat /tmp/release-notes.md
+
+      - name: Bump versions, build, and release
+        if: steps.bump.outputs.skip != 'true' && inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.bump.outputs.new_version }}
+        run: |
+          # 1. Bump all version files
+          bash scripts/bump-version.sh "$NEW_VERSION"
+
+          # 2. Create tarball
+          make release
+
+          # 3. Compute SHA256 and update Formula
+          _sha256() { sha256sum "$1" 2>/dev/null | cut -d' ' -f1 || shasum -a 256 "$1" | cut -d' ' -f1; }
+          TARBALL="dist/devflow-${NEW_VERSION}.tar.gz"
+          SHA="$(_sha256 "$TARBALL")"
+
+          if [[ -f Formula/devflow.rb ]]; then
+            RELEASE_URL="https://github.com/AndreJorgeLopes/devflow/releases/download/v${NEW_VERSION}/devflow-${NEW_VERSION}.tar.gz"
+            sed -i "s|url \".*\"|url \"${RELEASE_URL}\"|" Formula/devflow.rb
+            sed -i "s|sha256 \".*\"|sha256 \"${SHA}\"|" Formula/devflow.rb
+            sed -i "s|version \".*\"|version \"${NEW_VERSION}\"|" Formula/devflow.rb
+          fi
+
+          # 4. Single commit + tag + push
+          git add -A
+          git commit -m "chore(release): v${NEW_VERSION} [skip release]"
+          git tag "v${NEW_VERSION}"
+          git push origin main --follow-tags
+
+          # 5. Create GitHub Release with tarball asset
+          gh release create "v${NEW_VERSION}" \
+            --title "devflow v${NEW_VERSION}" \
+            --notes-file /tmp/release-notes.md \
+            "$TARBALL" \
+            install.sh
