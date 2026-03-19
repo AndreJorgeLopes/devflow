@@ -200,3 +200,84 @@ EOF
   assert_success
   assert_output --partial "No sensitive-files.conf"
 }
+
+# ── _detect_install_mode ───────────────────────────────────────
+
+@test "detect_install_mode returns link for symlinked devflow" {
+  ln -sf /some/repo/bin/devflow "${MOCK_DIR}/devflow"
+  run _detect_install_mode
+  assert_success
+  assert_output "link"
+}
+
+@test "detect_install_mode returns install for regular file" {
+  echo '#!/bin/bash' > "${MOCK_DIR}/devflow"
+  chmod +x "${MOCK_DIR}/devflow"
+  run _detect_install_mode
+  assert_success
+  assert_output "install"
+}
+
+@test "detect_install_mode returns brew for homebrew path" {
+  mkdir -p "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin"
+  echo '#!/bin/bash' > "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin/devflow"
+  chmod +x "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin/devflow"
+  ln -sf "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin/devflow" "${MOCK_DIR}/devflow"
+  run _detect_install_mode
+  assert_success
+  assert_output "brew"
+}
+
+@test "detect_install_mode returns none when devflow not found" {
+  rm -f "${MOCK_DIR}/devflow"
+  PATH="${MOCK_DIR}" run _detect_install_mode
+  assert_success
+  assert_output "none"
+}
+
+# ── _auto_reinstall_check ─────────────────────────────────────
+
+@test "auto_reinstall_check skips when not opted in" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-test"
+  mkdir -p "$proj/.devflow"
+  echo "setup_at=2026-01-01" > "$proj/.devflow/.dev-setup"
+  run _auto_reinstall_check "$proj" "" ""
+  assert_success
+  refute_output --partial "auto-updated"
+}
+
+@test "auto_reinstall_check skips when SHA matches" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-match"
+  mkdir -p "$proj/.devflow"
+  echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
+  mkdir -p "${HOME}/.devflow"
+  echo "abc1234" > "${HOME}/.devflow/.last-installed-sha"
+  run _auto_reinstall_check "$proj" "abc1234" ""
+  assert_success
+  refute_output --partial "auto-updated"
+  rm -f "${HOME}/.devflow/.last-installed-sha"
+}
+
+@test "auto_reinstall_check warns for brew install mode" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-brew"
+  mkdir -p "$proj/.devflow"
+  echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
+  mkdir -p "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin"
+  echo '#!/bin/bash' > "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin/devflow"
+  chmod +x "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin/devflow"
+  ln -sf "${BATS_TEST_TMPDIR}/opt/homebrew/Cellar/devflow/bin/devflow" "${MOCK_DIR}/devflow"
+  run _auto_reinstall_check "$proj" "new-sha-123" ""
+  assert_success
+  assert_output --partial "Homebrew"
+}
+
+@test "auto_reinstall_check respects dry-run" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-dryrun"
+  mkdir -p "$proj/.devflow"
+  echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
+  echo '#!/bin/bash' > "${MOCK_DIR}/devflow"
+  chmod +x "${MOCK_DIR}/devflow"
+  run _auto_reinstall_check "$proj" "new-sha-456" "" "1"
+  assert_success
+  assert_output --partial "DRY RUN"
+}
