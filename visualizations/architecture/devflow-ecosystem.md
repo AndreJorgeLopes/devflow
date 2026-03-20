@@ -269,3 +269,7 @@ graph TD
 | `devflow skills install <name>`     | Copy skill to .claude/commands/                                                                   | L5     |
 | `devflow skills remove <name>`      | Delete skill from project                                                                         | L5     |
 | `devflow skills convert`            | Convert skills to Claude Code plugin format                                                       | L5     |
+| `devflow watch [setup\|remove]`     | Sensitive file watchdog — cron + post-merge hook for staleness detection                          | L5     |
+| `devflow check-version`             | Verify version consistency across Makefile, utils.sh, plugin.json, command badges                 | L5     |
+| `devflow version-bump <version>`    | Bump version in all version-bearing files                                                         | L5     |
+| `devflow release`                   | Preview next release (conventional commit analysis, dry-run)                                      | L5     |
