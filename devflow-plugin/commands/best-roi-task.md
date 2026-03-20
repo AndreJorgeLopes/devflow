@@ -1,5 +1,5 @@
 ---
-description: [devflow v0.1.0] Find the best ROI task in a Jira Epic — highest story points for least effort, filtered to unassigned To Do tasks only.
+description: Find the best ROI task in a Jira Epic — highest story points for least effort, filtered to unassigned To Do tasks only.
 ---
 
 You are analyzing a Jira Epic to find the task with the best return on investment (highest story points relative to effort/size) that is available to pick up.

@@ -1,5 +1,5 @@
 ---
-description: [devflow v0.1.0] Analyze recent changes and update affected architecture visualizations
+description: Analyze recent changes and update affected architecture visualizations
 ---
 
 # Update Visualizations

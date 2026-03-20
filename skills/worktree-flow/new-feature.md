@@ -46,13 +46,20 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
 4. **Ask what the feature is about.** If the branch name is descriptive enough, summarize your understanding and ask for confirmation. Otherwise, ask the user to describe the feature.
 
-5. **Transition to brainstorming.** Once you understand the feature, invoke the `brainstorming` skill to explore requirements, design, and approach before writing any code.
+5. **Offer codebase walkthrough (optional).** Ask the user:
+
+   > "Would you like a codebase walkthrough before we start? This traces the full end-to-end flow affected by this task, shows you the actual code at each step, and identifies the key files. Useful if this is an unfamiliar area of the codebase."
+
+   If yes, invoke the `codebase-walkthrough` skill with the feature context. After the walkthrough completes, continue to brainstorming.
+
+6. **Transition to brainstorming.** Once you understand the feature (and optionally completed the walkthrough), invoke the `brainstorming` skill to explore requirements, design, and approach before writing any code.
 
 ## Important
 
 - This skill is a **post-launch setup guide** — the worktree already exists.
 - Always recall from Hindsight before starting work.
 - Never skip the brainstorming step for non-trivial features.
+- The codebase walkthrough is optional but recommended for unfamiliar areas.
 - If the branch name contains a ticket ID, use it as a namespace prefix in all Hindsight interactions.
 
 $ARGUMENTS

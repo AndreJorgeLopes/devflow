@@ -1,5 +1,5 @@
 ---
-description: [devflow v0.1.0] Run the full pre-push review pipeline — code review checks, self-review against CLAUDE.md, and a final report.
+description: Run the full pre-push review pipeline — code review checks, self-review against CLAUDE.md, and a final report.
 ---
 
 You are about to push code. Run the full pre-push quality pipeline before pushing.

@@ -1,3 +1,8 @@
 {
-  "hooks": []
+  "hooks": [
+    {
+      "type": "Stop",
+      "command": "echo 'Session ending. Consider running /devflow:update-visualizations to update architecture diagrams. Run /devflow:session-summary to log metrics.'"
+    }
+  ]
 }

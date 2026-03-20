@@ -114,6 +114,13 @@
       "category": "process-discipline",
       "layer": 5,
       "files": ["process-discipline/best-roi-task.md"]
+    },
+    {
+      "name": "codebase-walkthrough",
+      "description": "Deep codebase walkthrough before implementation — trace the full flow and build understanding",
+      "category": "process-discipline",
+      "layer": 5,
+      "files": ["process-discipline/codebase-walkthrough.md"]
     }
   ]
 }
