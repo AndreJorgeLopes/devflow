@@ -212,6 +212,103 @@ with open(sys.argv[1], 'w') as f:
   fi
 }
 
+# ── Auto-Reinstall ───────────────────────────────────────────────────────────
+
+# _detect_install_mode
+# Detects how devflow is installed: link (symlink), install (copy), brew, or none.
+_detect_install_mode() {
+  local devflow_path
+  devflow_path="$(command -v devflow 2>/dev/null || echo "")"
+  [[ -z "$devflow_path" ]] && echo "none" && return
+
+  # Resolve the real path for Homebrew detection
+  local resolved_path
+  resolved_path="$(readlink -f "$devflow_path" 2>/dev/null || readlink "$devflow_path" 2>/dev/null || echo "$devflow_path")"
+
+  # Check for Homebrew paths
+  if [[ "$resolved_path" == */opt/homebrew/* ]] || \
+     [[ "$resolved_path" == */usr/local/Cellar/* ]] || \
+     [[ "$resolved_path" == */home/linuxbrew/* ]] || \
+     [[ "$resolved_path" == */Cellar/* ]]; then
+    echo "brew"
+    return
+  fi
+
+  # Check if it's a symlink (make link)
+  if [[ -L "$devflow_path" ]]; then
+    echo "link"
+  else
+    echo "install"
+  fi
+}
+
+# _auto_reinstall_check <project_dir> <origin_sha> <headless> [dry_run]
+# Checks if local devflow install is stale and updates it.
+# Only runs if auto_reinstall=true in .devflow/.dev-setup.
+_auto_reinstall_check() {
+  local project_dir="$1"
+  local origin_sha="$2"
+  local headless="${3:-}"
+  local dry_run="${4:-}"
+
+  # Guard: check opt-in
+  local setup_file="${project_dir}/.devflow/.dev-setup"
+  if [[ ! -f "$setup_file" ]] || ! grep -q "auto_reinstall=true" "$setup_file" 2>/dev/null; then
+    return 0
+  fi
+
+  # Compare installed SHA against origin/main SHA
+  local sha_file="${HOME}/.devflow/.last-installed-sha"
+  local last_installed_sha=""
+  if [[ -f "$sha_file" ]]; then
+    last_installed_sha="$(cat "$sha_file")"
+  fi
+
+  if [[ "$last_installed_sha" == "$origin_sha" ]]; then
+    return 0  # Already up to date
+  fi
+
+  # Detect install mode
+  local install_mode
+  install_mode="$(_detect_install_mode)"
+
+  local make_target=""
+  case "$install_mode" in
+    link)    make_target="link" ;;
+    install) make_target="install" ;;
+    brew)
+      _watch_notify "devflow is managed by Homebrew. Run: brew upgrade devflow" "$headless"
+      return 0
+      ;;
+    none)    return 0 ;;
+  esac
+
+  # Dry-run support
+  local old_sha_short="${last_installed_sha:0:7}"
+  local new_sha_short="${origin_sha:0:7}"
+
+  if [[ -n "$dry_run" ]]; then
+    echo "DRY RUN — Would run make ${make_target} (installed SHA: ${old_sha_short}, origin/main: ${new_sha_short})"
+    return 0
+  fi
+
+  # Run make target, capture output for error logging
+  local make_output
+  if make_output="$(cd "$project_dir" && make "$make_target" 2>&1)"; then
+    mkdir -p "${HOME}/.devflow"
+    echo "$origin_sha" > "$sha_file"
+    _watch_notify "devflow auto-updated ${old_sha_short}..${new_sha_short} (via make ${make_target})" "$headless"
+  else
+    local make_rc=$?
+    # Log full make output for debugging
+    mkdir -p "${HOME}/.devflow"
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] make ${make_target} FAILED output:" >> "${HOME}/.devflow/watch.log"
+    echo "$make_output" >> "${HOME}/.devflow/watch.log"
+    _watch_notify "devflow auto-update FAILED: make ${make_target} exited with code ${make_rc}" "$headless"
+    # Do NOT update SHA — next cron run will retry
+  fi
+}
+
 # ── Watcher Core ─────────────────────────────────────────────────────────────
 
 # devflow_watch [setup|remove] [--headless] [--immediate] [--dry-run] [--derive-config]
@@ -374,7 +471,10 @@ _watch_run() {
     _watch_notify "${issues_found} sensitive file(s) may be stale after merge to main" "$headless"
   fi
 
-  # Step 10: Fast-forward local main (only if on main and clean)
+  # Step 10: Auto-reinstall check
+  _auto_reinstall_check "$project_dir" "$origin_sha" "$headless" "$dry_run"
+
+  # Step 11: Fast-forward local main (only if on main and clean)
   local current_branch
   current_branch="$(git -C "$project_dir" branch --show-current 2>/dev/null || echo "")"
   if [[ "$current_branch" == "main" ]]; then
@@ -385,7 +485,7 @@ _watch_run() {
     fi
   fi
 
-  # Step 11: Update tracking SHA
+  # Step 12: Update tracking SHA
   mkdir -p "$(dirname "$sha_file")"
   echo "$origin_sha" > "$sha_file"
 }
@@ -452,6 +552,20 @@ HOOK
   mkdir -p "${project_dir}/.devflow"
   echo "setup_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${project_dir}/.devflow/.dev-setup"
   echo "project=${project_dir}" >> "${project_dir}/.devflow/.dev-setup"
+
+  # 3b. Ask about auto-reinstall (only for devflow repo)
+  if [[ -f "${project_dir}/lib/watch.sh" ]] && [[ -f "${project_dir}/bin/devflow" ]]; then
+    echo ""
+    info "This appears to be the devflow source repo."
+    printf "Enable auto-reinstall? (Updates your local devflow when main gets new commits) [y/N] "
+    read -r auto_reinstall_confirm
+    if [[ "$auto_reinstall_confirm" == "y" ]] || [[ "$auto_reinstall_confirm" == "Y" ]]; then
+      echo "auto_reinstall=true" >> "${project_dir}/.devflow/.dev-setup"
+      ok "Auto-reinstall enabled"
+    else
+      skip "Auto-reinstall skipped"
+    fi
+  fi
 
   # 4. Create default config if missing
   if [[ ! -f "${project_dir}/.devflow/sensitive-files.conf" ]]; then

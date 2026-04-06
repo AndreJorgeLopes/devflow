@@ -1,5 +1,5 @@
 ---
-description: [devflow v0.1.0] Retain a new learning, discovery, or hard-won insight into Hindsight so it's available in future sessions.
+description: Retain a new learning, discovery, or hard-won insight into Hindsight so it's available in future sessions.
 ---
 
 You need to retain a new learning into long-term memory via Hindsight.

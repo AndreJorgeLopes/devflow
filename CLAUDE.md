@@ -19,6 +19,7 @@ lib/                     # Core command implementations (bash)
   done.sh                # devflow done/clean — cleanup after PR merge
   visualizations.sh      # devflow visualizations — diagram management
   watch.sh               # devflow watch — sensitive file watchdog
+  release.sh             # devflow release/version-bump — release pipeline
   hooks/                 # Claude Code hook scripts (registered via init.sh step 5d)
     prompt-fetch-rebase.sh   # UserPromptSubmit — auto-fetch + rebase
     pending-reviews-notify.sh # UserPromptSubmit — notify about stale sensitive files
@@ -88,6 +89,28 @@ The expected feature lifecycle within a single session is: **new-feature → imp
 - In-session: finish-feature checks sensitive files before PR creation
 - Manual: `/devflow:check-sensitive` runs all checks on demand
 - Mechanical checks (version strings) auto-fixable; semantic checks (docs) need AI review
+
+## Release Process
+
+Releases are automated via GitHub Actions on push to main (`.github/workflows/release.yml`).
+
+- **Conventional commits** determine the version bump:
+  - `feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major
+  - `[skip release]` in the HEAD commit message skips the release
+  - `chore(release):` commits from the bot are auto-filtered (no re-trigger)
+- **Version files** are updated by `scripts/bump-version.sh` (Makefile, utils.sh, plugin.json, marketplace.json, all command badges)
+- **GitHub Release** created with tarball and install instructions
+- **Homebrew formula** updated with new SHA/URL in the same commit
+- **Preview locally:** `devflow release` shows what the next release would be
+- **Manual bump:** `devflow version-bump <version>` updates all version files locally
+
+### Auto-Reinstall
+
+When `devflow watch setup` is run in the devflow source repo, it offers an auto-reinstall opt-in:
+- Uses SHA-based staleness detection (catches all changes, not just version bumps)
+- Detects install mode: symlink (`make link`), copy (`make install`), or Homebrew (warn only)
+- On new commits to main, runs the appropriate `make` target automatically
+- State tracked in `~/.devflow/.last-installed-sha`
 
 ## Worktree Convention
 
