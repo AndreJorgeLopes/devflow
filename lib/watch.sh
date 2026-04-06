@@ -299,11 +299,12 @@ _auto_reinstall_check() {
     echo "$origin_sha" > "$sha_file"
     _watch_notify "devflow auto-updated ${old_sha_short}..${new_sha_short} (via make ${make_target})" "$headless"
   else
+    local make_rc=$?
     # Log full make output for debugging
     mkdir -p "${HOME}/.devflow"
     echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] make ${make_target} FAILED output:" >> "${HOME}/.devflow/watch.log"
     echo "$make_output" >> "${HOME}/.devflow/watch.log"
-    _watch_notify "devflow auto-update FAILED: make ${make_target} exited with code $?" "$headless"
+    _watch_notify "devflow auto-update FAILED: make ${make_target} exited with code ${make_rc}" "$headless"
     # Do NOT update SHA — next cron run will retry
   fi
 }

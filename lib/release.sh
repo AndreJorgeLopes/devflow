@@ -16,20 +16,18 @@ _parse_conventional_commits() {
   local last_tag
   last_tag="$(git -C "$project_dir" describe --tags --abbrev=0 2>/dev/null || echo "")"
 
-  # Determine commit range
-  local range
+  # Determine log target
+  local log_target
   if [[ -n "$last_tag" ]]; then
-    range="${last_tag}..HEAD"
+    log_target="${last_tag}..HEAD"
   else
-    # No previous tag — scan from initial commit
-    local initial_commit
-    initial_commit="$(git -C "$project_dir" rev-list --max-parents=0 HEAD 2>/dev/null | head -1)"
-    range="${initial_commit}..HEAD"
+    # No previous tag — scan all commits reachable from HEAD, including root
+    log_target="HEAD"
   fi
 
-  # Get full commit messages (subject + body)
+  # Stream commits with NUL separators using git's %x00 (portable, no bash NUL issues)
   local commits
-  commits="$(git -C "$project_dir" log "$range" --format='%B---COMMIT_SEP---' 2>/dev/null || echo "")"
+  commits="$(git -C "$project_dir" log "$log_target" --format='%B%x00' 2>/dev/null || echo "")"
   if [[ -z "$commits" ]]; then
     echo "none"
     return 0
@@ -60,21 +58,21 @@ _parse_conventional_commits() {
       bump="major"
     fi
 
-    # Categorize by prefix
+    # Categorize by prefix (including breaking ! variants)
     case "$subject" in
-      feat:*|feat\(*)
+      feat:*|feat!:*|feat\(*)
         [[ "$bump" != "major" ]] && bump="minor"
         feat_msgs+="feat|${subject}\n"
         ;;
-      fix:*|fix\(*)
+      fix:*|fix!:*|fix\(*)
         [[ "$bump" == "none" ]] && bump="patch"
         fix_msgs+="fix|${subject}\n"
         ;;
-      docs:*|chore:*|refactor:*|test:*|ci:*|style:*|perf:*)
+      docs:*|docs!:*|chore:*|chore!:*|refactor:*|refactor!:*|test:*|test!:*|ci:*|ci!:*|style:*|style!:*|perf:*|perf!:*)
         other_msgs+="other|${subject}\n"
         ;;
     esac
-  done < <(echo "$commits" | sed 's/---COMMIT_SEP---/\x00/g')
+  done < <(printf '%s' "$commits")
   IFS="$IFS_SAVE"
 
   # Output
