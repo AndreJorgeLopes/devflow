@@ -35,7 +35,15 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    **If checks fail**, report the failures clearly and stop. Do NOT continue past this step with failing checks. Help the user fix issues if they ask.
 
-3. **Stage and commit.** If there are uncommitted changes:
+3. **Diff self-test (Surgical Changes).** Run `git diff origin/main...HEAD` and scan for:
+
+   - Changes unrelated to the feature (formatting, adjacent refactors, comment cleanup).
+   - Dead-code removals beyond orphans YOUR changes created.
+   - "Improvements" made in passing.
+
+   If any exist, surface them to the user. Offer to move them to a separate PR or revert. Don't silently ship them.
+
+4. **Stage and commit.** If there are uncommitted changes:
    - Stage relevant changes: `git add -A`
    - Analyze the full diff to generate a commit message:
      - Follow conventional commits format (`feat:`, `fix:`, `refactor:`, etc.)
@@ -43,7 +51,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
      - Reference the ticket ID if present in the branch name
    - Present the commit message to the user for approval before committing.
 
-4. **Push and create PR.** Push the branch and create a pull request:
+5. **Push and create PR.** Push the branch and create a pull request:
 
    ```bash
    git push -u origin HEAD
@@ -62,13 +70,13 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    Present the PR URL to the user.
 
-5. **Retain session learnings.** Review the session and retain important discoveries:
+6. **Retain session learnings.** Review the session and retain important discoveries:
    - Architecture decisions made during this feature
    - Gotchas or non-obvious patterns encountered
    - Bug root causes and fixes
    - Use Hindsight `retain` for each learning, tagged with the project name
 
-6. **Present the summary and hand off cleanup:**
+7. **Present the summary and hand off cleanup:**
 
    ```
    ## Feature Complete

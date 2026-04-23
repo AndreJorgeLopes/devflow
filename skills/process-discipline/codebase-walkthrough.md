@@ -51,6 +51,7 @@ Guide the user through a deep technical walkthrough of the codebase areas affect
    - State what you believe to be true
    - Verify it against the ticket, Confluence docs, or codebase — do NOT present unverified assumptions as facts
    - If you can't verify, say "I need to verify this" and check
+   - Better to surface a confused assumption than hide it. Name what's unclear before proceeding.
 
 7. **Present the walkthrough.** Structure it so it takes ~30 minutes to read:
 

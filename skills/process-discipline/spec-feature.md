@@ -11,6 +11,7 @@ You are speccing a new feature. This command enforces a structured planning proc
    - Why it's needed (motivation, problem it solves)
    - Any constraints or requirements mentioned
    - If arguments are vague, ask clarifying questions before proceeding.
+   - If the feature request has multiple valid interpretations, list them and ask the user to pick — don't silently commit to one.
 
 2. **Recall architecture knowledge**. Use the Hindsight `recall` tool to retrieve:
    - Past architectural decisions related to this domain
@@ -51,6 +52,12 @@ You are speccing a new feature. This command enforces a structured planning proc
    - [recalled hard rules that apply]
    - [architectural decisions that constrain the approach]
 
+   ## Non-goals
+
+   Explicitly out of scope:
+   - [thing we are NOT building]
+   - [thing we are NOT refactoring]
+
    ## Edge Cases
 
    - [edge case 1]
@@ -76,6 +83,7 @@ You are speccing a new feature. This command enforces a structured planning proc
 6. **Present the spec** to the user for review. Ask:
    - Does this match your intent?
    - Are there constraints I'm missing?
+   - Is there a simpler approach we're missing?
    - Should we adjust the scope?
 
 7. **Retain the architectural decisions** from this spec using the Hindsight `retain` tool, so they're available in future sessions.

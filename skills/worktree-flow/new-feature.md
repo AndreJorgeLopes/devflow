@@ -46,6 +46,8 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
 4. **Ask what the feature is about.** If the branch name is descriptive enough, summarize your understanding and ask for confirmation. Otherwise, ask the user to describe the feature.
 
+   **Don't guess from the branch name.** If the branch is descriptive, summarize your reading in one sentence and ask for confirmation. If it leaves gaps (what behavior changes, what success looks like), ask BEFORE recalling more. Silent interpretations compound.
+
 5. **Offer codebase walkthrough (optional).** Ask the user:
 
    > "Would you like a codebase walkthrough before we start? This traces the full end-to-end flow affected by this task, shows you the actual code at each step, and identifies the key files. Useful if this is an unfamiliar area of the codebase."
@@ -61,5 +63,6 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 - Never skip the brainstorming step for non-trivial features.
 - The codebase walkthrough is optional but recommended for unfamiliar areas.
 - If the branch name contains a ticket ID, use it as a namespace prefix in all Hindsight interactions.
+- Surface any assumption the branch name or recalled memories lead you to make. The user is one line away — ask before guessing.
 
 $ARGUMENTS

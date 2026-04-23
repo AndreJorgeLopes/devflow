@@ -56,35 +56,51 @@ Good uses for reflect: identifying recurring issues, summarizing project evoluti
 
 ## Process Discipline
 
-Follow this workflow for any non-trivial task:
+Four phases, each with a principle that anchors it.
 
-### 1. Spec (Understand)
+### 1. Spec (Understand) — *Think before coding*
 
-- Recall relevant memories
-- Read the issue/request carefully
-- Identify what's being asked and what's ambiguous
-- Ask clarifying questions if requirements are unclear — don't guess
+- Recall relevant memories first (Hindsight).
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-### 2. Plan (Design)
+### 2. Plan (Design) — *Simplicity first*
 
-- Break the task into concrete steps
-- Identify files that need to change
-- Consider edge cases and failure modes
-- Write the plan down (use TodoWrite or equivalent)
+- Break the task into concrete steps with a verify check each.
+- Identify files that need to change; consider edge cases.
+- Minimum code that solves the problem — nothing speculative:
+  - No features beyond what was asked.
+  - No abstractions for single-use code.
+  - No "flexibility" or "configurability" unless requested.
+  - No error handling for impossible scenarios.
+- "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+- Write the plan down (TodoWrite or equivalent).
 
-### 3. Implement (Build)
+### 3. Implement (Build) — *Surgical changes*
 
-- Follow the plan step by step
-- Mark tasks complete as you go
-- Run tests after each meaningful change
-- Retain discoveries and decisions in Hindsight
+- Follow the plan step by step; mark tasks complete as you go.
+- Touch only what you must:
+  - Don't "improve" adjacent code, comments, or formatting.
+  - Don't refactor what isn't broken.
+  - Match existing style, even if you'd do it differently.
+  - Remove imports/variables YOUR changes orphaned — leave pre-existing dead code alone unless asked.
+- Every changed line should trace directly to the user's request.
+- Retain discoveries and decisions in Hindsight as you go.
 
-### 4. Verify (Confirm)
+### 4. Verify (Confirm) — *Goal-driven execution*
 
-- Run the full relevant test suite
-- Self-review against the project's conventions
-- Verify the change actually solves the original problem
-- Do not claim "done" without evidence
+Define success criteria BEFORE coding, not after. Transform vague tasks:
+
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+Then:
+- Run the full relevant test suite.
+- Self-review against project conventions.
+- Do not claim "done" without evidence.
 
 ## Worktree Workflow
 

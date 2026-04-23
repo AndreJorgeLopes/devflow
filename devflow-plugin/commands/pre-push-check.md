@@ -17,6 +17,7 @@ You are about to push code. Run the full pre-push quality pipeline before pushin
    Capture and parse the output. This uses Claude Code (primary) or OpenCode (fallback) to review against `.devflow/checks/*.md` rules. If neither CLI is available, fall back to running the project's lint and type-check commands directly (e.g., `yarn lint`, `yarn build`).
 
 3. **Self-review the diff against CLAUDE.md**. Read the project's `CLAUDE.md` file and review the staged changes against its rules:
+   - **Scope discipline**: every changed line traces to the task. No speculative abstractions, no adjacent refactors, no dead-code removals beyond orphans created by this change.
    - Are naming conventions followed?
    - Are the architectural patterns respected (clean architecture layers)?
    - Are imports using the correct path aliases?
@@ -44,6 +45,7 @@ You are about to push code. Run the full pre-push quality pipeline before pushin
    - [PASS/FAIL] [details]
 
    ### CLAUDE.md Compliance
+   - [PASS/WARN/FAIL] Scope discipline (every line traces to task)
    - [PASS/WARN/FAIL] Naming conventions
    - [PASS/WARN/FAIL] Architecture patterns
    - [PASS/WARN/FAIL] Import paths
