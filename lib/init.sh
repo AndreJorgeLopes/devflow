@@ -517,8 +517,8 @@ if changed:
   if has_cmd claude; then
     local claude_skills_dir="${HOME}/.claude/skills/hindsight"
     mkdir -p "${claude_skills_dir}"
-    if [[ -f "${root}/skills/memory-recall/recall-before-task.md" ]]; then
-      cp "${root}/skills/memory-recall/recall-before-task.md" "${claude_skills_dir}/SKILL.md"
+    if [[ -f "${root}/skills/recall-before-task/SKILL.md" ]]; then
+      cp "${root}/skills/recall-before-task/SKILL.md" "${claude_skills_dir}/SKILL.md"
       ok "Hindsight skill installed for Claude Code (~/.claude/skills/hindsight/SKILL.md)"
     else
       warn "Hindsight skill template not found in devflow skills"
@@ -539,8 +539,8 @@ if changed:
     # Hindsight skill for OpenCode
     local oc_hs_skill_dir="${HOME}/.opencode/skills/hindsight"
     mkdir -p "${oc_hs_skill_dir}"
-    if [[ -f "${root}/skills/memory-recall/recall-before-task.md" ]]; then
-      cp "${root}/skills/memory-recall/recall-before-task.md" "${oc_hs_skill_dir}/SKILL.md"
+    if [[ -f "${root}/skills/recall-before-task/SKILL.md" ]]; then
+      cp "${root}/skills/recall-before-task/SKILL.md" "${oc_hs_skill_dir}/SKILL.md"
       ok "Hindsight skill installed for OpenCode (~/.opencode/skills/hindsight/SKILL.md)"
     else
       warn "Hindsight skill template not found in devflow skills"

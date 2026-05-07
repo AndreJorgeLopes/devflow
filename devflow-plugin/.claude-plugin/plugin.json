@@ -2,9 +2,31 @@
   "name": "devflow",
   "description": "Devflow AI development workflow skills — memory, worktrees, code review, process discipline, observability",
   "version": "0.1.0",
-  "author": { "name": "Andre Jorge Lopes" },
+  "author": {
+    "name": "Andre Jorge Lopes"
+  },
   "repository": "https://github.com/andrejorgelopes/devflow",
   "license": "MIT",
   "commands": "./commands/",
-  "skills": ["./skills/recall-before-task/SKILL.md"]
+  "skills": [
+    "./skills/recall-before-task/SKILL.md",
+    "./skills/retain-learning/SKILL.md",
+    "./skills/reflect-session/SKILL.md",
+    "./skills/pre-push-check/SKILL.md",
+    "./skills/new-feature/SKILL.md",
+    "./skills/finish-feature/SKILL.md",
+    "./skills/create-pr/SKILL.md",
+    "./skills/spec-feature/SKILL.md",
+    "./skills/architecture-decision/SKILL.md",
+    "./skills/session-summary/SKILL.md",
+    "./skills/update-visualizations/SKILL.md",
+    "./skills/visualizations-config/SKILL.md",
+    "./skills/dependency-update/SKILL.md",
+    "./skills/writing-plans/SKILL.md",
+    "./skills/best-roi-task/SKILL.md",
+    "./skills/codebase-walkthrough/SKILL.md",
+    "./skills/resolve-repo/SKILL.md",
+    "./skills/task-complete/SKILL.md",
+    "./skills/task-prioritize/SKILL.md"
+  ]
 }

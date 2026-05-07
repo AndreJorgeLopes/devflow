@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # devflow/lib/skills.sh — devflow skills implementation
-# Manages skills: list, install, remove.
+# Manages skills: list, install, remove, convert.
+#
+# Layout (since registry v2.0.0):
+#   skills/<name>/SKILL.md  — folder-based skills, one per name
+#   skills/registry.json    — metadata (category, layer, description) per skill
+#
+# `devflow skills install <name>` copies skills/<name>/ to <project>/.claude/skills/<name>/.
+# `devflow skills convert` regenerates devflow-plugin/ with folder-based skills + flat command mirrors.
 
-SKILLS_TARGET_DIR=".claude/commands"
+SKILLS_TARGET_DIR=".claude/skills"
 
 devflow_skills() {
   local action="${1:-list}"
@@ -49,10 +56,10 @@ skills_list() {
   jq -r '.skills[] | "\(.name)\t\(.description // "No description")\t\(.category // "")"' "$registry" | while IFS=$'\t' read -r name desc category; do
     printf "  ${BOLD}%-25s${RESET} %s\n" "$name" "$desc"
 
-    # Check if installed in current project
+    # Mark as installed if folder-based skill exists in current project
     local proj
     proj="$(project_root 2>/dev/null || echo "")"
-    if [[ -n "$proj" && -d "${proj}/${SKILLS_TARGET_DIR}/${name}" ]]; then
+    if [[ -n "$proj" && -f "${proj}/${SKILLS_TARGET_DIR}/${name}/SKILL.md" ]]; then
       printf "  %-25s %s\n" "" "(installed)"
     fi
   done
@@ -64,35 +71,36 @@ skills_install() {
   local name="${1:-}"
   [[ -z "$name" ]] && die "Usage: devflow skills install <name>"
 
-  local root
+  local root proj
   root="$(devflow_root)"
-  local registry
-  registry="$(skills_registry)"
-  local proj
   proj="$(project_root)"
 
   if ! has_cmd jq; then
     die "jq is required for skills management. Install with: brew install jq"
   fi
 
-  # Look up skill in registry
-  local skill_category
-  skill_category=$(jq -r --arg n "$name" '.skills[] | select(.name == $n) | .category // empty' "$registry")
+  # Validate skill exists in registry
+  local registry
+  registry="$(skills_registry)"
+  local registered
+  registered=$(jq -r --arg n "$name" '.skills[] | select(.name == $n) | .name' "$registry")
 
-  if [[ -z "$skill_category" ]]; then
+  if [[ -z "$registered" ]]; then
     die "Skill not found in registry: $name"
   fi
 
-  local skill_dir="${root}/skills/${skill_category}"
-
-  if [[ ! -d "$skill_dir" ]]; then
-    die "Skill directory not found: $skill_dir"
+  local source_dir="${root}/skills/${name}"
+  if [[ ! -f "${source_dir}/SKILL.md" ]]; then
+    die "Skill source missing: ${source_dir}/SKILL.md"
   fi
 
-  # Copy to project
   local target="${proj}/${SKILLS_TARGET_DIR}/${name}"
   mkdir -p "$(dirname "$target")"
-  cp -r "$skill_dir" "$target"
+
+  if [[ -d "$target" ]]; then
+    rm -rf "$target"
+  fi
+  cp -R "$source_dir" "$target"
 
   ok "Installed skill '${name}' to ${SKILLS_TARGET_DIR}/${name}"
 }
@@ -114,6 +122,11 @@ skills_remove() {
 }
 
 # ── Convert: transform devflow skills into a Claude Code plugin ──────────────
+#
+# Each skill is emitted twice into the plugin:
+#   - devflow-plugin/skills/<name>/SKILL.md   (folder-based, agent-invokable via Skill tool)
+#   - devflow-plugin/commands/<name>.md       (flat slash-command mirror, `name:` field stripped)
+# The plugin.json `skills` array lists every SKILL.md so all skills are loaded.
 
 skills_convert() {
   local output="" plugin_name="devflow" marketplace=false
@@ -139,6 +152,13 @@ skills_convert() {
     die "jq is required for skills conversion. Install with: brew install jq"
   fi
 
+  # Preserve marketplace flag if marketplace.json already exists in the output —
+  # avoids accidentally wiping it when the user runs `devflow skills convert`
+  # without the flag.
+  if [[ "$marketplace" != true ]] && [[ -f "${output}/.claude-plugin/marketplace.json" ]]; then
+    marketplace=true
+  fi
+
   section "Converting devflow skills to Claude Code plugin"
   info "Output: ${output}"
   info "Plugin name: ${plugin_name}"
@@ -147,60 +167,61 @@ skills_convert() {
   rm -rf "$output"
   mkdir -p "${output}/.claude-plugin"
   mkdir -p "${output}/commands"
-  mkdir -p "${output}/skills/recall-before-task"
+  mkdir -p "${output}/skills"
   mkdir -p "${output}/hooks"
 
-  # ── Classification mapping ────────────────────────────────────────────────
-  # recall-before-task → SKILL (auto-invoke before tasks)
-  # All others → COMMANDS (user-triggered with $ARGUMENTS)
-
+  # ── Emit each skill as both folder-based skill + flat command mirror ──────
   local skill_count=0
-  local command_count=0
-
-  # Process each skill from the registry
   local count
   count=$(jq '.skills | length' "$registry")
 
-  for (( i=0; i<count; i++ )); do
-    local name category
-    name=$(jq -r ".skills[$i].name" "$registry")
-    category=$(jq -r ".skills[$i].category" "$registry")
-    local file_rel
-    file_rel=$(jq -r ".skills[$i].files[0]" "$registry")
-    local source_file="${root}/skills/${file_rel}"
+  # Collect plugin.json skills array entries as a newline-delimited list,
+  # then emit through jq for proper JSON formatting.
+  local skill_paths=""
 
-    if [[ ! -f "$source_file" ]]; then
-      warn "Skill file not found, skipping: ${source_file}"
+  for (( i=0; i<count; i++ )); do
+    local name
+    name=$(jq -r ".skills[$i].name" "$registry")
+    local source_dir="${root}/skills/${name}"
+    local source_md="${source_dir}/SKILL.md"
+
+    if [[ ! -f "$source_md" ]]; then
+      warn "Skill source missing, skipping: ${source_md}"
       continue
     fi
 
-    if [[ "$name" == "memory-recall" ]]; then
-      # memory-recall maps to the recall-before-task file → SKILL
-      _convert_as_skill "$source_file" "${output}/skills/recall-before-task/SKILL.md" "recall-before-task"
-      skill_count=$((skill_count + 1))
-      ok "Skill: recall-before-task (auto-invoke)"
-    else
-      # Everything else → COMMAND
-      cp "$source_file" "${output}/commands/${name}.md"
-      command_count=$((command_count + 1))
-      ok "Command: ${name}"
-    fi
+    # 1) Folder-based skill (full directory copy)
+    cp -R "$source_dir" "${output}/skills/${name}"
+
+    # 2) Flat command mirror (strip `name:` line from frontmatter)
+    _strip_name_to_command "$source_md" "${output}/commands/${name}.md"
+
+    skill_count=$((skill_count + 1))
+    skill_paths+="./skills/${name}/SKILL.md"$'\n'
+    ok "Skill: ${name}"
   done
 
-  # ── Generate plugin.json ──────────────────────────────────────────────────
-  cat > "${output}/.claude-plugin/plugin.json" <<PLUGIN_EOF
-{
-  "name": "${plugin_name}",
-  "description": "Devflow AI development workflow skills — memory, worktrees, code review, process discipline, observability",
-  "version": "0.1.0",
-  "author": { "name": "Andre Jorge Lopes" },
-  "repository": "https://github.com/andrejorgelopes/devflow",
-  "license": "MIT",
-  "commands": "./commands/",
-  "skills": ["./skills/recall-before-task/SKILL.md"]
-}
-PLUGIN_EOF
-  ok "Generated .claude-plugin/plugin.json"
+  # ── Generate plugin.json with all SKILL.md paths ─────────────────────────
+  local skills_array
+  skills_array=$(printf '%s\n' "$skill_paths" \
+    | sed '/^$/d' \
+    | jq -R . \
+    | jq -s .)
+
+  jq -n \
+    --arg name "$plugin_name" \
+    --argjson skills "$skills_array" \
+    '{
+      name: $name,
+      description: "Devflow AI development workflow skills — memory, worktrees, code review, process discipline, observability",
+      version: "0.1.0",
+      author: { name: "Andre Jorge Lopes" },
+      repository: "https://github.com/andrejorgelopes/devflow",
+      license: "MIT",
+      commands: "./commands/",
+      skills: $skills
+    }' > "${output}/.claude-plugin/plugin.json"
+  ok "Generated .claude-plugin/plugin.json (${skill_count} skills)"
 
   # ── Generate hooks.json ───────────────────────────────────────────────────
   cat > "${output}/hooks/hooks.json" <<'HOOKS_EOF'
@@ -250,8 +271,8 @@ MARKET_EOF
 
   # ── Summary ───────────────────────────────────────────────────────────────
   section "Plugin generated"
-  info "Skills:     ${skill_count}"
-  info "Commands:   ${command_count}"
+  info "Skills:     ${skill_count}  (folder-based, devflow-plugin/skills/<name>/SKILL.md)"
+  info "Commands:   ${skill_count}  (flat mirrors, devflow-plugin/commands/<name>.md)"
   info "Hooks:      1 (Stop → session-summary reminder)"
   info "MCP deps:   1 (hindsight)"
   [[ "$marketplace" == true ]] && info "Marketplace: yes"
@@ -272,29 +293,16 @@ MARKET_EOF
   fi
 }
 
-# Helper: convert a skill markdown file into a SKILL.md with name in frontmatter
-_convert_as_skill() {
-  local source="$1" dest="$2" skill_name="$3"
+# Helper: copy a SKILL.md to a flat slash-command file, stripping the `name:`
+# field from the frontmatter (slash commands only need `description:`).
+_strip_name_to_command() {
+  local source="$1" dest="$2"
 
-  # Read the source file and inject the name field into frontmatter
-  if head -1 "$source" | grep -q '^---$'; then
-    # File has frontmatter — inject name after the opening ---
-    {
-      echo "---"
-      echo "name: ${skill_name}"
-      # Copy everything between the first --- and the closing ---, excluding the opening ---
-      sed -n '2,/^---$/p' "$source"
-      # Copy everything after the closing frontmatter
-      sed -n '/^---$/,$ p' "$source" | tail -n +2 | sed -n '/^---$/,$ p' | tail -n +2
-    } > "$dest"
-  else
-    # No frontmatter — create one
-    {
-      echo "---"
-      echo "name: ${skill_name}"
-      echo "---"
-      echo ""
-      cat "$source"
-    } > "$dest"
-  fi
+  awk '
+    BEGIN { in_fm = 0 }
+    NR==1 && /^---$/ { in_fm = 1; print; next }
+    in_fm && /^---$/ { in_fm = 0; print; next }
+    in_fm && /^name:[[:space:]]/ { next }
+    { print }
+  ' "$source" > "$dest"
 }

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "description": "Devflow Skills Marketplace — Claude Code slash commands integrating all 6 layers of the devflow stack",
+  "version": "2.0.0",
+  "description": "Devflow Skills Marketplace — folder-based skills (each entry is skills/<name>/SKILL.md). Categories are metadata only.",
   "layers": {
     "1": "Hindsight (memory)",
     "2": "Agent Deck (session management)",
@@ -11,116 +11,119 @@
   },
   "skills": [
     {
-      "name": "memory-recall",
+      "name": "recall-before-task",
       "description": "Recall relevant memories before starting a task",
       "category": "memory",
       "layer": 1,
-      "files": ["memory-recall/recall-before-task.md"]
+      "auto_invoke": true
     },
     {
       "name": "retain-learning",
       "description": "Retain a new learning or discovery into Hindsight",
       "category": "memory",
-      "layer": 1,
-      "files": ["memory-recall/retain-learning.md"]
+      "layer": 1
     },
     {
       "name": "reflect-session",
       "description": "Reflect on the current session and consolidate learnings",
       "category": "memory",
-      "layer": 1,
-      "files": ["memory-recall/reflect-session.md"]
+      "layer": 1
     },
     {
       "name": "pre-push-check",
       "description": "Run the full pre-push review pipeline before pushing code",
       "category": "code-review",
-      "layer": 4,
-      "files": ["code-review/pre-push-check.md"]
+      "layer": 4
     },
     {
       "name": "new-feature",
       "description": "Start a new feature with worktree, memory recall, and workspace setup",
       "category": "worktree-flow",
-      "layer": 3,
-      "files": ["worktree-flow/new-feature.md"]
+      "layer": 3
     },
     {
       "name": "finish-feature",
       "description": "Finish a feature with checks, commit, merge, and learning retention",
       "category": "worktree-flow",
-      "layer": 3,
-      "files": ["worktree-flow/finish-feature.md"]
+      "layer": 3
     },
     {
       "name": "create-pr",
       "description": "Full PR creation pipeline with self-review and checks",
       "category": "pr-pipeline",
-      "layer": 4,
-      "files": ["pr-pipeline/create-pr.md"]
+      "layer": 4
     },
     {
       "name": "spec-feature",
       "description": "Spec a new feature with architecture recall, planning, and task breakdown",
       "category": "process-discipline",
-      "layer": 5,
-      "files": ["process-discipline/spec-feature.md"]
+      "layer": 5
     },
     {
       "name": "architecture-decision",
       "description": "Document an architectural decision with rationale and memory retention",
       "category": "process-discipline",
-      "layer": 5,
-      "files": ["process-discipline/architecture-decision.md"]
+      "layer": 5
     },
     {
       "name": "session-summary",
       "description": "Generate a session summary for Langfuse tracing and observability",
       "category": "observability",
-      "layer": 6,
-      "files": ["observability/session-summary.md"]
+      "layer": 6
     },
     {
       "name": "update-visualizations",
       "description": "Analyze recent changes and update affected architecture visualizations",
       "category": "visualizations",
-      "layer": 5,
-      "files": ["visualizations/update-visualizations.md"]
+      "layer": 5
     },
     {
       "name": "visualizations-config",
       "description": "Configure visualization location, style presets, and output preferences",
       "category": "visualizations",
-      "layer": 5,
-      "files": ["visualizations/visualizations-config.md"]
+      "layer": 5
     },
     {
       "name": "dependency-update",
       "description": "Check if Brewfile, Formula, or install script need updating when dependencies change",
       "category": "process-discipline",
-      "layer": 5,
-      "files": ["process-discipline/dependency-update.md"]
+      "layer": 5
     },
     {
       "name": "writing-plans",
       "description": "Extends superpowers:writing-plans with agent-deck parallel session handoff",
       "category": "superpowers-wrappers",
-      "layer": 5,
-      "files": ["superpowers-wrappers/writing-plans.md"]
+      "layer": 5
     },
     {
       "name": "best-roi-task",
       "description": "Find the best ROI task in a Jira Epic — highest points for least effort, unassigned To Do only",
       "category": "process-discipline",
-      "layer": 5,
-      "files": ["process-discipline/best-roi-task.md"]
+      "layer": 5
     },
     {
       "name": "codebase-walkthrough",
       "description": "Deep codebase walkthrough before implementation — trace the full flow and build understanding",
       "category": "process-discipline",
-      "layer": 5,
-      "files": ["process-discipline/codebase-walkthrough.md"]
+      "layer": 5
+    },
+    {
+      "name": "resolve-repo",
+      "description": "Resolve the correct repository for a task — detect VCS platform, match ticket to repo, clone if missing",
+      "category": "git-platform",
+      "layer": 5
+    },
+    {
+      "name": "task-complete",
+      "description": "Mark a devflow task as done — update status, move to done/ folder, and retain learnings",
+      "category": "process-discipline",
+      "layer": 5
+    },
+    {
+      "name": "task-prioritize",
+      "description": "Reprioritize a devflow task — move between priority folders (P0-P4) and update frontmatter",
+      "category": "process-discipline",
+      "layer": 5
     }
   ]
 }
