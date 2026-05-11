@@ -184,9 +184,14 @@ skills_convert() {
   # then emit through jq for proper JSON formatting.
   local skill_paths=""
 
-  # Track exactly which files we manage this run, so we can detect orphans.
-  local -a managed_commands=()  # filenames inside commands/ (e.g. "review.md")
-  local -a managed_skill_dirs=() # directory names inside skills/ (e.g. "review")
+  # Build the list of ALL registered skill names (every entry in the registry,
+  # whether or not its source SKILL.md exists). Used below for orphan detection
+  # so that a registered-but-source-missing skill's existing plugin output is
+  # NOT flagged as an orphan — orphans are only names absent from the registry.
+  local -a registered_names=()
+  for (( i=0; i<count; i++ )); do
+    registered_names+=("$(jq -r ".skills[$i].name" "$registry")")
+  done
 
   for (( i=0; i<count; i++ )); do
     local name
@@ -210,8 +215,6 @@ skills_convert() {
 
     skill_count=$((skill_count + 1))
     skill_paths+="./skills/${name}/SKILL.md"$'\n'
-    managed_commands+=("${name}.md")
-    managed_skill_dirs+=("${name}")
     ok "Skill: ${name}"
   done
 
@@ -283,31 +286,34 @@ MARKET_EOF
     ok "Generated .claude-plugin/marketplace.json"
   fi
 
-  # ── Orphan detection: files in the plugin dir not produced by this run ────
-  # Anything in commands/*.md or skills/*/ that isn't in our managed list is
-  # an orphan — usually a hand-authored slash command someone added directly
-  # to the plugin tree without anchoring it in the registry. We PRESERVE
-  # orphans by default (the historical regression deleted them silently).
-  # Pass --prune to opt in to removal.
+  # ── Orphan detection: files in the plugin dir whose name isn't in the registry
+  # at all. Files for registered-but-source-missing skills are NOT orphans;
+  # they kept their previous output and the user can fix the source.
+  # We PRESERVE orphans by default (the historical regression deleted them
+  # silently). Pass --prune to opt in to removal.
   local -a orphan_commands=()
   local -a orphan_skill_dirs=()
 
   shopt -s nullglob
   for f in "${output}/commands"/*.md; do
     local fname="$(basename "$f")"
+    local fbase="${fname%.md}"
     local found=false
-    # `${arr[@]+"${arr[@]}"}` is the bash 3.2-safe empty-array expansion under set -u.
-    for m in ${managed_commands[@]+"${managed_commands[@]}"}; do
-      [[ "$fname" == "$m" ]] && { found=true; break; }
-    done
+    if [[ ${#registered_names[@]} -gt 0 ]]; then
+      for n in "${registered_names[@]}"; do
+        [[ "$fbase" == "$n" ]] && { found=true; break; }
+      done
+    fi
     $found || orphan_commands+=("$fname")
   done
   for d in "${output}/skills"/*/; do
     local dname="$(basename "$d")"
     local found=false
-    for m in ${managed_skill_dirs[@]+"${managed_skill_dirs[@]}"}; do
-      [[ "$dname" == "$m" ]] && { found=true; break; }
-    done
+    if [[ ${#registered_names[@]} -gt 0 ]]; then
+      for n in "${registered_names[@]}"; do
+        [[ "$dname" == "$n" ]] && { found=true; break; }
+      done
+    fi
     $found || orphan_skill_dirs+=("$dname")
   done
   shopt -u nullglob

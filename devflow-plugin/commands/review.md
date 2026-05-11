@@ -94,112 +94,20 @@ If any integration is unavailable (no Atlassian MCP, no Hindsight, no Linear MCP
 ## Phase 2 — Review agents (Thorough mode: parallel)
 
 ### Quick Mode
-Single-pass review covering all categories below. Skip to Phase 4.
+Single-pass review covering Bug, Convention, and Test categories together. Skip to Phase 4.
 
 ### Thorough Mode
-Launch **parallel review agents** via the `Agent` tool — **dispatch them in a single message with multiple Agent tool uses** so they actually run in parallel. Each agent receives the full **context packet**: diff, MR metadata, task + epic context, document summaries, sibling MR summaries, Hindsight memories, CLAUDE.md, and surrounding-code excerpts.
+**Read `AGENTS.md` (sibling to this SKILL.md) for the full agent definitions, activation rules, and the finding JSON schema.** It defines 6 agents — 3 always-on (Bug Scanner, Convention/CLAUDE.md, Test Coverage) and 3 conditional (Plan Alignment, Git History, Sibling MR/Epic Coherence — the last applies the Aircall epic-MR investigation pattern with the 3-of-4-numbers typo heuristic).
 
-### Always-on (3)
-
-**Agent 1 — Bug Scanner & Error-Handling Auditor.** Logic errors, null/undefined handling, race conditions, silent failures (`catch` blocks that swallow errors, unguarded property access), error propagation (does the error surface or get lost?), security (injection, unvalidated input, credential exposure). `subagent_type: general-purpose`.
-
-**Agent 2 — Convention & CLAUDE.md Compliance.** Every changed line vs CLAUDE.md rules (naming, imports, architecture, error handling, scope discipline). Flag comments that disagree with the code. Code style consistency with surrounding code. `subagent_type: general-purpose`.
-
-**Agent 3 — Test Coverage Analyzer.** Are new code paths covered by tests? Are edge cases tested (error paths, boundary values, off-by-one)? Do tests verify behaviour or just call mocks? Missing scenarios for new functionality. `subagent_type: general-purpose`.
-
-### Conditional (3) — only when their preconditions are met
-
-**Agent 4 — Plan Alignment.** Activate if Phase 1d returned ≥1 document, or the task has detailed acceptance criteria. Check the implementation against documented requirements; flag deviations and scope drift. Are AC met? Is scope correct (not too narrow, not too wide)?
-
-**Agent 5 — Git History & Blame Context.** Activate if any changed file has >3 distinct authors or >10 commits in the last 6 months (compute via `git shortlog -sn --since=6.months <file>` and `git log --since=6.months --oneline <file> | wc -l`). Surface historical patterns in the modified code, previous bugs in the same area, and whether the author is familiar with this code (check `git log --author=<email> -- <file>`).
-
-**Agent 6 — Sibling MR / Epic Coherence.** Activate if the epic has ≥2 other MRs (merged or open). Use the **Aircall epic-MR investigation pattern** from `~/.claude/CLAUDE.md`:
-
-1. Pull every MR linked to the ticket from the Jira "Development" field (`customfield_10000`) — this is the highest-signal source for ticket→MR mapping.
-2. Apply the **3-of-4 numbers heuristic**: an MR labelled `XYZ-NMNN` where 3 of the 4 digits match the target ticket is likely a typo by the developer. Open the MR's actual diff to confirm.
-3. Compare patterns across siblings — review comments on those MRs that also apply here, integration risks, epic-level consistency.
-4. Prefer GitLab/GitHub search by **ticket-ID-in-content** over title search (titles drift / get typo'd):
-   - GitLab: `glab mr list --repo <project> --search "<TASK-ID>" --state all --per-page 5`
-   - GitHub: `gh pr list --repo <owner/repo> --search "<TASK-ID>" --state all --limit 5`
-
-### Finding format
-
-Each agent must return findings as structured JSON:
-```json
-[{
-  "agent": "bug-scanner",
-  "severity": "critical|important|suggestion",
-  "confidence": 85,
-  "category": "bug|convention|test|alignment|history|coherence",
-  "file": "src/file.ts",
-  "line": 42,
-  "title": "Short description",
-  "detail": "Full explanation grounded in the diff and context",
-  "suggestion": "Concrete fix suggestion, ideally a diff or `suggestion` block"
-}]
-```
+Dispatch all active agents in a **single message with multiple `Agent` tool uses** so they actually run in parallel. Each receives the full context packet (diff + MR metadata + task/epic + documents + sibling MRs + Hindsight memories + CLAUDE.md + surrounding-code excerpts).
 
 ## Phase 3 — Confidence scoring & deduplication
 
-Score every finding 0–100:
-
-| Score | Meaning | Action |
-|-------|---------|--------|
-| 0–24 | False positive / linter territory / pre-existing | Drop |
-| 25–49 | Might be real, low impact, or stylistic without guideline backing | Drop |
-| 50–74 | Real but minor, pre-existing pattern, nitpick | Mention as **Suggestion** |
-| 75–89 | Very likely real, important, will impact functionality | Report as **Important** |
-| 90–100 | Confirmed real, critical, production risk | Report as **Critical** |
-
-**Pre-existing pattern rule:** If the same pattern exists in other (untouched) files in the codebase (verify with `Grep`/`Glob`), cap the finding's confidence at 50. Acknowledge but don't block — it's a separate refactor.
-
-**Deduplication:** when multiple agents flag the same `file:line` for the same root cause, keep the highest-confidence version and append `(flagged by N/<active_agents> agents)` for added weight.
-
-**Cross-check against merged sibling MRs (Source-of-Truth):** before finalizing a finding, sanity-check it against the actual code in merged sibling MRs from Phase 1d. If sibling-MR code disagrees with what a doc or ticket says, follow the sibling MR — it's the absolute SoT.
+**Read `TEMPLATES.md` (sibling) for the full scoring rubric (0–100 scale, severity thresholds, pre-existing pattern cap, deduplication, and Source-of-Truth cross-check rule).** Apply it to every finding before output.
 
 ## Phase 4 — Output
 
-Present the review as structured Markdown:
-
-```
-# Code Review: <PR/MR title or "Local diff">
-
-**Source:** <URL or "local working tree">  •  **Mode:** <quick|thorough>  •  **Files changed:** <N>
-**Verdict:** READY TO MERGE / NEEDS FIXES / NEEDS DISCUSSION
-
-## Context used
-- Task: <task ID and title, or "none">
-- Epic: <epic ID and title, or "none">
-- Documents: <N fetched, or "none">
-- Sibling MRs: <N, or "none">
-- Conventions: <CLAUDE.md found: yes/no>
-- Memory: <Hindsight results: N, or "skipped">
-- Agents run: <list of active agents>
-
-## Strengths
-- <what the author did well>
-
-## Critical (must fix before merge)
-### <file>:<line> — <one-sentence what>
-**Confidence:** <N>/100  •  **Agent(s):** <names>  •  **Flagged by:** <N>/<active_agents>
-<why it matters>
-
-**Suggested fix:**
-\`\`\`<lang>
-<diff or replacement>
-\`\`\`
-
-## Important (should fix)
-<same shape>
-
-## Suggestions (consider)
-- <one-liner with file:line>
-
----
-**Rationale:** <one or two lines justifying the verdict>
-```
-
-Skip empty sections. For Quick mode, drop the per-finding confidence numbers and combine findings into one summary block.
+**Read `TEMPLATES.md` for the structured Markdown output template** (Verdict + Context used + Strengths + Critical + Important + Suggestions + Rationale). Skip empty sections. For Quick mode, drop per-finding confidence numbers and combine findings into one summary block.
 
 ## Phase 5 — Optional draft inline review on the MR (Thorough mode only)
 
@@ -211,52 +119,7 @@ Skip this phase for local diffs. After presenting findings, use `AskUserQuestion
   2. **Yes, Critical + Important only** — skip Suggestions
   3. **No, just the output above**
 
-### If [1] or [2]:
-
-**GitHub** — create a PENDING review (no `event` field → stays pending):
-```bash
-gh api --method POST repos/<owner>/<repo>/pulls/<n>/reviews \
-  --input - <<EOF
-{
-  "commit_id": "<head_sha>",
-  "comments": [
-    { "path": "src/file.ts", "line": 42, "side": "RIGHT", "body": "..." }
-  ]
-}
-EOF
-```
-
-**GitLab** — first fetch `diff_refs`, then post each comment as a draft note:
-```bash
-diff_refs=$(glab api "projects/:fullpath/merge_requests/<id>" \
-  --jq '.diff_refs | {base_sha, head_sha, start_sha}')
-
-glab api --method POST "projects/:fullpath/merge_requests/<id>/draft_notes" \
-  -f note="..." \
-  -f "position[position_type]=text" \
-  -f "position[base_sha]=<base_sha>" \
-  -f "position[head_sha]=<head_sha>" \
-  -f "position[start_sha]=<start_sha>" \
-  -f "position[old_path]=src/file.ts" \
-  -f "position[new_path]=src/file.ts" \
-  -f "position[new_line]=42"
-```
-
-**Comment body template:**
-```markdown
-**[<Agent>]** | Severity: <level> | Confidence: <N>/100
-
-<what>
-
-**Why it matters:** <why>
-
-**Suggested fix:**
-\`\`\`suggestion
-<code>
-\`\`\`
-```
-
-Confirm to the user that the review is PENDING — they need to open the MR/PR UI and click "Submit review" to send it.
+If the user picks [1] or [2]: **read `TEMPLATES.md` (sibling to this SKILL.md)** for the exact GitHub `gh api` PENDING-review call, the GitLab `glab api` per-comment draft-note call, and the comment-body template. Confirm to the user that the review is in PENDING state — they submit manually from the VCS UI.
 
 ## Phase 6 — Retain learnings
 
