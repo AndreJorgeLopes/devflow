@@ -36,6 +36,12 @@
       "layer": 4
     },
     {
+      "name": "review",
+      "description": "Multi-perspective code review of a PR/MR or local diff — parallel agents, confidence scoring, optional draft review comments",
+      "category": "code-review",
+      "layer": 4
+    },
+    {
       "name": "new-feature",
       "description": "Start a new feature with worktree, memory recall, and workspace setup",
       "category": "worktree-flow",
