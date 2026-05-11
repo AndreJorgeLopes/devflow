@@ -92,6 +92,29 @@ Gather, in priority order:
 
 If any integration is unavailable (no Atlassian MCP, no Hindsight, no Linear MCP), log what was skipped and continue with available context — never block on missing infrastructure (per design §8 fallback rule).
 
+### 1e. Ingest existing discussions (always, paginated)
+
+Fetch **every** comment + review thread already on the MR/PR — open AND resolved — to know what reviewers, the author, and bots (Cursor Bugbot, GitLab security gate) have already raised. Cross-check uses this to mark each of your findings as NEW vs. ALREADY-RAISED (and whether resolved/fixed). This prevents re-flagging issues the author already addressed in earlier diff versions.
+
+**Pagination is mandatory.** GitLab's default `per_page` is 20, max 100 — a busy MR easily spills onto page 2+. Always use `--paginate` (glab) or `--paginate` (gh) to fetch every page.
+
+**GitLab:**
+```bash
+glab api --paginate "projects/<urlenc-fullpath>/merge_requests/<n>/discussions?per_page=100"
+```
+The `discussions` endpoint returns threads (groups of notes) with each note's `resolved` boolean + `position` (file/line for inline comments) + `body` + `author`. Prefer this over `/notes` (which returns notes flat without resolution status or thread grouping).
+
+**GitHub:**
+```bash
+gh pr view <n> --repo <owner/repo> --json reviews,comments  # PR-level
+gh api --paginate "repos/<owner>/<repo>/pulls/<n>/comments?per_page=100"  # inline review comments
+gh api --paginate "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100"  # all review submissions
+```
+
+**Parse:** for each thread, extract `(file, line, body, author, resolved_state, fix_commit_sha if mentioned)`. Bots like Cursor Bugbot typically reply with their fix-commit SHA in the same thread when the author pushes a fix. The author's reply usually says "Fixed in <sha>" or "changed this line in version N of the diff". Capture both.
+
+**Cap:** if the MR has >100 threads, summarize older ones (>30 days) and load the most-recent 50 in full.
+
 ## Phase 2 — Review agents (Thorough mode: parallel)
 
 ### Quick Mode
@@ -102,15 +125,23 @@ Single-pass review covering Bug, Convention, and Test categories together. Skip 
 
 Each agent declares `subagent_type: <OMC-specialist> | general-purpose` — pick the OMC specialist (e.g. `debugger`, `code-reviewer`, `qa-tester`, `verifier`, `tracer`, `critic`) when `oh-my-claudecode` is installed, else fall back to `general-purpose`. See `AGENTS.md` for the full mapping.
 
-Dispatch all active agents in a **single message with multiple `Agent` tool uses** so they actually run in parallel. Each receives the full context packet (diff + MR metadata + task/epic + documents + sibling MRs + Hindsight memories + CLAUDE.md + surrounding-code excerpts).
+Dispatch all active agents in a **single message with multiple `Agent` tool uses** so they actually run in parallel. Each receives the full context packet (diff + MR metadata + task/epic + documents + sibling MRs + Hindsight memories + CLAUDE.md + surrounding-code excerpts + **existing discussions from Phase 1e**).
 
-## Phase 3 — Confidence scoring & deduplication
+## Phase 3 — Confidence scoring, deduplication, and cross-check
 
-**Read `TEMPLATES.md` (sibling) for the full scoring rubric (0–100 scale, severity thresholds, pre-existing pattern cap, deduplication, and Source-of-Truth cross-check rule).** Apply it to every finding before output.
+**Read `TEMPLATES.md` (sibling) for the full scoring rubric (0–100 scale, severity thresholds, pre-existing pattern cap, deduplication, Source-of-Truth cross-check rule, and the existing-discussion cross-check status table).** Apply it to every finding before output.
 
-## Phase 4 — Output
+**Cross-check against Phase 1e existing discussions for every finding:** mark each as one of:
+- **NEW** — no prior thread mentions this file:line or this issue class.
+- **RAISED-OPEN** — a thread covers this issue but is unresolved. Note the thread author + thread #.
+- **RAISED-RESOLVED-FIXED** — a thread covers this and is resolved, AND the fix commit's diff confirms the fix landed. Don't re-flag in output; mention in the Strengths section under "Already addressed in review".
+- **RAISED-RESOLVED-NOT-FIXED** — a thread covers this and was marked resolved, but the latest diff still has the issue. Re-flag with a note ("resolved by author but still present at HEAD").
 
-**Read `TEMPLATES.md` for the structured Markdown output template** (Verdict + Context used + Strengths + Critical + Important + Suggestions + Rationale). Skip empty sections. For Quick mode, drop per-finding confidence numbers and combine findings into one summary block.
+This is the single biggest source of review-noise reduction. Re-flagging already-addressed issues wastes reviewer time and erodes trust.
+
+## Phase 4 — Output (visual, compact, ADHD-friendly)
+
+**Read `TEMPLATES.md` for the structured Markdown output template.** The format uses circle emojis for at-a-glance severity scanning (🔴 critical, 🟠 important, 🟡 suggestion, 🟢 strength/already-fixed, 🔵 info/TL;DR), bolds key terms (bionic-reading-style emphasis), keeps each finding to ~3 lines, and ends with a **TL;DR block** that recaps the verdict + counts of each severity + the top 3 things to fix. Skip empty sections. For Quick mode, drop per-finding confidence numbers and combine into one summary block.
 
 ## Phase 5 — Optional draft inline review on the MR (Thorough mode only)
 
@@ -139,5 +170,7 @@ If any significant pattern, gotcha, or convention was discovered during the revi
 - **Confidence over quantity.** Fewer high-confidence findings beat many low-confidence ones.
 - **Cross-check ticket vs MR state.** Ticket status fields lag merge state — always verify via the VCS, even when the ticket says "In Code Review" or "Ready for Production".
 - **For Aircall tickets**, the Jira "Development" field (`customfield_10000`) is the canonical ticket→MR mapping. Use it before any title-based MR search.
+- **Always paginate** when fetching MR discussions / PR comments in Phase 1e (`glab api --paginate` / `gh api --paginate`). A busy MR has comments spilling onto page 2+ and the default `per_page` is small — missing them defeats the cross-check.
+- **Never re-flag a RAISED-RESOLVED-FIXED finding** in the output's Critical/Important/Suggestions sections. List it under "Already addressed in review" instead. Re-flagging closed issues erodes trust in the review.
 
 $ARGUMENTS

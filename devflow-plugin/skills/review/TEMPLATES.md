@@ -1,72 +1,128 @@
 # Review templates — scoring, output, and VCS draft API
 
-Bundle file referenced by `SKILL.md` Phases 3 (scoring), 4 (output), and 5 (draft inline review).
+Bundle file referenced by `SKILL.md` Phases 3 (scoring + cross-check), 4 (visual output), and 5 (draft inline review).
 
-## Phase 3 — Confidence scoring rubric
+## Phase 3 — Confidence scoring + dedup + cross-check status
+
+### Scoring rubric
 
 Score every finding 0–100. Drop anything below 50.
 
 | Score | Meaning | Action |
-|-------|---------|--------|
-| 0–24 | False positive / linter territory / pre-existing | Drop |
-| 25–49 | Low impact, or stylistic without guideline backing | Drop |
-| 50–74 | Real but minor, pre-existing pattern, nitpick | Mention as **Suggestion** |
-| 75–89 | Very likely real, important, will impact functionality | Report as **Important** |
-| 90–100 | Confirmed real, critical, production risk | Report as **Critical** |
+|---|---|---|
+| 0–49 | False positive / linter territory / pre-existing / nitpick without guideline backing | Drop |
+| 50–74 | Real but minor, pre-existing pattern | 🟡 **Suggestion** |
+| 75–89 | Very likely real, important, impacts functionality | 🟠 **Important** |
+| 90–100 | Confirmed real, critical, production risk | 🔴 **Critical** |
 
-**Pre-existing pattern rule:** if the same pattern exists in other (untouched) files in the codebase (verify with `Grep`/`Glob`), cap the finding's confidence at 50. Acknowledge but don't block — that's a separate refactor.
+**Pre-existing pattern cap:** if the same pattern exists in untouched files (verify with `Grep`/`Glob`), cap confidence at 50. Acknowledge but don't block.
 
-**Deduplication:** when multiple agents flag the same `file:line` for the same root cause, keep the highest-confidence version and append `(flagged by N/<active_agents> agents)` for added weight.
+**Cross-agent dedup:** when multiple agents flag the same `file:line` for the same root cause, keep the highest-confidence version and append `(N/<active> agents)`.
 
-**Cross-check against merged sibling MRs (Source-of-Truth):** before finalizing a finding, sanity-check it against the actual code in merged sibling MRs from Phase 1d. If sibling-MR code disagrees with what a doc or ticket says, follow the sibling MR — it's the absolute SoT.
+**Sibling-MR Source-of-Truth cross-check:** before finalizing, sanity-check against merged sibling-MR code. If sibling MRs disagree with docs/tickets, follow the sibling MRs.
 
-## Phase 4 — Output template
+### Cross-check status (NEW — applied to every finding from Phase 1e)
+
+| Status | Meaning | Output treatment |
+|---|---|---|
+| **NEW** | No prior thread mentions this file:line or issue class | Include in 🔴 / 🟠 / 🟡 section as normal |
+| **RAISED-OPEN** | Existing thread covers this; still unresolved | Include in section + line tag `(also raised by @<user>, thread #N — open)` |
+| **RAISED-RESOLVED-FIXED** | Existing thread covers this AND latest diff confirms fix landed | **DO NOT re-flag.** Add to 🟢 Strengths under "Already addressed in review" with thread # + fix SHA |
+| **RAISED-RESOLVED-NOT-FIXED** | Resolved by author but issue still present at HEAD | Include in section + line tag `(thread #N marked resolved but issue still present)` — high reviewer-trust value |
+
+Re-flagging closed issues erodes trust. The cross-check is the single biggest source of review-noise reduction.
+
+---
+
+## Phase 4 — Visual output template
+
+Compact, emoji-anchored, ADHD-friendly. ~3 lines per finding. Bold the key term in each finding (bionic-reading-style emphasis). TL;DR at the bottom with severity counts + top 3 fixes.
+
+### Emoji legend (used at every section header AND every finding bullet)
+
+| Emoji | Means |
+|---|---|
+| 🔴 | Critical (must fix before merge) |
+| 🟠 | Important (should fix) |
+| 🟡 | Suggestion (consider) |
+| 🟢 | Strength / already-fixed / passing check |
+| 🔵 | Info / context / TL;DR |
+
+### Template
 
 ```
-# Code Review: <PR/MR title or "Local diff">
+# 🔵 Code Review: <PR/MR title or "Local diff">
 
-**Source:** <URL or "local working tree">  •  **Mode:** <quick|thorough>  •  **Files changed:** <N>
-**Verdict:** READY TO MERGE / NEEDS FIXES / NEEDS DISCUSSION
+**Source:** <URL or "local working tree">  •  **Mode:** <quick|thorough>  •  **Files changed:** <N>  •  **Diff:** <N lines>
+**Verdict:** ✅ READY TO MERGE / ⚠️ NEEDS FIXES / ❓ NEEDS DISCUSSION
 
-## Context used
-- Task: <task ID and title, or "none">
-- Epic: <epic ID and title, or "none">
-- Documents: <N fetched, or "none">
-- Sibling MRs: <N, or "none">
-- Conventions: <CLAUDE.md found: yes/no>
-- Memory: <Hindsight results: N, or "skipped">
-- Agents run: <list of active agents>
+## 🔵 Context used
+- 🎯 **Task:** <task ID + title or "none">
+- 🧩 **Epic:** <epic ID or "none">
+- 📄 **Docs:** <N fetched>
+- 🔁 **Sibling MRs:** <N>
+- 📜 **Conventions:** CLAUDE.md <found / not found>
+- 🧠 **Memory:** <N Hindsight hits>
+- 💬 **Existing discussions:** <N threads / N resolved>
+- 🤖 **Agents run:** <list>
 
-## Strengths
-- <what the author did well>
+## 🟢 Strengths
 
-## Critical (must fix before merge)
-### <file>:<line> — <one-sentence what>
-**Confidence:** <N>/100  •  **Agent(s):** <names>  •  **Flagged by:** <N>/<active_agents>
-<why it matters>
+- 🟢 <what the author did well — one line each>
+- 🟢 **Already addressed in review:** <N issues raised by reviewers/bots + fixed in commits <sha-list>> (no re-flag)
 
-**Suggested fix:**
+## 🔴 Critical (must fix before merge)
+
+### 🔴 <file>:<line> — **<key term>** <one-sentence what>
+**Conf:** <N>/100 • **Agent(s):** <names> • **Status:** NEW / RAISED-OPEN @<user> #<N>
+<why it matters — 1 sentence>
+
+**Fix:**
 \`\`\`<lang>
 <diff or replacement>
 \`\`\`
 
-## Important (should fix)
-<same shape>
+## 🟠 Important (should fix)
 
-## Suggestions (consider)
-- <one-liner with file:line>
+### 🟠 <file>:<line> — **<key term>** <what>
+**Conf:** <N>/100 • **Status:** <NEW / RAISED-OPEN / RAISED-RESOLVED-NOT-FIXED>
+<why — 1 sentence>
+
+**Fix:** <inline 1-line fix OR fenced block>
+
+## 🟡 Suggestions
+
+- 🟡 `<file>:<line>` — **<key term>** <one-liner with the fix inline>
+- 🟡 `<file>:<line>` — **<key term>** <one-liner>
 
 ---
-**Rationale:** <one or two lines justifying the verdict>
+
+## 🔵 TL;DR
+
+> 🔴 **<N> critical** · 🟠 **<N> important** · 🟡 **<N> suggestions** · 🟢 **<N> already-fixed**
+>
+> **Top 3 to fix:**
+> 1. **<finding 1>** — `<file>:<line>`
+> 2. **<finding 2>** — `<file>:<line>`
+> 3. **<finding 3>** — `<file>:<line>`
+>
+> **Verdict:** <one-line justification>
 ```
 
-Skip empty sections. For Quick mode, drop the per-finding confidence numbers and combine findings into one summary block.
+### Rules for the visual output
+
+- **Skip empty sections.** If no critical findings, drop the 🔴 Critical heading entirely (don't print "None").
+- **Bold the key term** in each finding's title (the noun phrase that names the bug class — "duplicate metric emission", "type assertion", "naming inconsistency"). This is the bionic-reading anchor.
+- **3 lines max per finding** in 🔴 / 🟠. One line each in 🟡.
+- **Cross-check status is mandatory** on every finding (NEW / RAISED-OPEN / RAISED-RESOLVED-FIXED / RAISED-RESOLVED-NOT-FIXED). RAISED-RESOLVED-FIXED items move to 🟢 Strengths, never appear in 🔴/🟠/🟡.
+- **TL;DR is mandatory.** Counts per severity + top 3 fixes + one-line verdict.
+- **Quick mode** drops the per-finding `Conf:` line and `Fix:` code blocks; consolidates into one paragraph per severity.
+
+---
 
 ## Phase 5 — Draft inline review on the MR
 
-### GitHub — create a PENDING review
-
-Omit the `event` field so the review stays in PENDING state; the user submits manually from the GitHub UI.
+### GitHub — PENDING review (omit `event`)
 
 ```bash
 gh api --method POST repos/<owner>/<repo>/pulls/<n>/reviews \
@@ -81,8 +137,6 @@ EOF
 ```
 
 ### GitLab — draft notes (per-comment)
-
-GitLab requires `diff_refs` for inline positioning. Fetch once, then post each comment as a draft note.
 
 ```bash
 diff_refs=$(glab api "projects/:fullpath/merge_requests/<id>" \
@@ -99,10 +153,10 @@ glab api --method POST "projects/:fullpath/merge_requests/<id>/draft_notes" \
   -f "position[new_line]=42"
 ```
 
-### Comment body template
+### Comment body template (preserves emoji severity)
 
 ```markdown
-**[<Agent>]** | Severity: <level> | Confidence: <N>/100
+🔴 / 🟠 / 🟡 **[<Agent>]** | Severity: <level> | Confidence: <N>/100
 
 <what>
 
@@ -114,4 +168,4 @@ glab api --method POST "projects/:fullpath/merge_requests/<id>/draft_notes" \
 \`\`\`
 ```
 
-After drafting: confirm to the user that the review is in PENDING state — they need to open the MR/PR UI and click "Submit review" to actually send it.
+After drafting: confirm to the user that the review is in PENDING state — they submit manually from the VCS UI.
