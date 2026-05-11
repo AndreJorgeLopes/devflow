@@ -129,7 +129,7 @@ skills_remove() {
 # The plugin.json `skills` array lists every SKILL.md so all skills are loaded.
 
 skills_convert() {
-  local output="" plugin_name="devflow" marketplace=false
+  local output="" plugin_name="devflow" marketplace=false prune=false
 
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -137,7 +137,8 @@ skills_convert() {
       --output)  output="$2"; shift 2 ;;
       --name)    plugin_name="$2"; shift 2 ;;
       --marketplace) marketplace=true; shift ;;
-      *)         die "Unknown option: $1. Usage: devflow skills convert [--output <dir>] [--name <name>] [--marketplace]" ;;
+      --prune)   prune=true; shift ;;
+      *)         die "Unknown option: $1. Usage: devflow skills convert [--output <dir>] [--name <name>] [--marketplace] [--prune]" ;;
     esac
   done
 
@@ -162,9 +163,13 @@ skills_convert() {
   section "Converting devflow skills to Claude Code plugin"
   info "Output: ${output}"
   info "Plugin name: ${plugin_name}"
+  [[ "$prune" == true ]] && info "Prune: yes (orphans WILL be removed)"
 
-  # ── Create directory structure ────────────────────────────────────────────
-  rm -rf "$output"
+  # ── Ensure directory structure exists (idempotent — no rm -rf) ────────────
+  # Historical regression: `rm -rf "$output"` here destroyed any hand-authored
+  # files in commands/ or skills/ that weren't in the registry (e.g. a slash
+  # command someone wrote in a Claude session). We now refresh per-skill and
+  # warn about orphans instead. Use `--prune` to opt in to removal.
   mkdir -p "${output}/.claude-plugin"
   mkdir -p "${output}/commands"
   mkdir -p "${output}/skills"
@@ -179,6 +184,15 @@ skills_convert() {
   # then emit through jq for proper JSON formatting.
   local skill_paths=""
 
+  # Build the list of ALL registered skill names (every entry in the registry,
+  # whether or not its source SKILL.md exists). Used below for orphan detection
+  # so that a registered-but-source-missing skill's existing plugin output is
+  # NOT flagged as an orphan — orphans are only names absent from the registry.
+  local -a registered_names=()
+  for (( i=0; i<count; i++ )); do
+    registered_names+=("$(jq -r ".skills[$i].name" "$registry")")
+  done
+
   for (( i=0; i<count; i++ )); do
     local name
     name=$(jq -r ".skills[$i].name" "$registry")
@@ -190,10 +204,13 @@ skills_convert() {
       continue
     fi
 
-    # 1) Folder-based skill (full directory copy)
+    # 1) Folder-based skill — refresh ONLY this skill's directory, not the
+    # entire skills/ tree, so orphan skill dirs from earlier runs survive.
+    rm -rf "${output}/skills/${name}"
     cp -R "$source_dir" "${output}/skills/${name}"
 
-    # 2) Flat command mirror (strip `name:` line from frontmatter)
+    # 2) Flat command mirror (strip `name:` line from frontmatter). The Write
+    # is to a single file, so it never touches sibling commands files.
     _strip_name_to_command "$source_md" "${output}/commands/${name}.md"
 
     skill_count=$((skill_count + 1))
@@ -269,6 +286,74 @@ MARKET_EOF
     ok "Generated .claude-plugin/marketplace.json"
   fi
 
+  # ── Orphan detection: files in the plugin dir whose name isn't in the registry
+  # at all. Files for registered-but-source-missing skills are NOT orphans;
+  # they kept their previous output and the user can fix the source.
+  # We PRESERVE orphans by default (the historical regression deleted them
+  # silently). Pass --prune to opt in to removal.
+  local -a orphan_commands=()
+  local -a orphan_skill_dirs=()
+
+  shopt -s nullglob
+  for f in "${output}/commands"/*.md; do
+    local fname="$(basename "$f")"
+    local fbase="${fname%.md}"
+    local found=false
+    if [[ ${#registered_names[@]} -gt 0 ]]; then
+      for n in "${registered_names[@]}"; do
+        [[ "$fbase" == "$n" ]] && { found=true; break; }
+      done
+    fi
+    $found || orphan_commands+=("$fname")
+  done
+  for d in "${output}/skills"/*/; do
+    local dname="$(basename "$d")"
+    local found=false
+    if [[ ${#registered_names[@]} -gt 0 ]]; then
+      for n in "${registered_names[@]}"; do
+        [[ "$dname" == "$n" ]] && { found=true; break; }
+      done
+    fi
+    $found || orphan_skill_dirs+=("$dname")
+  done
+  shopt -u nullglob
+
+  local orphan_count=$((${#orphan_commands[@]} + ${#orphan_skill_dirs[@]}))
+  if [[ $orphan_count -gt 0 ]]; then
+    echo ""
+    if [[ "$prune" == true ]]; then
+      warn "Removing ${orphan_count} orphan(s) (--prune flag set)"
+      if [[ ${#orphan_commands[@]} -gt 0 ]]; then
+        for f in "${orphan_commands[@]}"; do
+          warn "  - commands/${f} (removed)"
+          rm -f "${output}/commands/${f}"
+        done
+      fi
+      if [[ ${#orphan_skill_dirs[@]} -gt 0 ]]; then
+        for d in "${orphan_skill_dirs[@]}"; do
+          warn "  - skills/${d}/ (removed)"
+          rm -rf "${output}/skills/${d}"
+        done
+      fi
+    else
+      warn "Found ${orphan_count} orphan file(s) in plugin dir — NOT registered in skills/registry.json:"
+      if [[ ${#orphan_commands[@]} -gt 0 ]]; then
+        for f in "${orphan_commands[@]}"; do
+          warn "  - commands/${f}"
+        done
+      fi
+      if [[ ${#orphan_skill_dirs[@]} -gt 0 ]]; then
+        for d in "${orphan_skill_dirs[@]}"; do
+          warn "  - skills/${d}/"
+        done
+      fi
+      warn "These files were PRESERVED. Two ways to handle them:"
+      warn "  1. Anchor in registry: add an entry to skills/registry.json + a skills/<name>/SKILL.md source."
+      warn "     Next \`devflow skills convert\` will regenerate from that source."
+      warn "  2. Remove: re-run with \`devflow skills convert --prune\`."
+    fi
+  fi
+
   # ── Summary ───────────────────────────────────────────────────────────────
   section "Plugin generated"
   info "Skills:     ${skill_count}  (folder-based, devflow-plugin/skills/<name>/SKILL.md)"
@@ -276,6 +361,13 @@ MARKET_EOF
   info "Hooks:      1 (Stop → session-summary reminder)"
   info "MCP deps:   1 (hindsight)"
   [[ "$marketplace" == true ]] && info "Marketplace: yes"
+  if [[ $orphan_count -gt 0 ]]; then
+    if [[ "$prune" == true ]]; then
+      info "Orphans:    ${orphan_count} removed"
+    else
+      info "Orphans:    ${orphan_count} preserved (run with --prune to remove)"
+    fi
+  fi
   echo ""
   info "Output directory: ${output}"
   echo ""
