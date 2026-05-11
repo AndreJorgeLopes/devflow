@@ -85,15 +85,21 @@ Compact, emoji-anchored, ADHD-friendly. ~3 lines per finding. Bold the key term 
 ## 🟠 Important (should fix)
 
 ### 🟠 <file>:<line> — **<key term>** <what>
-**Conf:** <N>/100 • **Status:** <NEW / RAISED-OPEN / RAISED-RESOLVED-NOT-FIXED>
+**Conf:** <N>/100 • **Scope:** in-diff • **Status:** <NEW / RAISED-OPEN / RAISED-RESOLVED-NOT-FIXED>
 <why — 1 sentence>
 
 **Fix:** <inline 1-line fix OR fenced block>
 
+### 🟠 📄 <file>:<line> — **<key term>** <what> _(external — cannot post inline)_
+**Conf:** <N>/100 • **Scope:** external-unmodified • **Anchor:** `<external_anchor_file>` • **Status:** <NEW / RAISED-OPEN>
+<why — 1 sentence; underlying issue is in `<external_anchor_file>`, NOT changed by this MR>
+
+**Fix:** <how to address — usually "open a separate ticket / refactor PR for `<external_anchor_file>`" or a fix that can be made inline in the diff site>
+
 ## 🟡 Suggestions
 
 - 🟡 `<file>:<line>` — **<key term>** <one-liner with the fix inline>
-- 🟡 `<file>:<line>` — **<key term>** <one-liner>
+- 🟡 📄 `<file>:<line>` — **<key term>** <one-liner> _(external — anchor: `<external_anchor_file>`)_
 
 ---
 
@@ -115,8 +121,10 @@ Compact, emoji-anchored, ADHD-friendly. ~3 lines per finding. Bold the key term 
 - **Bold the key term** in each finding's title (the noun phrase that names the bug class — "duplicate metric emission", "type assertion", "naming inconsistency"). This is the bionic-reading anchor.
 - **3 lines max per finding** in 🔴 / 🟠. One line each in 🟡.
 - **Cross-check status is mandatory** on every finding (NEW / RAISED-OPEN / RAISED-RESOLVED-FIXED / RAISED-RESOLVED-NOT-FIXED). RAISED-RESOLVED-FIXED items move to 🟢 Strengths, never appear in 🔴/🟠/🟡.
-- **TL;DR is mandatory.** Counts per severity + top 3 fixes + one-line verdict.
+- **`scope` is mandatory** on every finding. Findings with `scope=external-unmodified` MUST be prefixed with 📄 and tagged "_(external — cannot post inline)_". `external_anchor_file` MUST be populated.
+- **TL;DR is mandatory.** Counts per severity + top 3 fixes + one-line verdict. The 📄 count is shown separately as "external-only".
 - **Quick mode** drops the per-finding `Conf:` line and `Fix:` code blocks; consolidates into one paragraph per severity.
+- **Spec mode** replaces the verdict pillars: instead of "READY TO MERGE / NEEDS FIXES / NEEDS DISCUSSION", use "APPROVED / ISSUES FOUND / NEEDS DISCUSSION". Categories change too: 🟠 Important → "Issues" (completeness/consistency/clarity blockers); 🟡 Suggestions → "Advisory" (YAGNI nits, polish). Score gate from Tessl (if SKILL.md): note current score in Context, flag if < 85% (below create-skill's quality gate).
 
 ---
 
@@ -169,3 +177,11 @@ glab api --method POST "projects/:fullpath/merge_requests/<id>/draft_notes" \
 ```
 
 After drafting: confirm to the user that the review is in PENDING state — they submit manually from the VCS UI.
+
+### ⚠️ Inline drafting MUST skip `scope=external-unmodified` findings
+
+GitHub and GitLab both require inline review comments to be on a changed line in the MR's diff. A finding whose underlying issue lives in an unmodified file CANNOT be drafted as an inline comment — the API will reject it. When drafting:
+
+1. Filter findings to `scope == "in-diff"` only.
+2. Tell the user in the confirmation: "Drafted N inline comments. M findings were external-unmodified and could NOT be drafted — see the chat output for those (consider opening a separate ticket or follow-up MR for the anchor files: `<list>`)."
+3. Never silently drop external findings without telling the user.

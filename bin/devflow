@@ -110,6 +110,49 @@ _review_fetch_pr_info() {
   esac
 }
 
+# _review_fetch_pr_discussions <url> — fetch ALL discussion threads on a PR/MR.
+#
+# GOTCHA — pagination: the GitLab `glab api` and GitHub `gh api` endpoints default
+# to a small page size (per_page=20 on GitLab, 30 on GitHub). A busy MR/PR easily
+# spills onto page 2+ and Claude only sees the first page if you don't pass
+# --paginate. This silently truncates the review's view of what's already been
+# discussed, leading to re-flagging issues that were already raised + fixed.
+#
+# This helper always uses --paginate and per_page=100 to minimize round-trips.
+# Output is JSON for downstream parsing (jq).
+_review_fetch_pr_discussions() {
+  local url="$1"
+  case "$url" in
+    *github.com/*/pull/*)
+      need_cmd gh
+      local owner_repo pr_number
+      pr_number="${url##*/pull/}"
+      pr_number="${pr_number%%[?#]*}"
+      owner_repo="$(echo "$url" | sed -E 's|https?://github.com/||; s|/pull/.*||')"
+      # GitHub: two endpoints — inline review comments + PR-level reviews
+      gh api --paginate "repos/${owner_repo}/pulls/${pr_number}/comments?per_page=100" \
+        || die "Failed to fetch PR inline comments. Check gh auth."
+      gh api --paginate "repos/${owner_repo}/pulls/${pr_number}/reviews?per_page=100" \
+        || die "Failed to fetch PR reviews. Check gh auth."
+      ;;
+    *gitlab.com/*/merge_requests/*|*gitlab.*/*/merge_requests/*)
+      need_cmd glab
+      local mr_number project_path enc_path
+      mr_number="${url##*/merge_requests/}"
+      mr_number="${mr_number%%[?#]*}"
+      project_path="$(echo "$url" | sed -E 's|https?://[^/]+/||; s|/-/merge_requests/.*||')"
+      enc_path="$(echo "$project_path" | sed 's|/|%2F|g')"
+      # GitLab's discussions endpoint returns threads with resolved status + position
+      # data. Prefer over /notes (flat, no resolution status).
+      glab api --paginate "projects/${enc_path}/merge_requests/${mr_number}/discussions?per_page=100" \
+        || die "Failed to fetch MR discussions. Check glab auth."
+      ;;
+    *)
+      die "Unsupported URL: $url (expected a GitHub PR or GitLab MR URL)"
+      ;;
+  esac
+}
+
 # _review_diff_from_url <url> — fetch the diff for a PR/MR URL
 # Supports GitHub (gh) and GitLab (glab) URLs.
 _review_diff_from_url() {

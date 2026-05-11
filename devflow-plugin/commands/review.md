@@ -21,9 +21,13 @@ Parse the arguments to determine `URL` (may be empty) and `MODE` (`quick` or `th
 
 Run **Quick Mode** (skip to Phase 4 with a single-pass review) if any of:
 - `MODE == quick`
-- The diff is under 50 lines
+- The diff is under 50 lines (and not predominantly markdown — see Spec Mode)
 
-Otherwise run **Thorough Mode** (the full pipeline below).
+Run **Spec Mode** (markdown-aware review — skip code-focused agents, use prose-quality agents instead) if any of:
+- `$ARGUMENTS` contains the keyword `spec` or `skill`
+- The diff is ≥50% changed lines in markdown files matching: `**/SKILL.md`, `**/AGENTS.md`, `**/TEMPLATES.md`, `**/REFERENCE.md`, `**/specs/**.md`, `**/plans/**.md`, `*-design.md`, `*-spec.md`, `*-plan.md`
+
+Otherwise run **Thorough Mode** (the full code-review pipeline below).
 
 ## Phase 1 — Fetch diff + context
 
@@ -114,15 +118,19 @@ gh api --paginate "repos/<owner>/<repo>/pulls/<n>/reviews?per_page=100"  # all r
 
 **Cap:** if the MR has >100 threads, summarize older ones (>30 days) and load the most-recent 50 in full.
 
-## Phase 2 — Review agents (Thorough mode: parallel)
+## Phase 2 — Review agents
 
 ### Quick Mode
 Single-pass review covering Bug, Convention, and Test categories together. Skip to Phase 4.
 
 ### Thorough Mode
-**Read `AGENTS.md` (sibling to this SKILL.md) for the full agent definitions, activation rules, and the finding JSON schema.** It defines 6 agents — 3 always-on (Bug Scanner, Convention/CLAUDE.md, Test Coverage) and 3 conditional (Plan Alignment, Git History, Sibling MR/Epic Coherence — the last applies the Aircall epic-MR investigation pattern with the 3-of-4-numbers typo heuristic).
+**Read `AGENTS.md` (sibling to this SKILL.md) for the full agent definitions, activation rules, and the finding JSON schema.** It defines 6 code-review agents — 3 always-on (Bug Scanner, Convention/CLAUDE.md, Test Coverage) and 3 conditional (Plan Alignment, Git History, Sibling MR/Epic Coherence — the last applies the Aircall epic-MR investigation pattern with the 3-of-4-numbers typo heuristic).
 
-Each agent declares `subagent_type: <OMC-specialist> | general-purpose` — pick the OMC specialist (e.g. `debugger`, `code-reviewer`, `qa-tester`, `verifier`, `tracer`, `critic`) when `oh-my-claudecode` is installed, else fall back to `general-purpose`. See `AGENTS.md` for the full mapping.
+### Spec Mode
+**Read `AGENTS.md` § Spec Mode for the prose-quality agent set.** Bug Scanner and Test Coverage are dropped (no executable code / no tests on prose). Replaced with: Completeness reviewer, Internal Consistency reviewer, Clarity/Ambiguity reviewer, YAGNI/Scope reviewer. For SKILL.md targets specifically, **also run `tessl skill review --json <skill_dir>`** and feed the score + Tessl's `.suggestions[]` to the reviewers as additional context.
+
+### Agent dispatch (both Thorough and Spec)
+Each agent declares `subagent_type: <OMC-specialist> | general-purpose` — pick the OMC specialist (e.g. `debugger`, `code-reviewer`, `qa-tester`, `verifier`, `tracer`, `critic`, `analyst`) when `oh-my-claudecode` is installed, else fall back to `general-purpose`. See `AGENTS.md` for the full mapping per mode.
 
 Dispatch all active agents in a **single message with multiple `Agent` tool uses** so they actually run in parallel. Each receives the full context packet (diff + MR metadata + task/epic + documents + sibling MRs + Hindsight memories + CLAUDE.md + surrounding-code excerpts + **existing discussions from Phase 1e**).
 
