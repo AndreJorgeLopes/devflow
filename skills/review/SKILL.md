@@ -100,6 +100,8 @@ Single-pass review covering Bug, Convention, and Test categories together. Skip 
 ### Thorough Mode
 **Read `AGENTS.md` (sibling to this SKILL.md) for the full agent definitions, activation rules, and the finding JSON schema.** It defines 6 agents — 3 always-on (Bug Scanner, Convention/CLAUDE.md, Test Coverage) and 3 conditional (Plan Alignment, Git History, Sibling MR/Epic Coherence — the last applies the Aircall epic-MR investigation pattern with the 3-of-4-numbers typo heuristic).
 
+Each agent declares `subagent_type: <OMC-specialist> | general-purpose` — pick the OMC specialist (e.g. `debugger`, `code-reviewer`, `qa-tester`, `verifier`, `tracer`, `critic`) when `oh-my-claudecode` is installed, else fall back to `general-purpose`. See `AGENTS.md` for the full mapping.
+
 Dispatch all active agents in a **single message with multiple `Agent` tool uses** so they actually run in parallel. Each receives the full context packet (diff + MR metadata + task/epic + documents + sibling MRs + Hindsight memories + CLAUDE.md + surrounding-code excerpts).
 
 ## Phase 3 — Confidence scoring & deduplication
