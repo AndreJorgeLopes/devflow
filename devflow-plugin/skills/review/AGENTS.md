@@ -54,20 +54,43 @@ Apply the **Aircall epic-MR investigation pattern** (from `~/.claude/CLAUDE.md`)
 
 `subagent_type: critic | general-purpose`.
 
+## Spec Mode agents (markdown-prose review)
+
+Activated by SKILL.md Phase 0 when the diff is dominated by markdown spec/skill files (or `$ARGUMENTS` contains `spec`/`skill`). Bug Scanner + Test Coverage are dropped. The replacement set:
+
+| Spec-mode agent | OMC specialist | Generic fallback | Focus |
+|---|---|---|---|
+| Completeness | `verifier` | `general-purpose` | Placeholders, TBD, TODO, incomplete sections, missing edge cases |
+| Internal consistency | `code-reviewer` | `general-purpose` | Contradictions, terminology drift, conflicting requirements |
+| Clarity / ambiguity | `critic` | `general-purpose` | Vague phrases, multi-interpretation language, undefined terms |
+| YAGNI / scope | `analyst` | `general-purpose` | Unrequested features, over-engineering, scope creep relative to the stated intent |
+| **For SKILL.md targets:** frontmatter + structural quality check | (deterministic — not an agent) | n/a | Run `tessl skill review --json <skill_dir>` and surface the score + `.suggestions[]` to the other 4 agents as additional context |
+
+Convention/CLAUDE.md compliance + Plan Alignment + Sibling MR coherence (the conditional ones from Thorough Mode) remain available in Spec Mode when their preconditions are met. Git History only activates if the markdown files themselves have >3 authors / >10 commits — usually not the case for new specs.
+
 ## Finding format
 
-Each agent must return findings as structured JSON:
+Each agent must return findings as structured JSON. **`scope` is mandatory** so the output can mark findings the user cannot leave as inline MR comments (because the underlying issue is in a file the MR doesn't change).
 
 ```json
 [{
   "agent": "bug-scanner",
   "severity": "critical|important|suggestion",
   "confidence": 85,
-  "category": "bug|convention|test|alignment|history|coherence",
+  "category": "bug|convention|test|alignment|history|coherence|completeness|consistency|clarity|yagni",
+  "scope": "in-diff|in-related-changed-file|external-unmodified",
   "file": "src/file.ts",
   "line": 42,
   "title": "Short description",
   "detail": "Full explanation grounded in the diff and context",
-  "suggestion": "Concrete fix suggestion, ideally a diff or `suggestion` block"
+  "suggestion": "Concrete fix suggestion, ideally a diff or `suggestion` block",
+  "external_anchor_file": "src/types/country.ts (the file whose contents motivate this finding when scope=external-unmodified)"
 }]
 ```
+
+**`scope` semantics:**
+- `in-diff` — the file:line is in this MR's diff. Can be posted as an inline review comment.
+- `in-related-changed-file` — file IS in the diff but the specific line cited is OUTSIDE any hunk (uncommon; happens when the agent cites a line in a file that's only partially changed). Usually convert to nearest in-diff line; otherwise treat like `external-unmodified`.
+- `external-unmodified` — the underlying issue lives in a file/line NOT changed by this MR. **The output MUST mark this with 📄 in the finding title** and a note like "_(external file — cannot post as inline review comment on this MR; consider opening a separate ticket or refactor)_". Phase 5 (draft inline review) MUST skip these findings (GitHub/GitLab require inline comments on changed lines).
+
+When `scope=external-unmodified`, populate `external_anchor_file` so the user knows where the underlying issue actually lives, even though the finding was triggered by something in the diff. Example from MR !2146: a `country` empty-string risk where `country` is read in the diff but the `Country` type defining `'' | CountryCode` lives in an unmodified `domain/.../country.ts` — finding's `file` would be the diff site, `scope=external-unmodified`, `external_anchor_file` points at the type definition.
