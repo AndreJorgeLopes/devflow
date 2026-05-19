@@ -34,7 +34,9 @@ _ensure_main_unlocked() {
 # - empty → die (handled upstream by usage check)
 _normalize_branch_name() {
   local raw="$1"
-  if [[ "$raw" =~ ^[A-Z]+-[0-9]+ ]]; then
+  # Already-prefixed (contains "/") or ticket-shaped (case-insensitive PREFIX-NUMBER) → pass through.
+  # Otherwise prefix with "feat/".
+  if [[ "$raw" == */* ]] || [[ "$raw" =~ ^[A-Za-z]+-[0-9]+ ]]; then
     echo "$raw"
   else
     echo "feat/$raw"
