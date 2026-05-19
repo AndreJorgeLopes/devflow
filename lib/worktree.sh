@@ -30,8 +30,15 @@ _ensure_main_unlocked() {
 
 # _normalize_branch_name — turn user-supplied name into a ticket-shaped branch
 # - "MES-1234" or "MES-1234-add-foo" → keep as-is (already ticket-shaped)
+# - "mes-1234" → keep as-is (case-insensitive — supports lowercase JIRA prefixes)
+# - "feat/already-prefixed" → keep as-is (any slash-containing name passes through)
 # - "add-user-metrics" → "feat/add-user-metrics"
 # - empty → die (handled upstream by usage check)
+#
+# Note: case-insensitive regex is deliberate (issue #28: BUG-3 fix). It also matches
+# "wip-2-thing" / "feat-1234-cleanup" style names that look ticket-ish — those are
+# treated as deliberate branch names (no prefix added). If you actually want a "feat/"
+# prefix on a name like that, drop the digits or use a different word.
 _normalize_branch_name() {
   local raw="$1"
   # Already-prefixed (contains "/") or ticket-shaped (case-insensitive PREFIX-NUMBER) → pass through.
