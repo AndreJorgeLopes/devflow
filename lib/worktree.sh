@@ -85,11 +85,8 @@ devflow_worktree() {
   local branch
   branch="$(_normalize_branch_name "$name")"
   log "Running: wt switch --create ${branch}"
-  wt switch --create "$branch"
-
-  local wt_exit=$?
-  if [[ $wt_exit -ne 0 ]]; then
-    die "Failed to create worktree '${name}' (wt exit code: ${wt_exit})"
+  if ! wt switch --create "$branch"; then
+    die "Failed to create worktree '${name}' (wt exit code: $?)"
   fi
 
   ok "Worktree '${name}' ready"
