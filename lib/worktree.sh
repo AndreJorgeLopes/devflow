@@ -70,13 +70,10 @@ devflow_worktree() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --agent)
-        agent="${2:-}"
-        [[ -z "$agent" ]] && die "Usage: devflow worktree <name> --agent <claude|opencode>"
-        shift 2
+        die "--agent flag removed: agent-deck is no longer wired into devflow. Use 'devflow worktree <name>' without --agent."
         ;;
       --agent=*)
-        agent="${1#--agent=}"
-        shift
+        die "--agent flag removed: agent-deck is no longer wired into devflow. Use 'devflow worktree <name>' without --agent."
         ;;
       -g|--group)
         group="${2:-}"
