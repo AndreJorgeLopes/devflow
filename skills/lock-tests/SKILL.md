@@ -87,7 +87,7 @@ For UI components, query by the highest-level user-facing role (`getByRole('butt
    - Asserts one specific output, return value, rendered element, or observable state change
    - Will fail with a CLEAR assertion error (not a compile/import error preferred, but module-not-found is acceptable for genuinely new code)
 
-3. **Surface edge cases** the spec doesn't explicitly call out but that good judgment demands (boundary values, error cases, concurrency where relevant). For each edge case added, note WHY in the Test Inventory's `## Considered but not added` section if you DIDN'T add it.
+3. **Surface edge cases** the spec doesn't explicitly call out but that good judgment demands (boundary values, error cases, concurrency where relevant). For each edge case you ADD, also add a row to the Coverage map in Phase 1.7. For each candidate edge case you CONSIDERED but rejected, add a bullet to the `## Considered but not added` section with the reason for rejection.
 
 4. **Place tests** in the canonical test directory for the framework (e.g. `__tests__/`, `spec/`, `tests/`, `*.test.ts` siblings). Follow existing project conventions.
 
