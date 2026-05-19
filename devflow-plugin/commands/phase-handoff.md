@@ -74,13 +74,23 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
    printf '\e]2;%s — %s\007' "<TICKET-ID>" "<next-phase>"
    ```
 
-7. **Prompt the user to clear context.** Output exactly:
+7. **Prompt the user to clear context.** First, map `<next-phase>` to the actual skill the user should invoke:
+
+   | `<next-phase>` | Skill the user invokes after `/compact` |
+   |---|---|
+   | `plan` | `/devflow:writing-plans` (or `/superpowers:writing-plans`) |
+   | `lock-tests` | `/devflow:lock-tests` |
+   | `impl` | `/superpowers:executing-plans` |
+
+   Then output exactly:
 
    ```
    Phase `<current-phase>` complete. Frozen state at `.devflow/state/<branch-slug>/<current-phase>.md`.
 
-   **Run `/compact` now** to drop the brainstorming context. After it completes, re-invoke me with `/devflow:<next-phase>` — I'll read only from the frozen-state file as source of truth.
+   **Run `/compact` now** to drop the brainstorming context. After it completes, re-invoke me with `<mapped-skill>` — I'll read only from the frozen-state file as source of truth.
    ```
+
+   Substitute `<mapped-skill>` from the table above.
 
 8. **Exit.** Do NOT auto-invoke the next-phase skill. The user's `/compact` is the explicit boundary.
 
