@@ -49,7 +49,7 @@ touch "$notified_file"
 cat <<'CONTEXT'
 [devflow watchdog] Stale sensitive files detected after a recent merge to main.
 Pending mechanical fixes and/or semantic reviews are queued.
-Run /devflow:check-sensitive to review and apply fixes.
+Run `devflow watch` to re-scan, or inspect .devflow/pending-fixes.json and .devflow/pending-reviews.json to review and apply fixes.
 CONTEXT
 
 exit 0
