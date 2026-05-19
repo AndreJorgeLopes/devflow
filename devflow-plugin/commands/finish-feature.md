@@ -105,7 +105,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    ### Cleanup (run from your terminal)
    To remove the worktree after PR is merged:
-     agent-deck worktree finish "<session>"
+     devflow done <branch-name>
      # or manually:
      wt drop <branch-name>
    ```
