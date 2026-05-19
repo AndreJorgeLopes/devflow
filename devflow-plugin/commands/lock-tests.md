@@ -40,11 +40,17 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
 
    AC extraction: read the spec file's `## Acceptance Criteria` section if present. If absent, fall back to extracting behavioral assertions from `## Edge Cases` + `## Testing Strategy` + `## Implementation Plan` (which the spec template guarantees). Warn the user if the spec has no explicit AC section.
 
-6. **Light-weight escape hatch:** estimate feature size from the plan (number of tasks, projected files-to-touch, projected LOC). If size ≤ 1 task AND ≤ 20 LOC AND no new AC, ask via `AskUserQuestion`:
+6. **Light-weight escape hatch:** estimate feature size from the plan. If the plan file is < 100 lines OR has ≤ 3 numbered tasks, AND the spec has no new AC, ask via `AskUserQuestion`:
    - Question: "This looks like a trivial change. Skip the lock-tests gate?"
    - Options: "No — keep the gate (Recommended)" / "Yes — skip"
    - Default focus: "No — keep the gate".
-   - If user skips: invoke `devflow:phase-handoff --phase lock-tests --next-phase impl --no-handoff` and exit (no tests written).
+   - If user skips: invoke `devflow:phase-handoff --phase lock-tests --next-phase impl --no-handoff`. Then print:
+
+   ```
+   Trivial change — lock-tests gate skipped. Context is already small; you can proceed directly to `/superpowers:executing-plans` without `/compact`.
+   ```
+
+   Then exit.
 
 7. **Check git status:**
    ```bash

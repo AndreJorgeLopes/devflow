@@ -53,6 +53,7 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
 
    Then exit.
 
+
 7. **Check git status:**
    ```bash
    git status --porcelain
