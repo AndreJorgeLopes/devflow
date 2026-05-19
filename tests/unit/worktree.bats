@@ -6,15 +6,8 @@ setup() {
   _common_setup
   load '../helpers/mocks'
   load '../helpers/assertions'
-  # Save bats-support's fail before sourcing lib/ files that override it.
-  # utils.sh defines fail() as a print-only no-op; we must restore the real one
-  # so that assert_success / assert_output actually abort on failure.
-  local _bats_fail_body
-  _bats_fail_body="$(declare -f fail)"
   source_lib utils.sh
   source_lib worktree.sh
-  # Restore bats-support fail so assertions work correctly.
-  eval "$_bats_fail_body"
 }
 
 teardown() {
