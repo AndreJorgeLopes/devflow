@@ -122,15 +122,16 @@ EOF
 }
 
 @test "devflow_worktree surfaces wt failure with die message (regression for silent set -e exit)" {
-  # Mock wt to exit 1 — must produce a "Failed to create worktree" message
-  # and a non-zero exit code (not a silent shell exit).
+  # Mock wt to exit 42 — must produce a "Failed to create worktree" message that
+  # includes the actual exit code, and a non-zero exit code (not a silent shell exit).
   cat > "${MOCK_DIR}/wt" <<'EOF'
 #!/usr/bin/env bash
-exit 1
+exit 42
 EOF
   chmod +x "${MOCK_DIR}/wt"
 
   run devflow_worktree MES-9999
   assert_failure
   assert_output --partial "Failed to create worktree"
+  assert_output --partial "exit code: 42"
 }
