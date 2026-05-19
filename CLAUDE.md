@@ -26,7 +26,7 @@ lib/                     # Core command implementations (bash)
     post-pr-continue.sh      # PostToolUse — nudge agent after PR creation
     stop-finish-prompt.sh    # Stop — no-op stub (finish-feature moved to skill-level)
 devflow-plugin/          # Claude Code plugin (marketplace-ready)
-  commands/              # 17+ markdown command/skill files (includes check-sensitive.md)
+  commands/              # 20+ markdown command/skill files
   .claude-plugin/        # Plugin metadata (plugin.json, marketplace.json)
 skills/                  # Categorized skill files (NOT auto-discovered — require explicit Read)
 templates/               # Init templates (CLAUDE.md.tmpl, AGENTS.md.tmpl, etc.)
@@ -76,10 +76,26 @@ Protocol: stdin receives JSON payload, exit codes control behavior (0=allow, 2=b
 
 ## Feature Lifecycle
 
-The expected feature lifecycle within a single session is: **new-feature → implement → finish-feature**.
+The expected feature lifecycle within a single session is:
+
+```
+brainstorming → spec-feature → writing-plans → lock-tests → executing-plans → finish-feature
+```
+
 - `new-feature` sets up context, recalls memories, runs scope-check, and starts brainstorming.
-- After implementation, `finish-feature` runs verification, creates the PR/MR, retains learnings, and offers cleanup.
-- On feature branches, always complete work with `/devflow:finish-feature` before ending the session.
+- `spec-feature` writes the spec document.
+- `writing-plans` writes the implementation plan.
+- `lock-tests` writes the full failing-test inventory and gates on user approval before implementation begins.
+- `executing-plans` drives per-task red-green-refactor.
+- `finish-feature` runs verification, creates the PR/MR, retains learnings.
+
+Each phase ends by invoking `devflow:phase-handoff`, which writes a frozen-state file
+at `.devflow/state/<branch>/<phase>.md` and prompts the user to run `/compact`. The next
+phase reads only the frozen-state file as source of truth — the brainstorming context
+does not bleed into implementation.
+
+On feature branches, always complete work with `/devflow:finish-feature` before ending
+the session.
 
 ## Sensitive File Watchdog
 
@@ -87,7 +103,6 @@ The expected feature lifecycle within a single session is: **new-feature → imp
 - Config: `.devflow/sensitive-files.conf` (pipe-delimited, bash-native format)
 - Background: `devflow watch setup` installs a 5-min cron + git post-merge hook
 - In-session: finish-feature checks sensitive files before PR creation
-- Manual: `/devflow:check-sensitive` runs all checks on demand
 - Mechanical checks (version strings) auto-fixable; semantic checks (docs) need AI review
 
 ## Release Process
@@ -119,7 +134,7 @@ Git only allows one worktree per branch. To support multiple concurrent worktree
 - `devflow worktree` auto-detaches any worktree that has main locked before creating a new one.
 - Feature worktrees always create NEW branches from main (`git worktree add <path> -b <branch> main`).
 - When done, remove worktrees with `devflow done <branch>` — don't leave them lingering on main.
-- This matches the pattern used by OpenCode/Superpowers and Claude Code's worktree isolation.
+- This matches the pattern used by OpenCode/Superpowers, Agent-deck, and Claude Code's worktree isolation.
 
 ## Skill Interaction Rules
 
@@ -129,7 +144,7 @@ When any skill or command needs to present choices, confirmations, or selections
 you **MUST** use the `AskUserQuestion` tool instead of printing a text question and waiting
 for input. This applies to:
 
-- Yes/No confirmations (e.g., "Continue with these changes?")
+- Yes/No confirmations (e.g., "Proceed with these changes?")
 - Multiple choice selections (e.g., "Which group?", "Which template?")
 - Approval gates (e.g., "Proceed with these changes?")
 

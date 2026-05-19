@@ -19,3 +19,6 @@ dist/
 .devflow/pending-reviews.json
 .devflow/pending-fixes.json
 .devflow/.pending-notified
+
+# devflow phase-handoff frozen-state files (per-worktree, ephemeral)
+.devflow/state/

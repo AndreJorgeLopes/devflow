@@ -6,6 +6,16 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
 **IMPORTANT:** Do NOT clean up the worktree or switch branches from inside this session — that is a terminal action performed by the developer after the session ends.
 
+## Preamble (first action)
+
+1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+2. Call `mark_chapter` with `{title: "Finish — <TICKET>", summary: "Finishing the feature"}`.
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
+3. Echo ANSI terminal-title escape:
+   ```bash
+   printf '\e]2;%s — Finish\007' "<TICKET>"
+   ```
+
 ## Steps
 
 1. **Assess the current state.** Run:
@@ -96,7 +106,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
    ### Cleanup (run from your terminal)
    To remove the worktree after PR is merged:
-     agent-deck worktree finish "<session>"
+     devflow done <branch-name>
      # or manually:
      wt drop <branch-name>
    ```

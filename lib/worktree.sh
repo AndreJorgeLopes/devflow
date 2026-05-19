@@ -1,26 +1,6 @@
 #!/usr/bin/env bash
 # devflow/lib/worktree.sh — devflow worktree implementation
-# Wrapper around worktrunk (wt) for creating worktrees with optional agent launch via agent-deck.
-
-# _detect_project_group — derive a group name from git remote or directory name
-_detect_project_group() {
-  local group=""
-
-  # Try git remote origin URL first
-  if git remote get-url origin >/dev/null 2>&1; then
-    local url
-    url="$(git remote get-url origin)"
-    # Extract "org/repo" or just "repo" from SSH or HTTPS URLs
-    group="$(echo "$url" | sed -E 's#.*[:/]([^/]+/[^/]+?)(\.git)?$#\1#' | tr '/' '-')"
-  fi
-
-  # Fallback to directory name
-  if [[ -z "$group" ]]; then
-    group="$(basename "$(project_root)")"
-  fi
-
-  echo "$group"
-}
+# Wrapper around worktrunk (wt) for creating worktrees.
 
 # _ensure_main_unlocked — detach any worktree that has main/master checked out
 # Git only allows one worktree per branch. If main is checked out somewhere,
@@ -48,31 +28,39 @@ _ensure_main_unlocked() {
   git -C "$locked_wt" checkout --detach 2>/dev/null || true
 }
 
+# _normalize_branch_name — turn user-supplied name into a ticket-shaped branch
+# - "MES-1234" or "MES-1234-add-foo" → keep as-is (already ticket-shaped)
+# - "mes-1234" → keep as-is (case-insensitive — supports lowercase JIRA prefixes)
+# - "feat/already-prefixed" → keep as-is (any slash-containing name passes through)
+# - "add-user-metrics" → "feat/add-user-metrics"
+# - empty → die (handled upstream by usage check)
+#
+# Note: case-insensitive regex is deliberate (issue #28: BUG-3 fix). It also matches
+# "wip-2-thing" / "feat-1234-cleanup" style names that look ticket-ish — those are
+# treated as deliberate branch names (no prefix added). If you actually want a "feat/"
+# prefix on a name like that, drop the digits or use a different word.
+_normalize_branch_name() {
+  local raw="$1"
+  # Already-prefixed (contains "/") or ticket-shaped (case-insensitive PREFIX-NUMBER) → pass through.
+  # Otherwise prefix with "feat/".
+  if [[ "$raw" == */* ]] || [[ "$raw" =~ ^[A-Za-z]+-[0-9]+ ]]; then
+    echo "$raw"
+  else
+    echo "feat/$raw"
+  fi
+}
+
 devflow_worktree() {
   local name=""
-  local agent=""
-  local group=""
 
   # Parse arguments
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --agent)
-        agent="${2:-}"
-        [[ -z "$agent" ]] && die "Usage: devflow worktree <name> --agent <claude|opencode>"
-        shift 2
+        die "--agent flag removed: agent-deck is no longer wired into devflow. Use 'devflow worktree <name>' without --agent."
         ;;
       --agent=*)
-        agent="${1#--agent=}"
-        shift
-        ;;
-      -g|--group)
-        group="${2:-}"
-        [[ -z "$group" ]] && die "Usage: devflow worktree <name> -g <group>"
-        shift 2
-        ;;
-      --group=*)
-        group="${1#--group=}"
-        shift
+        die "--agent flag removed: agent-deck is no longer wired into devflow. Use 'devflow worktree <name>' without --agent."
         ;;
       -*)
         die "Unknown option: $1"
@@ -88,25 +76,11 @@ devflow_worktree() {
     esac
   done
 
-  [[ -z "$name" ]] && die "Usage: devflow worktree <name> [--agent claude|opencode] [-g <group>]"
-
-  # Validate agent if specified
-  if [[ -n "$agent" ]]; then
-    case "$agent" in
-      claude|opencode) ;;
-      *) die "Unknown agent: $agent. Supported: claude, opencode" ;;
-    esac
-  fi
+  [[ -z "$name" ]] && die "Usage: devflow worktree <name>"
 
   # Check worktrunk is installed
   if ! has_cmd wt; then
     die "worktrunk (wt) is not installed. Run 'devflow init' or 'brew install worktrunk'."
-  fi
-
-  # Auto-detect project group if not specified and agent is requested
-  if [[ -n "$agent" && -z "$group" ]]; then
-    group="$(_detect_project_group)"
-    detail "Auto-detected group: ${group}"
   fi
 
   section "Creating worktree: ${name}"
@@ -115,49 +89,14 @@ devflow_worktree() {
   _ensure_main_unlocked
 
   # Create the worktree with wt
-  log "Running: wt switch --create ${name}"
-  wt switch --create "$name"
-
-  local wt_exit=$?
+  local branch
+  branch="$(_normalize_branch_name "$name")"
+  log "Running: wt switch --create ${branch}"
+  local wt_exit=0
+  wt switch --create "$branch" || wt_exit=$?
   if [[ $wt_exit -ne 0 ]]; then
     die "Failed to create worktree '${name}' (wt exit code: ${wt_exit})"
   fi
 
-  ok "Worktree '${name}' created"
-
-  # If agent requested, register with agent-deck and launch
-  if [[ -n "$agent" ]]; then
-    if ! has_cmd agent-deck; then
-      warn "agent-deck not installed — worktree created but agent not launched"
-      info "Install agent-deck: brew install asheshgoplani/tap/agent-deck"
-      return 0
-    fi
-
-    # Resolve the worktree path
-    local wt_path
-    wt_path="$(git worktree list --porcelain | grep "^worktree " | grep "${name}" | head -1 | sed 's/^worktree //')"
-
-    if [[ -z "$wt_path" ]]; then
-      warn "Could not detect worktree path — agent not launched"
-      info "Register manually: agent-deck add <worktree-path> -c ${agent} -g ${group}"
-      return 0
-    fi
-
-    info "Registering with agent-deck (agent: ${agent}, group: ${group})"
-    local ad_args=("add" "$wt_path" "-c" "$agent")
-    [[ -n "$group" ]] && ad_args+=("-g" "$group")
-
-    log "Running: agent-deck ${ad_args[*]}"
-    agent-deck "${ad_args[@]}"
-
-    if [[ $? -eq 0 ]]; then
-      ok "Agent session registered with agent-deck"
-    else
-      warn "agent-deck registration failed — worktree is still ready"
-      info "Register manually: agent-deck add ${wt_path} -c ${agent} -g ${group}"
-    fi
-  fi
-
   ok "Worktree '${name}' ready"
-  [[ -n "$agent" ]] && info "Launch the session with: agent-deck start ${name}"
 }

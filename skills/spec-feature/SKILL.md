@@ -5,6 +5,16 @@ description: Spec a new feature — recall architecture knowledge, create a spec
 
 You are speccing a new feature. This command enforces a structured planning process before any code is written.
 
+## Preamble (first action)
+
+1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+2. Call `mark_chapter` with `{title: "Spec — <TICKET>", summary: "Writing the spec document"}`.
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
+3. Echo ANSI terminal-title escape:
+   ```bash
+   printf '\e]2;%s — Spec\007' "<TICKET>"
+   ```
+
 ## Steps
 
 1. **Parse the feature request** from the arguments below. Extract:
@@ -53,6 +63,12 @@ You are speccing a new feature. This command enforces a structured planning proc
    - [recalled hard rules that apply]
    - [architectural decisions that constrain the approach]
 
+   ## Acceptance Criteria
+
+   - [ ] AC1: [observable behavior]
+   - [ ] AC2: [observable behavior]
+   - [ ] AC3: [edge case behavior]
+
    ## Non-goals
 
    Explicitly out of scope:
@@ -88,6 +104,14 @@ You are speccing a new feature. This command enforces a structured planning proc
    - Should we adjust the scope?
 
 7. **Retain the architectural decisions** from this spec using the Hindsight `retain` tool, so they're available in future sessions.
+
+8. **Hand off to the planning phase**. Invoke `devflow:phase-handoff` with arguments:
+   - `--phase spec`
+   - `--next-phase plan`
+
+   The handoff skill writes a frozen-state file at `.devflow/state/<branch>/spec.md` and prompts the user to `/compact`. After compact, the user re-invokes `superpowers:writing-plans` (or `devflow:writing-plans`).
+
+   Do NOT auto-invoke `writing-plans` from this skill — context cleanup is the explicit boundary.
 
 ## Important
 

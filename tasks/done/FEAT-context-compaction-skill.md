@@ -1,9 +1,12 @@
+> **Superseded** on 2026-05-19 by `docs/plans/2026-05-19-lock-tests-and-phase-handoff-design.md`.
+> The agent-deck-handoff option is removed; in-session phase-handoff replaces it.
+
 ---
 id: FEAT-context-compaction-skill
 title: "Context Compaction Skill"
 priority: P2
 category: features
-status: open
+status: superseded
 depends_on: []
 estimated_effort: M
 files_to_touch:
