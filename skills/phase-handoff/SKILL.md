@@ -97,7 +97,7 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
    ```
    Phase `<current-phase>` complete. Frozen state at `.devflow/state/${branch_slug}/<current-phase>.md`.
 
-   **Run `/compact` now** to drop the brainstorming context. After it completes, re-invoke me with `<mapped-skill>` — I'll read only from the frozen-state file as source of truth.
+   **Run `/compact` now** to drop the ${current-phase} phase context. After it completes, re-invoke me with `<mapped-skill>` — I'll read only from the frozen-state file as source of truth.
    ```
 
    Substitute `<mapped-skill>` from the table above.
