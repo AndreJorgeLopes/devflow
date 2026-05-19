@@ -6,6 +6,15 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
 **IMPORTANT:** Do NOT create worktrees or branches — that was already handled by `devflow worktree` before this session started.
 
+## Preamble (first action)
+
+1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+2. Call `mark_chapter` with `{title: "Brainstorm — <TICKET>", summary: "Starting a new feature"}`.
+3. Echo ANSI terminal-title escape:
+   ```bash
+   printf '\e]2;%s — Brainstorm\007' "<TICKET>"
+   ```
+
 ## Steps
 
 1. **Detect workspace context.** Run these commands to understand where you are:

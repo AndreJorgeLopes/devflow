@@ -4,6 +4,15 @@ description: Spec a new feature — recall architecture knowledge, create a spec
 
 You are speccing a new feature. This command enforces a structured planning process before any code is written.
 
+## Preamble (first action)
+
+1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+2. Call `mark_chapter` with `{title: "Spec — <TICKET>", summary: "Starting a new feature"}`.
+3. Echo ANSI terminal-title escape:
+   ```bash
+   printf '\e]2;%s — Spec\007' "<TICKET>"
+   ```
+
 ## Steps
 
 1. **Parse the feature request** from the arguments below. Extract:
