@@ -75,21 +75,6 @@ devflow_init() {
     fi
   }
 
-  # Agent Deck
-  if has_cmd agent-deck; then
-    ok "agent-deck"
-  else
-    if $is_macos && has_cmd brew; then
-      info "Installing agent-deck via brew..."
-      brew install asheshgoplani/tap/agent-deck 2>/dev/null && ok "agent-deck installed" || warn "Could not install agent-deck via brew — install manually"
-    else
-      info "Installing agent-deck via install script..."
-      curl -fsSL https://raw.githubusercontent.com/asheshgoplani/agent-deck/main/install.sh | bash 2>/dev/null \
-        && ok "agent-deck installed" \
-        || warn "Could not install agent-deck — install manually"
-    fi
-  fi
-
   # Worktrunk
   if has_cmd wt; then
     ok "worktrunk (wt)"
@@ -273,10 +258,6 @@ with open(config_path, 'r+') as f:
   # ── 5. Install Claude Code plugins ────────────────────────────────────────
   if has_cmd claude; then
     section "Installing Claude Code plugins"
-    claude plugin marketplace add asheshgoplani/agent-deck 2>/dev/null
-    claude plugin install agent-deck@agent-deck 2>/dev/null \
-      && ok "agent-deck plugin installed" \
-      || skip "agent-deck plugin already installed or not available"
     claude plugin marketplace add max-sixty/worktrunk 2>/dev/null
     claude plugin install worktrunk@worktrunk 2>/dev/null \
       && ok "worktrunk plugin installed" \
@@ -342,39 +323,7 @@ with open(settings_path, 'w') as f:
     skip "Claude Code not installed — skipping plugin install"
   fi
 
-  # ── 5b. Agent Deck Conductor Setup ──────────────────────────────────────
-  section "Agent Deck Conductor Setup"
-  if has_cmd agent-deck; then
-    info "Setting up a development conductor for automated session monitoring..."
-
-    # Create conductor if it doesn't exist
-    if ! agent-deck conductor list 2>/dev/null | grep -q "dev"; then
-      agent-deck conductor setup dev --description "Devflow development monitor" 2>/dev/null || true
-      ok "Development conductor created"
-    else
-      skip "Development conductor already exists"
-    fi
-  else
-    skip "agent-deck not installed — skipping conductor setup"
-  fi
-
-  # ── 5c. Agent Deck Session Groups ─────────────────────────────────────────
-  section "Agent Deck Session Groups"
-  if has_cmd agent-deck; then
-    local project_name
-    project_name="$(basename "$(git -C "${project_dir}" remote get-url origin 2>/dev/null | sed 's/.*\///' | sed 's/\.git$//')" 2>/dev/null || basename "${project_dir}")"
-
-    for group in "${project_name}" "${project_name}/features" "${project_name}/bugfixes" "${project_name}/reviews"; do
-      if ! agent-deck group list 2>/dev/null | grep -q "$group"; then
-        agent-deck group create "$group" 2>/dev/null || true
-      fi
-    done
-    ok "Session groups created: ${project_name}/{features,bugfixes,reviews}"
-  else
-    skip "agent-deck not installed — skipping group setup"
-  fi
-
-  # ── 5d. Claude Code hooks ────────────────────────────────────────────────
+  # ── 5b. Claude Code hooks ────────────────────────────────────────────────
   section "Registering Claude Code hooks"
 
   local settings_file="${HOME}/.claude/settings.json"
@@ -527,15 +476,6 @@ if changed:
 
   # Skills for OpenCode
   if has_cmd opencode; then
-    # Agent Deck skill — download from GitHub
-    local oc_ad_skill_dir="${HOME}/.claude/skills/agent-deck"
-    mkdir -p "${oc_ad_skill_dir}"
-    info "Downloading Agent Deck skill for OpenCode..."
-    curl -fsSL "https://raw.githubusercontent.com/asheshgoplani/agent-deck/main/skills/SKILL.md" \
-      -o "${oc_ad_skill_dir}/SKILL.md" 2>/dev/null \
-      && ok "Agent Deck skill installed (~/.claude/skills/agent-deck/SKILL.md)" \
-      || warn "Could not download Agent Deck skill — install manually"
-
     # Hindsight skill for OpenCode
     local oc_hs_skill_dir="${HOME}/.opencode/skills/hindsight"
     mkdir -p "${oc_hs_skill_dir}"
@@ -624,7 +564,7 @@ OJSON
   detail "~/.claude/CLAUDE.md    — Agent instructions with memory workflow"
   detail "~/.claude/AGENTS.md    — Multi-agent coordination"
   detail "MCP: Hindsight         — Persistent memory server"
-  detail "Claude Code plugins    — agent-deck, worktrunk"
+  detail "Claude Code plugins    — worktrunk"
   detail "Devflow commands       — /devflow:new-feature, /devflow:create-pr, etc."
   detail "Skills                 — Hindsight, devflow-recall (Claude Code + OpenCode)"
   log ""
@@ -640,6 +580,5 @@ OJSON
   detail "devflow skills list                — Browse available skills"
   log ""
   log "Integrations:"
-  info "  Web dashboard:   agent-deck web (or devflow web)"
   info "  Chrome extension: Install from Chrome Web Store, enable with /chrome in Claude Code"
 }

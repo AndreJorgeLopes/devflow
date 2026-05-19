@@ -36,7 +36,6 @@ devflow_up() {
 
   # 4. Validate CLI tools
   section "Checking CLI tools"
-  if has_cmd agent-deck; then ok "agent-deck on PATH"; else warn "agent-deck not found on PATH"; fi
   if has_cmd wt;         then ok "wt on PATH";         else warn "wt (worktrunk) not found on PATH"; fi
   if has_cmd claude; then ok "claude on PATH (code review: primary)"
   elif has_cmd opencode; then ok "opencode on PATH (code review: fallback)"
@@ -67,7 +66,7 @@ devflow_down() {
   section "Stopping devflow services"
   docker_compose -f "$compose_file" down
 
-  log "Docker services stopped. CLI tools (agent-deck, wt, claude/opencode) remain available."
+  log "Docker services stopped. CLI tools (wt, claude/opencode) remain available."
 }
 
 devflow_status() {
@@ -115,24 +114,16 @@ devflow_status() {
     fail "Hindsight API not reachable at ${HINDSIGHT_API}"
   fi
 
-  # ── Layer 2: Agent Deck ────────────────────────────────────────────────────
-  printf "\n${BOLD}Layer 2: Agent Deck${RESET} (session wrapper)\n"
-  if has_cmd agent-deck; then
-    ok "agent-deck installed"
-  else
-    fail "agent-deck not installed"
-  fi
-
-  # ── Layer 3: Worktrunk ─────────────────────────────────────────────────────
-  printf "\n${BOLD}Layer 3: Worktrunk${RESET} (git worktrees)\n"
+  # ── Layer 2: Worktrunk ─────────────────────────────────────────────────────
+  printf "\n${BOLD}Layer 2: Worktrunk${RESET} (git worktrees)\n"
   if has_cmd wt; then
     ok "worktrunk (wt) installed"
   else
     fail "worktrunk (wt) not installed"
   fi
 
-  # ── Layer 4: Code Review ────────────────────────────────────────────────────
-  printf "\n${BOLD}Layer 4: Code Review${RESET} (AI-powered)\n"
+  # ── Layer 3: Code Review ────────────────────────────────────────────────────
+  printf "\n${BOLD}Layer 3: Code Review${RESET} (AI-powered)\n"
   if [[ -n "${DEVFLOW_REVIEW_CLI:-}" ]] && has_cmd "$DEVFLOW_REVIEW_CLI"; then
     ok "Code review CLI: ${DEVFLOW_REVIEW_CLI} (DEVFLOW_REVIEW_CLI override)"
   elif has_cmd claude; then
@@ -143,8 +134,8 @@ devflow_status() {
     fail "No code review CLI found — install Claude Code or OpenCode"
   fi
 
-  # ── Layer 5: CLAUDE.md + Skills ────────────────────────────────────────────
-  printf "\n${BOLD}Layer 5: CLAUDE.md + Skills${RESET} (process discipline)\n"
+  # ── Layer 4: CLAUDE.md + Skills ────────────────────────────────────────────
+  printf "\n${BOLD}Layer 4: CLAUDE.md + Skills${RESET} (process discipline)\n"
 
   # Check user-scoped CLAUDE.md
   if [[ -f "${HOME}/.claude/CLAUDE.md" ]]; then
@@ -175,11 +166,6 @@ devflow_status() {
   # Claude Code plugin status
   if has_cmd claude; then
     printf "\n${BOLD}Claude Code Plugins${RESET}\n"
-    if claude plugin list 2>/dev/null | grep -q "agent-deck"; then
-      ok "agent-deck plugin installed"
-    else
-      fail "agent-deck plugin not installed"
-    fi
     if claude plugin list 2>/dev/null | grep -q "worktrunk"; then
       ok "worktrunk plugin installed"
     else
@@ -187,8 +173,8 @@ devflow_status() {
     fi
   fi
 
-  # ── Layer 6: Langfuse ──────────────────────────────────────────────────────
-  printf "\n${BOLD}Layer 6: Langfuse${RESET} (observability, Docker)\n"
+  # ── Layer 5: Langfuse ──────────────────────────────────────────────────────
+  printf "\n${BOLD}Layer 5: Langfuse${RESET} (observability, Docker)\n"
   if $docker_ok; then
     if docker_compose -f "$compose_file" ps --status running 2>/dev/null | grep -q "langfuse"; then
       ok "Langfuse container running"

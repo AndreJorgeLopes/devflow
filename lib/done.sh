@@ -10,8 +10,7 @@ devflow_done() {
     cat <<EOF
 ${BOLD}Usage:${RESET} devflow done <branch-name> [options]
 
-Clean up a completed work session: remove worktree, delete local branch,
-close agent-deck session.
+Clean up a completed work session: remove worktree and delete local branch.
 
 ${BOLD}Arguments:${RESET}
   <branch-name>    The branch to clean up (e.g., feat/smart-hooks)
@@ -40,23 +39,7 @@ EOF
 
   section "Cleaning up: ${branch}"
 
-  # Step 1: Close agent-deck session (if exists)
-  if has_cmd agent-deck; then
-    local session_match
-    session_match="$(agent-deck list 2>/dev/null | grep -i "${branch}" | head -1 || true)"
-    if [[ -n "$session_match" ]]; then
-      local session_id
-      session_id="$(echo "$session_match" | awk '{print $1}')"
-      info "Closing agent-deck session: ${session_id}"
-      agent-deck stop "$session_id" 2>/dev/null || true
-      agent-deck remove "$session_id" 2>/dev/null || true
-      ok "Agent-deck session closed"
-    else
-      skip "No active agent-deck session for ${branch}"
-    fi
-  fi
-
-  # Step 2: Remove worktree
+  # Step 1: Remove worktree
   local worktree_path
   worktree_path="$(git worktree list --porcelain 2>/dev/null | grep -B2 "branch refs/heads/${branch}" | grep "^worktree " | sed 's/^worktree //' || true)"
 
@@ -78,7 +61,7 @@ EOF
   # Prune stale worktree references
   git worktree prune 2>/dev/null || true
 
-  # Step 3: Delete local branch
+  # Step 2: Delete local branch
   if git rev-parse --verify "$branch" >/dev/null 2>&1; then
     info "Deleting local branch: ${branch}"
     if [[ "$force" == "true" ]]; then

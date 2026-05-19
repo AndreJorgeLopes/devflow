@@ -2,7 +2,7 @@
 
 # devflow
 
-**The 6-layer AI dev environment that gives your coding agents persistent memory, isolated worktrees, automated code review, and full observability — from a single `devflow init`.**
+**The 5-layer AI dev environment that gives your coding agents persistent memory, isolated worktrees, automated code review, and full observability — from a single `devflow init`.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Bash](https://img.shields.io/badge/Language-Bash-4EAA25.svg)](bin/devflow)
@@ -25,7 +25,7 @@ devflow composes 6 independent tools into one CLI that runs alongside your AI ag
 ## What Makes It Different
 
 - **Memory that persists across sessions** — Hindsight's 3-tier memory (mental models, observations, facts) means your agent recalls past decisions, patterns, and mistakes without you repeating them. 29 MCP tools for recall, retain, and reflect.
-- **One command, six layers** — `devflow init` installs tools, configures MCP servers, registers hooks, sets up skills, and seeds memory. No manual wiring. Idempotent — safe to re-run.
+- **One command, five layers** — `devflow init` installs tools, configures MCP servers, registers hooks, sets up skills, and seeds memory. No manual wiring. Idempotent — safe to re-run.
 - **Zero build dependencies** — Pure Bash CLI. No Node, Python, or Go build step. Works with what's already on your macOS dev machine.
 - **Agent-agnostic** — Works with Claude Code, OpenCode, or any tool that reads CLAUDE.md and speaks MCP. Skills and hooks adapt to your CLI.
 - **Local-first, privacy-first** — Memory, code review, and observability all run on your machine. Langfuse is self-hosted. No data leaves your laptop.
@@ -34,16 +34,15 @@ devflow composes 6 independent tools into one CLI that runs alongside your AI ag
 
 ## Architecture
 
-devflow orchestrates 6 independent layers. Each tool works standalone; devflow wires them together.
+devflow orchestrates 5 independent layers. Each tool works standalone; devflow wires them together.
 
 | Layer | Tool | What It Does | Runtime |
 |:-----:|------|-------------|---------|
 | 1 | [**Hindsight**](https://github.com/vectorize-io/hindsight) | 3-tier persistent memory via MCP (mental models, observations, facts) | Local daemon (`uvx`) |
-| 2 | [**Agent Deck**](https://github.com/asheshgoplani/agent-deck) | TUI session wrapper with Conductor auto-monitoring, web dashboard | Homebrew |
-| 3 | [**Worktrunk**](https://github.com/max-sixty/worktrunk) | Git worktree lifecycle — `wt step copy-ignored` eliminates cold starts | Homebrew |
-| 4 | **Code Review** | Local pre-push AI review via individual markdown check rules | `claude` / `opencode` |
-| 5 | **CLAUDE.md + Skills** | Process discipline baked into agent config. 18 slash commands | Files |
-| 6 | [**Langfuse**](https://github.com/langfuse/langfuse) | Multi-agent tracing, MCP call spans, cost tracking. Self-hosted | Docker |
+| 2 | [**Worktrunk**](https://github.com/max-sixty/worktrunk) | Git worktree lifecycle — `wt step copy-ignored` eliminates cold starts | Homebrew |
+| 3 | **Code Review** | Local pre-push AI review via individual markdown check rules | `claude` / `opencode` |
+| 4 | **CLAUDE.md + Skills** | Process discipline baked into agent config. 18 slash commands | Files |
+| 5 | [**Langfuse**](https://github.com/langfuse/langfuse) | Multi-agent tracing, MCP call spans, cost tracking. Self-hosted | Docker |
 
 ```mermaid
 graph TD
@@ -53,58 +52,45 @@ graph TD
         HS["Hindsight<br/>:8888 API · :9999 UI"]
     end
 
-    subgraph L2 ["Layer 2 — Sessions"]
-        AD["Agent Deck"]
-        COND["Conductor<br/>auto-monitor"]
-        WEB["Web UI<br/>:8420"]
-    end
-
-    subgraph L3 ["Layer 3 — Isolation"]
+    subgraph L2 ["Layer 2 — Isolation"]
         WT["Worktrunk<br/>git worktrees"]
     end
 
-    subgraph L4 ["Layer 4 — Code Review"]
+    subgraph L3 ["Layer 3 — Code Review"]
         CR["devflow check<br/>.devflow/checks/*.md"]
         RV["devflow review<br/>local or PR/MR URL"]
     end
 
-    subgraph L5 ["Layer 5 — Process"]
+    subgraph L4 ["Layer 4 — Process"]
         SK["18 Skills<br/>slash commands"]
         HK["3 Hooks<br/>auto-guards"]
     end
 
-    subgraph L6 ["Layer 6 — Observability"]
+    subgraph L5 ["Layer 5 — Observability"]
         LF["Langfuse<br/>:3100 UI"]
     end
 
     CLI --> HS
-    CLI --> AD
     CLI --> WT
     CLI --> CR
     CLI --> RV
     CLI --> SK
     CLI --> LF
-    AD --> COND
-    AD --> WEB
     HK -->|"guards"| SK
 
     classDef mem fill:#7c3aed,color:#fff,stroke:#5b21b6
-    classDef sess fill:#3b82f6,color:#fff,stroke:#1e40af
     classDef iso fill:#059669,color:#fff,stroke:#047857
     classDef rev fill:#d97706,color:#fff,stroke:#b45309
     classDef proc fill:#be185d,color:#fff,stroke:#9d174d
     classDef obs fill:#0891b2,color:#fff,stroke:#0e7490
     classDef cli fill:#374151,color:#fff,stroke:#1f2937
-    classDef cond fill:#f59e0b,color:#fff,stroke:#d97706
 
     class HS mem
-    class AD,WEB sess
     class WT iso
     class CR,RV rev
     class SK,HK proc
     class LF obs
     class CLI cli
-    class COND cond
 ```
 
 ### Development Workflow
@@ -166,7 +152,7 @@ devflow up
 # 3. Seed memory from project files
 devflow seed
 
-# 4. Verify all 6 layers are healthy
+# 4. Verify all 5 layers are healthy
 devflow status
 
 # 5. Start a feature in an isolated worktree
@@ -185,7 +171,7 @@ USAGE
   devflow <command> [options]
 
 CORE
-  init [dir]                    Initialize project with all 6 layers
+  init [dir]                    Initialize project with all 5 layers
   status                        Health check across all layers
   version                       Print version
 
@@ -211,10 +197,6 @@ SKILLS
   skills install <name>         Copy skill to .claude/commands/
   skills remove <name>          Remove skill from project
   skills convert                Convert skills to plugin format
-
-SESSIONS
-  web [args]                    Open Agent Deck web dashboard
-  conductor [args]              Manage Conductor (auto-monitor)
 ```
 
 ---
@@ -255,7 +237,7 @@ devflow skills install new-feature     # Copy to .claude/commands/
 
 ## What `devflow init` Does
 
-A single command that sets up all 6 layers (idempotent — safe to re-run):
+A single command that sets up all 5 layers (idempotent — safe to re-run):
 
 ```mermaid
 graph TD
@@ -266,7 +248,7 @@ graph TD
     end
 
     subgraph Step2 ["2. Install Tools"]
-        TOOLS["Agent Deck + Worktrunk + uv + Hindsight"]
+        TOOLS["Worktrunk + uv + Hindsight"]
     end
 
     subgraph Step3 ["3. User Config"]
@@ -278,7 +260,7 @@ graph TD
     end
 
     subgraph Step5 ["5. Plugins & Marketplace"]
-        PLUGINS["Agent Deck + Worktrunk plugins<br/>devflow marketplace (auto-update)"]
+        PLUGINS["Worktrunk plugin<br/>devflow marketplace (auto-update)"]
     end
 
     subgraph Step6 ["6. Commands & Skills"]
@@ -459,7 +441,7 @@ devflow/
 ├── bin/devflow                  # CLI entry point (routes subcommands)
 ├── lib/                         # Core implementations (2,740 lines of Bash)
 │   ├── utils.sh                 #   Logging, VCS detection, Docker helpers
-│   ├── init.sh                  #   9-step 6-layer initialization
+│   ├── init.sh                  #   5-layer initialization
 │   ├── services.sh              #   Docker service orchestration
 │   ├── check.sh                 #   Multi-CLI code review
 │   ├── skills.sh                #   Skill list/install/remove/convert
@@ -476,17 +458,16 @@ devflow/
 ├── skills/                      # Categorized skill marketplace (15 skills)
 │   ├── registry.json            #   Authoritative skill registry
 │   ├── memory-recall/           #   Layer 1 skills
-│   ├── worktree-flow/           #   Layer 3 skills
-│   ├── code-review/             #   Layer 4 skills
-│   ├── process-discipline/      #   Layer 5 skills
-│   └── observability/           #   Layer 6 skills
+│   ├── worktree-flow/           #   Layer 2 skills
+│   ├── code-review/             #   Layer 3 skills
+│   ├── process-discipline/      #   Layer 4 skills
+│   └── observability/           #   Layer 5 skills
 ├── templates/                   # Init templates (CLAUDE.md, checks, configs)
 ├── docker/                      # Docker Compose (Langfuse + Postgres)
 ├── visualizations/              # Architecture diagrams (Mermaid)
 ├── tests/                       # Bats test framework
 ├── docs/plans/                  # 12 design documents
 ├── tasks/                       # Backlog (P0-P4 priority folders)
-├── config/                      # Agent Deck config templates
 ├── Formula/devflow.rb           # Homebrew formula
 ├── install.sh                   # Curl-pipe installer
 ├── Makefile                     # install, link, test, plugin-dev, release

@@ -60,19 +60,16 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}version-bump${RESET} <version>     Bump version in all files
   ${CYAN}release${RESET}                    Preview next release (dry-run)
   ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)
-  ${CYAN}web${RESET} [args]                   Open agent-deck web UI
-  ${CYAN}conductor${RESET} [args]             Run agent-deck conductor
   ${CYAN}root${RESET}                         Print devflow installation path
   ${CYAN}version${RESET}                      Print version
   ${CYAN}help${RESET}                         Show this help
 
 ${BOLD}LAYERS${RESET}
   1. Hindsight    — Memory MCP (Docker)
-  2. Agent Deck   — Session wrapper (brew)
-  3. Worktrunk    — Git worktrees (brew)
-  4. Code Review  — AI-powered (claude/opencode)
-  5. CLAUDE.md    — Process discipline (skills)
-  6. Langfuse     — Observability (Docker)
+  2. Worktrunk    — Git worktrees (brew)
+  3. Code Review  — AI-powered (claude/opencode)
+  4. CLAUDE.md    — Process discipline (skills)
+  5. Langfuse     — Observability (Docker)
 
 ${BOLD}EXAMPLES${RESET}
   devflow init ~/projects/myapp
@@ -287,8 +284,6 @@ main() {
     version-bump)   devflow_version_bump "$@" ;;
     release)        devflow_release_preview "$@" ;;
     visualizations|viz) devflow_visualizations "$@" ;;
-    web)       need_cmd agent-deck; agent-deck web "$@" ;;
-    conductor) need_cmd agent-deck; agent-deck conductor "$@" ;;
     root)      devflow_root "$@" ;;
     version)   echo "devflow v${DEVFLOW_VERSION}" ;;
     help|-h|--help) usage ;;
