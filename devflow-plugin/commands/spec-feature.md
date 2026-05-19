@@ -88,6 +88,14 @@ You are speccing a new feature. This command enforces a structured planning proc
 
 7. **Retain the architectural decisions** from this spec using the Hindsight `retain` tool, so they're available in future sessions.
 
+8. **Hand off to the planning phase**. Invoke `devflow:phase-handoff` with arguments:
+   - `--phase spec`
+   - `--next-phase plan`
+
+   The handoff skill writes a frozen-state file at `.devflow/state/<branch>/spec.md` and prompts the user to `/compact`. After compact, the user re-invokes `superpowers:writing-plans` (or `devflow:writing-plans`).
+
+   Do NOT auto-invoke `writing-plans` from this skill — context cleanup is the explicit boundary.
+
 ## Important
 
 - Do NOT start implementation during this command. The output is a plan, not code.
