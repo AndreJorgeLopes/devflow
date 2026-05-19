@@ -3,11 +3,10 @@
   "description": "Devflow Skills Marketplace — folder-based skills (each entry is skills/<name>/SKILL.md). Categories are metadata only.",
   "layers": {
     "1": "Hindsight (memory)",
-    "2": "Agent Deck (session management)",
-    "3": "Worktrunk (git worktrees)",
-    "4": "Code Review (claude/opencode)",
-    "5": "Process discipline",
-    "6": "Langfuse (observability)"
+    "2": "Worktrunk (git worktrees)",
+    "3": "Code Review (claude/opencode)",
+    "4": "Process discipline",
+    "5": "Langfuse (observability)"
   },
   "skills": [
     {
@@ -33,115 +32,115 @@
       "name": "pre-push-check",
       "description": "Run the full pre-push review pipeline before pushing code",
       "category": "code-review",
-      "layer": 4
+      "layer": 3
     },
     {
       "name": "review",
       "description": "Multi-perspective code review of a PR/MR or local diff — parallel agents, confidence scoring, optional draft review comments",
       "category": "code-review",
-      "layer": 4
+      "layer": 3
     },
     {
       "name": "new-feature",
       "description": "Start a new feature with worktree, memory recall, and workspace setup",
       "category": "worktree-flow",
-      "layer": 3
+      "layer": 2
     },
     {
       "name": "finish-feature",
       "description": "Finish a feature with checks, commit, merge, and learning retention",
       "category": "worktree-flow",
-      "layer": 3
+      "layer": 2
     },
     {
       "name": "create-pr",
       "description": "Full PR creation pipeline with self-review and checks",
       "category": "pr-pipeline",
-      "layer": 4
+      "layer": 3
     },
     {
       "name": "spec-feature",
       "description": "Spec a new feature with architecture recall, planning, and task breakdown",
       "category": "process-discipline",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "architecture-decision",
       "description": "Document an architectural decision with rationale and memory retention",
       "category": "process-discipline",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "session-summary",
       "description": "Generate a session summary for Langfuse tracing and observability",
       "category": "observability",
-      "layer": 6
+      "layer": 5
     },
     {
       "name": "update-visualizations",
       "description": "Analyze recent changes and update affected architecture visualizations",
       "category": "visualizations",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "visualizations-config",
       "description": "Configure visualization location, style presets, and output preferences",
       "category": "visualizations",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "dependency-update",
       "description": "Check if Brewfile, Formula, or install script need updating when dependencies change",
       "category": "process-discipline",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "writing-plans",
       "description": "Extends superpowers:writing-plans with devflow's phase-handoff at the end.",
       "category": "workflow",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "lock-tests",
       "description": "Lock the full test inventory before any implementation code is written — writes failing tests, emits a Test Inventory doc, and gates with user approval.",
       "category": "workflow",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "phase-handoff",
       "description": "Hand off between phases of the devflow new-feature pipeline — writes a frozen-state file, marks a chapter, and prompts user to /compact.",
       "category": "workflow",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "best-roi-task",
       "description": "Find the best ROI task in a Jira Epic — highest points for least effort, unassigned To Do only",
       "category": "process-discipline",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "codebase-walkthrough",
       "description": "Deep codebase walkthrough before implementation — trace the full flow and build understanding",
       "category": "process-discipline",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "resolve-repo",
       "description": "Resolve the correct repository for a task — detect VCS platform, match ticket to repo, clone if missing",
       "category": "git-platform",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "task-complete",
       "description": "Mark a devflow task as done — update status, move to done/ folder, and retain learnings",
       "category": "process-discipline",
-      "layer": 5
+      "layer": 4
     },
     {
       "name": "task-prioritize",
       "description": "Reprioritize a devflow task — move between priority folders (P0-P4) and update frontmatter",
       "category": "process-discipline",
-      "layer": 5
+      "layer": 4
     }
   ]
 }
