@@ -21,3 +21,5 @@ Invoke `devflow:phase-handoff` with arguments `--phase plan --next-phase lock-te
 The phase-handoff skill writes the frozen-state file and prompts the user to `/compact`
 before the next phase begins. Do NOT auto-invoke `superpowers:executing-plans` from here —
 implementation must start in a clean context after `/compact`.
+
+$ARGUMENTS
