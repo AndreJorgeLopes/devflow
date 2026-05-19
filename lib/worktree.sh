@@ -48,6 +48,19 @@ _ensure_main_unlocked() {
   git -C "$locked_wt" checkout --detach 2>/dev/null || true
 }
 
+# _normalize_branch_name — turn user-supplied name into a ticket-shaped branch
+# - "MES-1234" or "MES-1234-add-foo" → keep as-is (already ticket-shaped)
+# - "add-user-metrics" → "feat/add-user-metrics"
+# - empty → die (handled upstream by usage check)
+_normalize_branch_name() {
+  local raw="$1"
+  if [[ "$raw" =~ ^[A-Z]+-[0-9]+ ]]; then
+    echo "$raw"
+  else
+    echo "feat/$raw"
+  fi
+}
+
 devflow_worktree() {
   local name=""
   local agent=""
@@ -115,8 +128,10 @@ devflow_worktree() {
   _ensure_main_unlocked
 
   # Create the worktree with wt
-  log "Running: wt switch --create ${name}"
-  wt switch --create "$name"
+  local branch
+  branch="$(_normalize_branch_name "$name")"
+  log "Running: wt switch --create ${branch}"
+  wt switch --create "$branch"
 
   local wt_exit=$?
   if [[ $wt_exit -ne 0 ]]; then
