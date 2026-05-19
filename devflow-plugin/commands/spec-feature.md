@@ -61,6 +61,12 @@ You are speccing a new feature. This command enforces a structured planning proc
    - [recalled hard rules that apply]
    - [architectural decisions that constrain the approach]
 
+   ## Acceptance Criteria
+
+   - [ ] AC1: [observable behavior]
+   - [ ] AC2: [observable behavior]
+   - [ ] AC3: [edge case behavior]
+
    ## Non-goals
 
    Explicitly out of scope:

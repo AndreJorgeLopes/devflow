@@ -31,10 +31,14 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
    `.devflow/state/${branch_slug}/plan.md`
    Treat its "Source-of-truth artefacts" list as the only authoritative inputs.
 
-5. **Read inputs in order:**
-   - Spec: `docs/specs/<feature>.md`
-   - Plan: `docs/plans/<feature>-plan.md` (or `docs/plans/YYYY-MM-DD-<feature>-plan.md`)
-   - AC: extracted from the spec's `## Acceptance Criteria` section (or inferred from `## Proposed Solution` + `## Technical Design` if AC section absent — warn the user if inferred)
+5. **Locate inputs from the frozen-state file.** The frozen-state file's "Source-of-truth artefacts" section lists the exact paths to:
+   - Spec (e.g. `docs/specs/my-feature.md`)
+   - Plan (e.g. `docs/plans/2026-05-19-my-feature-plan.md`)
+   - Test inventory if past lock-tests (e.g. `docs/specs/my-feature-test-inventory.md`)
+
+   Read those exact paths — do NOT use a hardcoded `docs/specs/<feature>.md` template. The frozen-state file is the single source of truth for input locations.
+
+   AC extraction: read the spec file's `## Acceptance Criteria` section if present. If absent, fall back to extracting behavioral assertions from `## Edge Cases` + `## Testing Strategy` + `## Implementation Plan` (which the spec template guarantees). Warn the user if the spec has no explicit AC section.
 
 6. **Light-weight escape hatch:** estimate feature size from the plan (number of tasks, projected files-to-touch, projected LOC). If size ≤ 1 task AND ≤ 20 LOC AND no new AC, ask via `AskUserQuestion`:
    - Question: "This looks like a trivial change. Skip the lock-tests gate?"
