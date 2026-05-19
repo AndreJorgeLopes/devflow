@@ -8,6 +8,14 @@ setup() {
   load '../helpers/assertions'
   source_lib utils.sh
   source_lib worktree.sh
+
+  # Guard: fail loudly if any code path re-wires agent-deck into devflow_worktree.
+  cat > "${MOCK_DIR}/agent-deck" <<'EOF'
+#!/usr/bin/env bash
+echo "ERROR: agent-deck was invoked from devflow_worktree" >&2
+exit 99
+EOF
+  chmod +x "${MOCK_DIR}/agent-deck"
 }
 
 teardown() {
@@ -23,9 +31,10 @@ teardown() {
 }
 
 @test "devflow_worktree accepts ticket-shaped name (MES-1234)" {
-  # Mock wt to no-op success so we can isolate name validation.
+  # Mock wt to echo its args so we can assert the normalized branch arrived unmodified.
   cat > "${MOCK_DIR}/wt" <<'EOF'
 #!/usr/bin/env bash
+echo "wt called with: $*"
 exit 0
 EOF
   chmod +x "${MOCK_DIR}/wt"
@@ -33,6 +42,8 @@ EOF
   run devflow_worktree MES-1234
   assert_success
   assert_output --partial "Creating worktree: MES-1234"
+  assert_output --partial "switch --create MES-1234"
+  refute_output --partial "feat/"
 }
 
 @test "devflow_worktree accepts free-form name and prefixes feat/" {
@@ -52,6 +63,12 @@ EOF
 
 @test "devflow_worktree rejects --agent with deprecation message" {
   run devflow_worktree MES-1234 --agent claude
+  assert_failure
+  assert_output --partial "--agent flag removed: agent-deck is no longer wired into devflow"
+}
+
+@test "devflow_worktree rejects --agent=value with deprecation message" {
+  run devflow_worktree MES-1234 --agent=claude
   assert_failure
   assert_output --partial "--agent flag removed: agent-deck is no longer wired into devflow"
 }
