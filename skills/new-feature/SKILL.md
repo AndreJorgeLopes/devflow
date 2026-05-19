@@ -11,6 +11,7 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
 1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
 2. Call `mark_chapter` with `{title: "Brainstorm — <TICKET>", summary: "Starting a new feature"}`.
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 3. Echo ANSI terminal-title escape:
    ```bash
    printf '\e]2;%s — Brainstorm\007' "<TICKET>"
