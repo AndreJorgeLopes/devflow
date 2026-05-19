@@ -66,6 +66,12 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
 6. **Transition to brainstorming.** Once you understand the feature (and optionally completed the walkthrough), invoke the `brainstorming` skill to explore requirements, design, and approach before writing any code.
 
+   The full pipeline from here is:
+   ```
+   brainstorming → spec-feature → writing-plans → lock-tests → executing-plans → finish-feature
+   ```
+   Each phase ends with `devflow:phase-handoff` (writes a frozen-state file, prompts you to run `/compact`). The next phase reads only the frozen-state file as source of truth.
+
 ## Important
 
 - This skill is a **post-launch setup guide** — the worktree already exists.
