@@ -54,3 +54,11 @@ EOF
   assert_success
   assert_output --partial "feat/add-user-metrics"
 }
+
+# ── --agent deprecation ───────────────────────────────────────────
+
+@test "devflow_worktree rejects --agent with deprecation message" {
+  run devflow_worktree MES-1234 --agent claude
+  assert_failure
+  assert_output --partial "--agent flag removed: agent-deck is no longer wired into devflow"
+}
