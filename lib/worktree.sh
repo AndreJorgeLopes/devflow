@@ -91,5 +91,4 @@ devflow_worktree() {
   fi
 
   ok "Worktree '${name}' ready"
-  return 0
 }
