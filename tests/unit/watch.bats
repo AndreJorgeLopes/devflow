@@ -204,7 +204,12 @@ EOF
 # ── _detect_install_mode ───────────────────────────────────────
 
 @test "detect_install_mode returns link for symlinked devflow" {
-  ln -sf /some/repo/bin/devflow "${MOCK_DIR}/devflow"
+  # `command -v` skips dangling symlinks, so the target must actually exist
+  # — otherwise the lookup falls through to a real devflow on PATH.
+  local target="${BATS_TEST_TMPDIR}/real-devflow"
+  printf '#!/bin/sh\n' > "$target"
+  chmod +x "$target"
+  ln -sf "$target" "${MOCK_DIR}/devflow"
   run _detect_install_mode
   assert_success
   assert_output "link"

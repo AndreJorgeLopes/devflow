@@ -30,7 +30,9 @@ teardown() {
 @test "project_root returns directory containing .git" {
   run project_root
   assert_success
-  assert [ -d "${output}/.git" ]
+  # In a regular checkout `.git` is a directory; in a worktree it's a file
+  # pointing at the parent repo's gitdir. Accept either.
+  assert [ -e "${output}/.git" ]
 }
 
 # ── devflow_root ──────────────────────────────────────────────────
