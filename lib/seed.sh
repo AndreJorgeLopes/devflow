@@ -146,7 +146,7 @@ JSON
   if hindsight_post "/v1/retain" "$body" >/dev/null; then
     ok "Mental model: ${id}"
   else
-    fail "Failed to seed mental model: ${id}"
+    status_fail "Failed to seed mental model: ${id}"
   fi
 }
 
@@ -169,6 +169,6 @@ JSON
   if hindsight_post "/v1/retain" "$body" >/dev/null; then
     ok "Directive: ${id}"
   else
-    fail "Failed to seed directive: ${id}"
+    status_fail "Failed to seed directive: ${id}"
   fi
 }

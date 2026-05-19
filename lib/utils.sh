@@ -28,9 +28,9 @@ section() { printf "\n${BOLD}${CYAN}── %s ──${RESET}\n" "$*"; }
 detail() { printf "  ${DIM}%s${RESET}\n" "$*"; }
 
 # Status indicators
-ok()   { printf "  ${GREEN}✓${RESET} %s\n" "$*"; }
-fail() { printf "  ${RED}✗${RESET} %s\n" "$*"; }
-skip() { printf "  ${YELLOW}⊘${RESET} %s\n" "$*"; }
+ok()          { printf "  ${GREEN}✓${RESET} %s\n" "$*"; }
+status_fail() { printf "  ${RED}✗${RESET} %s\n" "$*"; }
+skip()        { printf "  ${YELLOW}⊘${RESET} %s\n" "$*"; }
 
 # ── Checks ────────────────────────────────────────────────────────────────────
 

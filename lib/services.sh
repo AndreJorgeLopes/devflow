@@ -101,17 +101,17 @@ devflow_status() {
         ok "Hindsight container running (Docker)"
         hindsight_runtime_found=true
       else
-        fail "Hindsight container not running — run 'devflow up' to start"
+        status_fail "Hindsight container not running — run 'devflow up' to start"
       fi
     else
-      fail "Docker runtime not running — run 'devflow up' to start"
+      status_fail "Docker runtime not running — run 'devflow up' to start"
     fi
   fi
 
   if hindsight_available; then
     ok "Hindsight API reachable at ${HINDSIGHT_API}"
   else
-    fail "Hindsight API not reachable at ${HINDSIGHT_API}"
+    status_fail "Hindsight API not reachable at ${HINDSIGHT_API}"
   fi
 
   # ── Layer 2: Worktrunk ─────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ devflow_status() {
   if has_cmd wt; then
     ok "worktrunk (wt) installed"
   else
-    fail "worktrunk (wt) not installed"
+    status_fail "worktrunk (wt) not installed"
   fi
 
   # ── Layer 3: Code Review ────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ devflow_status() {
   elif has_cmd opencode; then
     ok "Code review CLI: opencode (fallback)"
   else
-    fail "No code review CLI found — install Claude Code or OpenCode"
+    status_fail "No code review CLI found — install Claude Code or OpenCode"
   fi
 
   # ── Layer 4: CLAUDE.md + Skills ────────────────────────────────────────────
@@ -141,7 +141,7 @@ devflow_status() {
   if [[ -f "${HOME}/.claude/CLAUDE.md" ]]; then
     ok "~/.claude/CLAUDE.md found (user-scoped)"
   else
-    fail "~/.claude/CLAUDE.md not found"
+    status_fail "~/.claude/CLAUDE.md not found"
   fi
 
   # Check project-scoped CLAUDE.md
@@ -169,7 +169,7 @@ devflow_status() {
     if claude plugin list 2>/dev/null | grep -q "worktrunk"; then
       ok "worktrunk plugin installed"
     else
-      fail "worktrunk plugin not installed"
+      status_fail "worktrunk plugin not installed"
     fi
   fi
 
@@ -179,10 +179,10 @@ devflow_status() {
     if docker_compose -f "$compose_file" ps --status running 2>/dev/null | grep -q "langfuse"; then
       ok "Langfuse container running"
     else
-      fail "Langfuse container not running — run 'devflow up' to start"
+      status_fail "Langfuse container not running — run 'devflow up' to start"
     fi
   else
-    fail "Docker runtime not running — run 'devflow up' to start"
+    status_fail "Docker runtime not running — run 'devflow up' to start"
   fi
 
   echo ""

@@ -211,6 +211,6 @@ devflow_release_preview() {
   if check_version_consistency "$proj" >/dev/null 2>&1; then
     ok "Version files are consistent"
   else
-    fail "Version files are inconsistent — run 'devflow check-version' for details"
+    status_fail "Version files are inconsistent — run 'devflow check-version' for details"
   fi
 }
