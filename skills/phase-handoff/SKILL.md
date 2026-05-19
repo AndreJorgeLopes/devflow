@@ -16,13 +16,16 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
 1. **Detect context:**
    ```bash
-   git branch --show-current
-   git rev-parse --show-toplevel
+   branch="$(git branch --show-current)"
+   worktree_root="$(git rev-parse --show-toplevel)"
+   # Sanitize branch name into a filesystem-safe slug.
+   # Replaces forward-slashes (from feat/X, fix/X conventions) with hyphens.
+   branch_slug="$(echo "$branch" | tr '/' '-')"
    ```
-   Extract ticket ID from the branch name (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+   Extract ticket ID from `$branch` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
 
 2. **Compute target paths:**
-   - State dir: `<worktree-root>/.devflow/state/<branch-slug>/`
+   - State dir: `<worktree-root>/.devflow/state/${branch_slug}/`
    - State file: `<state-dir>/<current-phase>.md`
    - Source-of-truth artefacts (paths exist if their phase ran):
      - Spec: `docs/specs/<feature>.md`
@@ -31,10 +34,10 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
 3. **Create the state dir** if it doesn't exist:
    ```bash
-   mkdir -p .devflow/state/<branch-slug>
+   mkdir -p .devflow/state/${branch_slug}
    ```
 
-4. **Write the frozen-state file** at `.devflow/state/<branch-slug>/<current-phase>.md`:
+4. **Write the frozen-state file** at `.devflow/state/${branch_slug}/<current-phase>.md`:
 
    ```markdown
    # Phase Handoff: <current-phase> → <next-phase>
@@ -63,16 +66,22 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
    If the file already exists (re-entry into this phase), APPEND a `## Re-entry at <timestamp>` section rather than overwriting.
 
-5. **Mark chapter** (Claude Code):
+5. **Mark chapter** (Claude Code). Map `<next-phase>` to a human-readable chapter title:
 
-   Call `mark_chapter` with `{title: "<next-phase capitalized> — <TICKET-ID>", summary: "Handed off from <current-phase>"}`.
+   | `<next-phase>` | Chapter title |
+   |---|---|
+   | `plan` | `Plan` |
+   | `lock-tests` | `Lock Tests` |
+   | `impl` | `Implementation` |
 
-   If `mark_chapter` is unavailable, skip silently.
+   Call `mark_chapter` with `{title: "<mapped-title> — <TICKET>", summary: "Handed off from <current-phase>"}`.
+
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 
 6. **Echo ANSI terminal-title escape:**
 
    ```bash
-   printf '\e]2;%s — %s\007' "<TICKET-ID>" "<next-phase>"
+   printf '\e]2;%s — %s\007' "<TICKET>" "<mapped-title>"
    ```
 
 7. **Prompt the user to clear context.** First, map `<next-phase>` to the actual skill the user should invoke:
@@ -86,7 +95,7 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
    Then output exactly:
 
    ```
-   Phase `<current-phase>` complete. Frozen state at `.devflow/state/<branch-slug>/<current-phase>.md`.
+   Phase `<current-phase>` complete. Frozen state at `.devflow/state/${branch_slug}/<current-phase>.md`.
 
    **Run `/compact` now** to drop the brainstorming context. After it completes, re-invoke me with `<mapped-skill>` — I'll read only from the frozen-state file as source of truth.
    ```
@@ -97,7 +106,7 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
 ## Important
 
-- This skill writes ONLY to `.devflow/state/<branch>/`. Never edits source code.
+- This skill writes ONLY to `.devflow/state/${branch_slug}/`. Never edits source code.
 - Re-entry: append, never overwrite.
 - If `--no-handoff` was passed, do nothing and return.
 

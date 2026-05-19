@@ -11,12 +11,17 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
 
 1. **Detect ticket + branch:**
    ```bash
-   git branch --show-current
+   branch="$(git branch --show-current)"
+   # Sanitize branch name into a filesystem-safe slug.
+   # Replaces forward-slashes (from feat/X, fix/X conventions) with hyphens.
+   branch_slug="$(echo "$branch" | tr '/' '-')"
    ```
-   Extract ticket ID (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+   Extract ticket ID from `$branch` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
 
 2. **Mark chapter:**
    Call `mark_chapter` with `{title: "Lock Tests — <TICKET>", summary: "Writing failing test inventory"}`.
+
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 
 3. **ANSI terminal-title escape:**
    ```bash
@@ -24,19 +29,29 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
    ```
 
 4. **Read the frozen-state file** from the previous phase:
-   `.devflow/state/<branch-slug>/plan.md`
+   `.devflow/state/${branch_slug}/plan.md`
    Treat its "Source-of-truth artefacts" list as the only authoritative inputs.
 
-5. **Read inputs in order:**
-   - Spec: `docs/specs/<feature>.md`
-   - Plan: `docs/plans/<feature>-plan.md` (or `docs/plans/YYYY-MM-DD-<feature>-plan.md`)
-   - AC: extracted from the spec's `## Acceptance Criteria` section (or inferred from `## Proposed Solution` + `## Technical Design` if AC section absent — warn the user if inferred)
+5. **Locate inputs from the frozen-state file.** The frozen-state file's "Source-of-truth artefacts" section lists the exact paths to:
+   - Spec (e.g. `docs/specs/my-feature.md`)
+   - Plan (e.g. `docs/plans/2026-05-19-my-feature-plan.md`)
+   - Test inventory if past lock-tests (e.g. `docs/specs/my-feature-test-inventory.md`)
 
-6. **Light-weight escape hatch:** estimate feature size from the plan (number of tasks, projected files-to-touch, projected LOC). If size ≤ 1 task AND ≤ 20 LOC AND no new AC, ask via `AskUserQuestion`:
+   Read those exact paths — do NOT use a hardcoded `docs/specs/<feature>.md` template. The frozen-state file is the single source of truth for input locations.
+
+   AC extraction: read the spec file's `## Acceptance Criteria` section if present. If absent, fall back to extracting behavioral assertions from `## Edge Cases` + `## Testing Strategy` + `## Implementation Plan` (which the spec template guarantees). Warn the user if the spec has no explicit AC section.
+
+6. **Light-weight escape hatch:** estimate feature size from the plan. If the plan file is < 100 lines OR has ≤ 3 numbered tasks, AND the spec has no new AC, ask via `AskUserQuestion`:
    - Question: "This looks like a trivial change. Skip the lock-tests gate?"
    - Options: "No — keep the gate (Recommended)" / "Yes — skip"
    - Default focus: "No — keep the gate".
-   - If user skips: invoke `devflow:phase-handoff --phase lock-tests --next-phase impl --no-handoff` and exit (no tests written).
+   - If user skips: invoke `devflow:phase-handoff --phase lock-tests --next-phase impl --no-handoff`. Then print:
+
+   ```
+   Trivial change — lock-tests gate skipped. Context is already small; you can proceed directly to `/superpowers:executing-plans` without `/compact`.
+   ```
+
+   Then exit.
 
 7. **Check git status:**
    ```bash

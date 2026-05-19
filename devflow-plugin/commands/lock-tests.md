@@ -10,12 +10,17 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
 
 1. **Detect ticket + branch:**
    ```bash
-   git branch --show-current
+   branch="$(git branch --show-current)"
+   # Sanitize branch name into a filesystem-safe slug.
+   # Replaces forward-slashes (from feat/X, fix/X conventions) with hyphens.
+   branch_slug="$(echo "$branch" | tr '/' '-')"
    ```
-   Extract ticket ID (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+   Extract ticket ID from `$branch` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
 
 2. **Mark chapter:**
    Call `mark_chapter` with `{title: "Lock Tests — <TICKET>", summary: "Writing failing test inventory"}`.
+
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 
 3. **ANSI terminal-title escape:**
    ```bash
@@ -23,7 +28,7 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
    ```
 
 4. **Read the frozen-state file** from the previous phase:
-   `.devflow/state/<branch-slug>/plan.md`
+   `.devflow/state/${branch_slug}/plan.md`
    Treat its "Source-of-truth artefacts" list as the only authoritative inputs.
 
 5. **Read inputs in order:**
