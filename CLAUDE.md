@@ -76,10 +76,26 @@ Protocol: stdin receives JSON payload, exit codes control behavior (0=allow, 2=b
 
 ## Feature Lifecycle
 
-The expected feature lifecycle within a single session is: **new-feature → implement → finish-feature**.
+The expected feature lifecycle within a single session is:
+
+```
+brainstorming → spec-feature → writing-plans → lock-tests → executing-plans → finish-feature
+```
+
 - `new-feature` sets up context, recalls memories, runs scope-check, and starts brainstorming.
-- After implementation, `finish-feature` runs verification, creates the PR/MR, retains learnings, and offers cleanup.
-- On feature branches, always complete work with `/devflow:finish-feature` before ending the session.
+- `spec-feature` writes the spec document.
+- `writing-plans` writes the implementation plan.
+- `lock-tests` writes the full failing-test inventory and gates on user approval before implementation begins.
+- `executing-plans` drives per-task red-green-refactor.
+- `finish-feature` runs verification, creates the PR/MR, retains learnings.
+
+Each phase ends by invoking `devflow:phase-handoff`, which writes a frozen-state file
+at `.devflow/state/<branch>/<phase>.md` and prompts the user to run `/compact`. The next
+phase reads only the frozen-state file as source of truth — the brainstorming context
+does not bleed into implementation.
+
+On feature branches, always complete work with `/devflow:finish-feature` before ending
+the session.
 
 ## Sensitive File Watchdog
 
