@@ -1,0 +1,155 @@
+---
+description: Lock the full test inventory before any implementation code is written. Reads spec+plan+AC, writes ALL failing tests in a batch, emits a Test Inventory doc, and gates with user approval.
+---
+
+> **Attribution:** Base TDD workflow vendored and adapted from [haletothewood/behavioural-tdd v1.8](https://tessl.io/registry/haletothewood/behavioural-tdd), Apache-2.0. Modifications: Phase 1 widened from single-test to batch; added Phase 0 (read artefacts) and Phase 1.7 (Test Inventory) and Phase 1.8 (user-approval gate); Phases 2-3 delegated to `superpowers:executing-plans`.
+
+You are at the test-locking phase of devflow's new-feature pipeline. Your job is to write the full failing-test inventory from the locked spec + plan + AC, then gate on user approval before any production code is written.
+
+## Phase 0 — Read artefacts
+
+1. **Detect ticket + branch:**
+   ```bash
+   git branch --show-current
+   ```
+   Extract ticket ID (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+
+2. **Mark chapter:**
+   Call `mark_chapter` with `{title: "Lock Tests — <TICKET>", summary: "Writing failing test inventory"}`.
+
+3. **ANSI terminal-title escape:**
+   ```bash
+   printf '\e]2;%s — Lock Tests\007' "<TICKET>"
+   ```
+
+4. **Read the frozen-state file** from the previous phase:
+   `.devflow/state/<branch-slug>/plan.md`
+   Treat its "Source-of-truth artefacts" list as the only authoritative inputs.
+
+5. **Read inputs in order:**
+   - Spec: `docs/specs/<feature>.md`
+   - Plan: `docs/plans/<feature>-plan.md` (or `docs/plans/YYYY-MM-DD-<feature>-plan.md`)
+   - AC: extracted from the spec's `## Acceptance Criteria` section (or inferred from `## Proposed Solution` + `## Technical Design` if AC section absent — warn the user if inferred)
+
+6. **Light-weight escape hatch:** estimate feature size from the plan (number of tasks, projected files-to-touch, projected LOC). If size ≤ 1 task AND ≤ 20 LOC AND no new AC, ask via `AskUserQuestion`:
+   - Question: "This looks like a trivial change. Skip the lock-tests gate?"
+   - Options: "No — keep the gate (Recommended)" / "Yes — skip"
+   - Default focus: "No — keep the gate".
+   - If user skips: invoke `devflow:phase-handoff --phase lock-tests --next-phase impl --no-handoff` and exit (no tests written).
+
+7. **Check git status:**
+   ```bash
+   git status --porcelain
+   ```
+   If not clean, warn: "Uncommitted changes detected. Lock-tests works best on a clean tree." Prompt via `AskUserQuestion`:
+   - Question: "Continue with dirty tree?"
+   - Options: "Yes — continue" / "No — stash and retry"
+
+## Phase 1 — RED (batch)
+
+Constraints carried from haletothewood:
+
+| Rule | Why |
+|---|---|
+| Public interface only | Tests survive internal rewrites |
+| One requirement per test | Fast feedback, clear failure signal |
+| No mocking private methods | Avoids coupling tests to implementation |
+| No assertions on internal state | Preserves behavioral integrity |
+| Shameless Green allowed in Phase 2 | Establishes feedback loop before optimizing |
+
+Mock at **system boundaries only** — external APIs, databases, time, file system. Never mock your own classes, internal collaborators, or anything you control. Use dependency injection to make boundaries explicit and mockable.
+
+For UI components, query by the highest-level user-facing role (`getByRole('button', { name: /submit/i })` over `getByTestId`).
+
+**Steps:**
+
+1. **Detect test framework** from project: look for `jest.config.*`, `vitest.config.*`, `pytest.ini`, `spec/spec_helper.rb`, etc. Match existing patterns.
+
+2. **For each acceptance criterion**, write ONE failing test that:
+   - Calls only the public interface
+   - Asserts one specific output, return value, rendered element, or observable state change
+   - Will fail with a CLEAR assertion error (not a compile/import error preferred, but module-not-found is acceptable for genuinely new code)
+
+3. **Surface edge cases** the spec doesn't explicitly call out but that good judgment demands (boundary values, error cases, concurrency where relevant). For each edge case added, note WHY in the Test Inventory's `## Considered but not added` section if you DIDN'T add it.
+
+4. **Place tests** in the canonical test directory for the framework (e.g. `__tests__/`, `spec/`, `tests/`, `*.test.ts` siblings). Follow existing project conventions.
+
+## Phase 1.5 — Verify each test fails for the RIGHT reason
+
+```bash
+# Run the new tests (framework-specific)
+# Examples:
+#   jest path/to/new.test.ts
+#   vitest run path/to/new.test.ts
+#   pytest tests/test_new.py -v
+#   bundle exec rspec spec/path/spec.rb
+```
+
+Each test MUST fail with:
+- "X is not defined" / "Cannot find module" (acceptable for new code)
+- OR an assertion mismatch (preferred — proves the test setup is wired)
+
+NOT acceptable: syntax errors, fixture-loading errors, framework-misconfig errors. If you see those, fix them before proceeding.
+
+## Phase 1.7 — Emit Test Inventory doc
+
+Write `docs/specs/<feature>-test-inventory.md`:
+
+```markdown
+# Test Inventory: <feature>
+
+**Generated:** <ISO-8601 timestamp>
+**Ticket:** <TICKET-ID>
+**Spec:** docs/specs/<feature>.md
+**Plan:** docs/plans/<feature>-plan.md
+
+## Coverage map (AC → test)
+
+| AC | Test file | Test name | Status |
+|---|---|---|---|
+| AC1: <text> | path/to/file.test.ts | "<test name>" | RED |
+| AC2: <text> | path/to/file.test.ts | "<test name>" | RED |
+| ... | ... | ... | ... |
+
+## Considered but not added
+
+- **<case description>** — rationale (e.g. "out of scope per spec non-goals §X", "already covered by existing test at <path>", "deferred to follow-up ticket TICKET-Y")
+- **<case description>** — rationale
+- ...
+
+## Framework
+<detected framework + version + config file path>
+
+## Verification command
+```bash
+<exact command to run only these tests>
+```
+```
+
+## Phase 1.8 — User approval gate
+
+Use `AskUserQuestion` with:
+- Question: "Test inventory written to `docs/specs/<feature>-test-inventory.md`. N tests added, K considered-but-skipped. Approve and proceed to implementation?"
+- Options:
+  - "Approve & proceed (Recommended)" — proceeds to handoff
+  - "Add more tests" — loops back to Phase 1 with the user's additions
+  - "Discuss" — opens free-form Q&A; user re-invokes when ready
+
+**Do NOT proceed to implementation without explicit approval.**
+
+## Phase 2 — GREEN (delegated)
+
+After approval, invoke `devflow:phase-handoff --phase lock-tests --next-phase impl`. The handoff skill writes the frozen-state file and prompts the user to `/compact`. After compact, the user re-invokes `superpowers:executing-plans` which drives per-task red/green where the tests already exist.
+
+## Phase 3 — REFACTOR (delegated)
+
+Handled per-task inside `superpowers:executing-plans`, not centrally.
+
+## Important
+
+- Read frozen-state file FIRST. Treat its artefacts list as the only inputs.
+- Never write production code in this skill — only test code.
+- Every test in Phase 1 must fail before exiting Phase 1.5.
+- Phase 1.8 gate is mandatory unless the trivial-feature escape hatch (Phase 0 step 6) was taken.
+
+$ARGUMENTS
