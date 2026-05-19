@@ -62,3 +62,62 @@ EOF
   assert_failure
   assert_output --partial "--agent flag removed: agent-deck is no longer wired into devflow"
 }
+
+# ── branch-name edge cases (regression tests for C2/C3) ───────────
+
+@test "devflow_worktree preserves lowercase ticket-shaped name (mes-1234)" {
+  cat > "${MOCK_DIR}/wt" <<'EOF'
+#!/usr/bin/env bash
+echo "wt called with: $*"
+exit 0
+EOF
+  chmod +x "${MOCK_DIR}/wt"
+
+  run devflow_worktree mes-1234
+  assert_success
+  assert_output --partial "switch --create mes-1234"
+  refute_output --partial "feat/mes-1234"
+}
+
+@test "devflow_worktree does not double-prefix slash-containing name (feat/already-prefixed)" {
+  cat > "${MOCK_DIR}/wt" <<'EOF'
+#!/usr/bin/env bash
+echo "wt called with: $*"
+exit 0
+EOF
+  chmod +x "${MOCK_DIR}/wt"
+
+  run devflow_worktree feat/already-prefixed
+  assert_success
+  assert_output --partial "switch --create feat/already-prefixed"
+  refute_output --partial "feat/feat/"
+}
+
+@test "devflow_worktree passes underscore ticket (MES_1234) through with feat/ prefix" {
+  # Documents current behavior — underscore is NOT treated as ticket-shaped.
+  # If the team later wants underscore support, change the regex and this test.
+  cat > "${MOCK_DIR}/wt" <<'EOF'
+#!/usr/bin/env bash
+echo "wt called with: $*"
+exit 0
+EOF
+  chmod +x "${MOCK_DIR}/wt"
+
+  run devflow_worktree MES_1234
+  assert_success
+  assert_output --partial "switch --create feat/MES_1234"
+}
+
+@test "devflow_worktree surfaces wt failure with die message (regression for silent set -e exit)" {
+  # Mock wt to exit 1 — must produce a "Failed to create worktree" message
+  # and a non-zero exit code (not a silent shell exit).
+  cat > "${MOCK_DIR}/wt" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  chmod +x "${MOCK_DIR}/wt"
+
+  run devflow_worktree MES-9999
+  assert_failure
+  assert_output --partial "Failed to create worktree"
+}
