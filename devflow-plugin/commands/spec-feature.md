@@ -7,7 +7,7 @@ You are speccing a new feature. This command enforces a structured planning proc
 ## Preamble (first action)
 
 1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
-2. Call `mark_chapter` with `{title: "Spec — <TICKET>", summary: "Starting a new feature"}`.
+2. Call `mark_chapter` with `{title: "Spec — <TICKET>", summary: "Writing the spec document"}`.
 3. Echo ANSI terminal-title escape:
    ```bash
    printf '\e]2;%s — Spec\007' "<TICKET>"

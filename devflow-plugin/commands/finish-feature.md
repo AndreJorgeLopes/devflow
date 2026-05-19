@@ -9,7 +9,7 @@ You are finishing a feature. Run the full completion pipeline before handing off
 ## Preamble (first action)
 
 1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
-2. Call `mark_chapter` with `{title: "Finish — <TICKET>", summary: "Starting a new feature"}`.
+2. Call `mark_chapter` with `{title: "Finish — <TICKET>", summary: "Finishing the feature"}`.
 3. Echo ANSI terminal-title escape:
    ```bash
    printf '\e]2;%s — Finish\007' "<TICKET>"
