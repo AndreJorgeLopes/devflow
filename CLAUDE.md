@@ -1,7 +1,7 @@
 # Devflow Project Instructions
 
-Devflow is a 6-layer AI dev environment orchestrator (bash CLI, zero build deps).
-It composes Hindsight, Agent Deck, Worktrunk, Code Review, Skills/CLAUDE.md, and Langfuse
+Devflow is a 5-layer AI dev environment orchestrator (bash CLI, zero build deps).
+It composes Hindsight, Worktrunk, Code Review, Skills/CLAUDE.md, and Langfuse
 into a unified workflow for AI coding agents (Claude Code, OpenCode).
 
 ## Project Structure
@@ -10,7 +10,7 @@ into a unified workflow for AI coding agents (Claude Code, OpenCode).
 bin/devflow              # CLI entry point — sources all lib/*.sh, routes subcommands
 lib/                     # Core command implementations (bash)
   utils.sh               # Shared utilities: logging, VCS detection, merge detection
-  init.sh                # devflow init — full 6-layer setup (idempotent)
+  init.sh                # devflow init — full 5-layer setup (idempotent)
   services.sh            # devflow up/down/status — Docker service orchestration
   check.sh               # devflow check — multi-CLI code review abstraction
   skills.sh              # devflow skills — list/install/remove/convert
@@ -119,7 +119,7 @@ Git only allows one worktree per branch. To support multiple concurrent worktree
 - `devflow worktree` auto-detaches any worktree that has main locked before creating a new one.
 - Feature worktrees always create NEW branches from main (`git worktree add <path> -b <branch> main`).
 - When done, remove worktrees with `devflow done <branch>` — don't leave them lingering on main.
-- This matches the pattern used by OpenCode/Superpowers, Agent-deck, and Claude Code's worktree isolation.
+- This matches the pattern used by OpenCode/Superpowers and Claude Code's worktree isolation.
 
 ## Skill Interaction Rules
 
@@ -129,7 +129,7 @@ When any skill or command needs to present choices, confirmations, or selections
 you **MUST** use the `AskUserQuestion` tool instead of printing a text question and waiting
 for input. This applies to:
 
-- Yes/No confirmations (e.g., "Want me to launch via agent-deck?")
+- Yes/No confirmations (e.g., "Continue with these changes?")
 - Multiple choice selections (e.g., "Which group?", "Which template?")
 - Approval gates (e.g., "Proceed with these changes?")
 
