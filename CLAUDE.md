@@ -10,7 +10,7 @@ into a unified workflow for AI coding agents (Claude Code, OpenCode).
 bin/devflow              # CLI entry point — sources all lib/*.sh, routes subcommands
 lib/                     # Core command implementations (bash)
   utils.sh               # Shared utilities: logging, VCS detection, merge detection
-  init.sh                # devflow init — full 6-layer setup (idempotent)
+  init.sh                # devflow init — full 5-layer setup (idempotent)
   services.sh            # devflow up/down/status — Docker service orchestration
   check.sh               # devflow check — multi-CLI code review abstraction
   skills.sh              # devflow skills — list/install/remove/convert
