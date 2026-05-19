@@ -9,6 +9,9 @@ setup() {
   source_lib utils.sh
   source_lib worktree.sh
 
+  # Hermetic: stub _ensure_main_unlocked so tests don't run real git against the host repo.
+  _ensure_main_unlocked() { :; }
+
   # Guard: fail loudly if any code path re-wires agent-deck into devflow_worktree.
   cat > "${MOCK_DIR}/agent-deck" <<'EOF'
 #!/usr/bin/env bash
