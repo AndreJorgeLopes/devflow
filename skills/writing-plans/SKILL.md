@@ -12,7 +12,7 @@ When the following events occur, apply these additions:
 2. Call `mark_chapter` with `{title: "Plan — <TICKET>", summary: "Writing implementation plan"}`.
 3. Echo ANSI terminal-title escape:
    ```bash
-   printf '\e]2;%s — Plan\007' "${TICKET:-devflow}"
+   printf '\e]2;%s — Plan\007' "<TICKET>"
    ```
 
 ## After: Plan saved to disk
