@@ -160,4 +160,5 @@ devflow_worktree() {
 
   ok "Worktree '${name}' ready"
   [[ -n "$agent" ]] && info "Launch the session with: agent-deck start ${name}"
+  return 0
 }
