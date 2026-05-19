@@ -53,7 +53,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}seed${RESET} [project-dir]           Seed Hindsight memory from project files
   ${CYAN}done${RESET} <branch-name>            Clean up a completed work session
   ${CYAN}clean${RESET} [--dry-run] [--all]     Remove merged worktrees (--all for everything)
-  ${CYAN}worktree${RESET} <name> [--agent]    Create a worktree, optionally launch agent
+  ${CYAN}worktree${RESET} <name>              Create a worktree
   ${CYAN}review${RESET} [<pr-url>]             Review local diff or a PR/MR by URL
   ${CYAN}watch${RESET} [setup|remove]       Sensitive file watchdog (background watcher)
   ${CYAN}check-version${RESET}              Check version consistency across all files
@@ -75,7 +75,7 @@ ${BOLD}EXAMPLES${RESET}
   devflow init ~/projects/myapp
   devflow up
   devflow seed
-  devflow worktree feat/add-auth --agent claude
+  devflow worktree MES-1234
   devflow skills install code-review
   devflow check
   devflow review
