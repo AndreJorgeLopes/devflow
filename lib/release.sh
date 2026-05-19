@@ -25,10 +25,8 @@ _parse_conventional_commits() {
     log_target="HEAD"
   fi
 
-  # Stream commits with NUL separators using git's %x00 (portable, no bash NUL issues)
-  local commits
-  commits="$(git -C "$project_dir" log "$log_target" --format='%B%x00' 2>/dev/null || echo "")"
-  if [[ -z "$commits" ]]; then
+  # Bail early if the commit range is empty
+  if ! git -C "$project_dir" log "$log_target" --format='%H' 2>/dev/null | grep -q .; then
     echo "none"
     return 0
   fi
@@ -46,7 +44,9 @@ _parse_conventional_commits() {
   local fix_msgs=""
   local other_msgs=""
 
-  # Parse each commit
+  # Parse each commit. Stream NUL-delimited blocks directly from git log via
+  # process substitution — bash command substitution strips NUL bytes, so we
+  # cannot capture the output into a variable first.
   local IFS_SAVE="$IFS"
   while IFS= read -r -d '' commit_block; do
     [[ -z "$commit_block" ]] && continue
@@ -72,7 +72,7 @@ _parse_conventional_commits() {
         other_msgs+="other|${subject}\n"
         ;;
     esac
-  done < <(printf '%s' "$commits")
+  done < <(git -C "$project_dir" log "$log_target" --format='%B%x00' 2>/dev/null)
   IFS="$IFS_SAVE"
 
   # Output
@@ -80,6 +80,7 @@ _parse_conventional_commits() {
   [[ -n "$feat_msgs" ]] && printf "%b" "$feat_msgs"
   [[ -n "$fix_msgs" ]] && printf "%b" "$fix_msgs"
   [[ -n "$other_msgs" ]] && printf "%b" "$other_msgs"
+  return 0
 }
 
 # ── Semver Arithmetic ────────────────────────────────────────────────────────
@@ -211,6 +212,6 @@ devflow_release_preview() {
   if check_version_consistency "$proj" >/dev/null 2>&1; then
     ok "Version files are consistent"
   else
-    fail "Version files are inconsistent — run 'devflow check-version' for details"
+    status_fail "Version files are inconsistent — run 'devflow check-version' for details"
   fi
 }

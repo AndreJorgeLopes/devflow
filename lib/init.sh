@@ -45,7 +45,7 @@ devflow_init() {
         fi
       fi
     else
-      fail "$cmd — not found"
+      status_fail "$cmd — not found"
       missing=1
     fi
   done
@@ -54,7 +54,7 @@ devflow_init() {
     if has_cmd brew; then
       ok "brew"
     else
-      fail "brew — not found (required on macOS)"
+      status_fail "brew — not found (required on macOS)"
       missing=1
     fi
   fi
