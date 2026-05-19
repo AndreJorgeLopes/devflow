@@ -26,7 +26,7 @@ lib/                     # Core command implementations (bash)
     post-pr-continue.sh      # PostToolUse — nudge agent after PR creation
     stop-finish-prompt.sh    # Stop — no-op stub (finish-feature moved to skill-level)
 devflow-plugin/          # Claude Code plugin (marketplace-ready)
-  commands/              # 17+ markdown command/skill files (includes check-sensitive.md)
+  commands/              # 20+ markdown command/skill files
   .claude-plugin/        # Plugin metadata (plugin.json, marketplace.json)
 skills/                  # Categorized skill files (NOT auto-discovered — require explicit Read)
 templates/               # Init templates (CLAUDE.md.tmpl, AGENTS.md.tmpl, etc.)
@@ -103,7 +103,6 @@ the session.
 - Config: `.devflow/sensitive-files.conf` (pipe-delimited, bash-native format)
 - Background: `devflow watch setup` installs a 5-min cron + git post-merge hook
 - In-session: finish-feature checks sensitive files before PR creation
-- Manual: `/devflow:check-sensitive` runs all checks on demand
 - Mechanical checks (version strings) auto-fixable; semantic checks (docs) need AI review
 
 ## Release Process
