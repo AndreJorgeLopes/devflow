@@ -18,8 +18,9 @@ When the following events occur, apply these additions:
 ## After: Plan saved to disk
 
 Invoke `devflow:phase-handoff` with arguments `--phase plan --next-phase lock-tests`.
-The phase-handoff skill writes the frozen-state file and prompts the user to `/compact`
-before the next phase begins. Do NOT auto-invoke `superpowers:executing-plans` from here —
-implementation must start in a clean context after `/compact`.
+The phase-handoff skill writes the frozen-state file, runs a one-click `AskUserQuestion`
+gate, and emits a copy-pasteable resume prompt for the user to paste after `/clear`.
+Do NOT auto-invoke `devflow:lock-tests` from here — the next phase must start in a clean
+context after `/clear`.
 
 $ARGUMENTS
