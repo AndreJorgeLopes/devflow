@@ -101,6 +101,18 @@
       "layer": 4
     },
     {
+      "name": "brainstorming",
+      "description": "Devflow wrapper for the upstream brainstorming skill. Thin pass-through that lets callers invoke /devflow:brainstorming as the single canonical entry point — never reach past it to the upstream skill directly.",
+      "category": "workflow",
+      "layer": 4
+    },
+    {
+      "name": "executing-plans",
+      "description": "Devflow wrapper for the upstream executing-plans skill. Delegates the per-task red-green-refactor loop to the upstream flow but intercepts the terminal handoff so it goes to /devflow:finish-feature instead of the upstream finishing-a-development-branch.",
+      "category": "workflow",
+      "layer": 4
+    },
+    {
       "name": "lock-tests",
       "description": "Lock the full test inventory before any implementation code is written — writes failing tests, emits a Test Inventory doc, and gates with user approval.",
       "category": "workflow",
