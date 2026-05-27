@@ -22,10 +22,11 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
 
    If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 
-3. **ANSI terminal-title escape:**
+3. **Set terminal window title (CLI Claude Code only — silent no-op in Claude Desktop):**
    ```bash
-   printf '\e]2;%s — Lock Tests\007' "<TICKET>"
+   [ -t 1 ] && printf '\e]2;%s — Lock Tests\007' "<TICKET>" || true
    ```
+   In Claude Desktop there is no controlling terminal — the visible phase signal comes from `mark_chapter` (step 2).
 
 4. **Read the frozen-state file** from the previous phase:
    `.devflow/state/${branch_slug}/plan.md`
@@ -47,7 +48,7 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
    - If user skips: invoke `devflow:phase-handoff --phase lock-tests --next-phase impl --no-handoff`. Then print:
 
    ```
-   Trivial change — lock-tests gate skipped. Context is already small; you can proceed directly to the next phase without `/clear`. Trigger executing-plans by typing: `Use the superpowers:executing-plans skill to implement the plan task by task` (natural-language skill trigger — superpowers exposes skills via the `Skill` tool, not as `/`-prefixed commands).
+   Trivial change — lock-tests gate skipped. Context is already small; you can proceed directly to the next phase without `/clear`. Invoke `/executing-plans` (Claude Code auto-exposes the superpowers skill as a slash command; if the picker doesn't surface it on older installs, use the natural-language trigger `Use the superpowers:executing-plans skill to implement the plan task by task` instead).
    ```
 
    Then exit.
@@ -154,7 +155,7 @@ Use `AskUserQuestion` with:
 
 ## Phase 2 — GREEN (delegated)
 
-After approval, invoke `devflow:phase-handoff --phase lock-tests --next-phase impl`. The handoff skill writes the frozen-state file, gates on a one-click `AskUserQuestion`, then emits a copy-pasteable resume prompt for the user to paste after `/clear`. After `/clear` + paste, the new session reads the frozen-state file and invokes `superpowers:executing-plans` via natural-language skill trigger (no `/superpowers:*` slash command exists), which drives per-task red/green against the tests already locked in this phase.
+After approval, invoke `devflow:phase-handoff --phase lock-tests --next-phase impl`. The handoff skill writes the frozen-state file, gates on a one-click `AskUserQuestion`, then emits a copy-pasteable resume prompt for the user to paste after `/clear`. After `/clear` + paste, the new session invokes `/executing-plans` (the superpowers skill auto-exposed as a slash command by Claude Code's plugin runtime) which drives per-task red/green against the tests already locked in this phase.
 
 ## Phase 3 — REFACTOR (delegated)
 

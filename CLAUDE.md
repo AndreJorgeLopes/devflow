@@ -90,9 +90,11 @@ brainstorming → spec-feature → writing-plans → lock-tests → executing-pl
 - `finish-feature` runs verification, creates the PR/MR, retains learnings.
 
 Each phase ends by invoking `devflow:phase-handoff`, which writes a frozen-state file
-at `.devflow/state/<branch>/<phase>.md` and prompts the user to run `/compact`. The next
-phase reads only the frozen-state file as source of truth — the brainstorming context
-does not bleed into implementation.
+at `.devflow/state/<branch>/<phase>.md` (with worktree-relative artefact paths), gates
+on a one-click `AskUserQuestion`, then emits a copy-pasteable resume prompt (with
+ABSOLUTE artefact paths) for the user to paste after `/clear`. The next phase reads
+only the frozen-state file and the artefact paths the resume block hands it as source
+of truth — the brainstorming context does not bleed into implementation.
 
 On feature branches, always complete work with `/devflow:finish-feature` before ending
 the session.
