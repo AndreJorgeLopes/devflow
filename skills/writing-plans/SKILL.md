@@ -11,10 +11,11 @@ When the following events occur, apply these additions:
 1. Detect ticket ID from current branch name (regex `[A-Z]+-[0-9]+`); if none, use `none`.
 2. Call `mark_chapter` with `{title: "Plan — <TICKET>", summary: "Writing implementation plan"}`.
    If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
-3. Echo ANSI terminal-title escape:
+3. Set terminal window title (CLI Claude Code only — silent no-op in Claude Desktop):
    ```bash
-   printf '\e]2;%s — Plan\007' "<TICKET>"
+   [ -t 1 ] && printf '\e]2;%s — Plan\007' "<TICKET>" || true
    ```
+   In Claude Desktop there is no controlling terminal — the visible phase signal comes from `mark_chapter` (step 2).
 
 ## After: Plan saved to disk
 

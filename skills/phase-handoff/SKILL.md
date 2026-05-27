@@ -78,11 +78,13 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
    If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 
-6. **Echo ANSI terminal-title escape:**
+6. **Set terminal window title (CLI Claude Code only — silent no-op in Claude Desktop):**
 
    ```bash
-   printf '\e]2;%s — %s\007' "<TICKET>" "<mapped-title>"
+   [ -t 1 ] && printf '\e]2;%s — %s\007' "<TICKET>" "<mapped-title>" || true
    ```
+
+   In Claude Desktop there is no controlling terminal (stdout is captured by the harness, `/dev/tty` is unavailable), so the escape would never reach a window manager. The visible phase signal comes from `mark_chapter` (step 5).
 
 7. **Resolve the next-phase invocation text.** Map `<next-phase>` to what the user must paste after `/clear`:
 

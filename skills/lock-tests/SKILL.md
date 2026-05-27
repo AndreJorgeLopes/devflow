@@ -23,10 +23,11 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
 
    If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 
-3. **ANSI terminal-title escape:**
+3. **Set terminal window title (CLI Claude Code only — silent no-op in Claude Desktop):**
    ```bash
-   printf '\e]2;%s — Lock Tests\007' "<TICKET>"
+   [ -t 1 ] && printf '\e]2;%s — Lock Tests\007' "<TICKET>" || true
    ```
+   In Claude Desktop there is no controlling terminal — the visible phase signal comes from `mark_chapter` (step 2).
 
 4. **Read the frozen-state file** from the previous phase:
    `.devflow/state/${branch_slug}/plan.md`
