@@ -24,6 +24,8 @@
     "./skills/visualizations-config/SKILL.md",
     "./skills/dependency-update/SKILL.md",
     "./skills/writing-plans/SKILL.md",
+    "./skills/lock-tests/SKILL.md",
+    "./skills/phase-handoff/SKILL.md",
     "./skills/best-roi-task/SKILL.md",
     "./skills/codebase-walkthrough/SKILL.md",
     "./skills/resolve-repo/SKILL.md",

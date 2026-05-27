@@ -115,7 +115,7 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
    - `title`: deterministic format `[<TICKET>] [MR#<N>] <next-phase-label>`. Examples:
      - With MR: `[MES-4282] [MR#29] Implementation`
      - Without MR: `[MES-4282] Lock Tests`
-     - Ticketless flow: `[TICKET-000] Brainstorm`
+     - Ticketless flow: `[TICKET-000] Plan` (where the suffix is one of the next-phase labels in the table — `Plan`, `Lock Tests`, or `Implementation`. The pipeline's first phase `Brainstorm` is the ENTRY point, not a `<next-phase>` value that phase-handoff is ever called with — phase-handoff is invoked from `spec-feature`, `writing-plans`, or `lock-tests`, never from `new-feature`.)
 
      If `<mr_num>` is empty, OMIT the `[MR#…]` slot entirely (do NOT emit `[MR#]` with no number). Title must be ≤60 chars — the format above stays well within the budget for typical ticket/MR sizes.
 

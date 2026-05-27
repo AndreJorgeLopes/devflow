@@ -5,6 +5,17 @@ description: Spec a new feature — recall architecture knowledge, create a spec
 
 You are speccing a new feature. This command enforces a structured planning process before any code is written.
 
+## Preamble (first action)
+
+1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+2. Call `mark_chapter` with `{title: "Spec — <TICKET>", summary: "Writing the spec document"}`.
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
+3. Set terminal window title (CLI Claude Code only — silent no-op in Claude Desktop):
+   ```bash
+   [ -t 1 ] && printf '\e]2;%s — Spec\007' "<TICKET>" || true
+   ```
+   In Claude Desktop there is no controlling terminal — the visible phase signal comes from `mark_chapter` (step 2).
+
 ## Steps
 
 1. **Parse the feature request** from the arguments below. Extract:
@@ -53,6 +64,12 @@ You are speccing a new feature. This command enforces a structured planning proc
    - [recalled hard rules that apply]
    - [architectural decisions that constrain the approach]
 
+   ## Acceptance Criteria
+
+   - [ ] AC1: [observable behavior]
+   - [ ] AC2: [observable behavior]
+   - [ ] AC3: [edge case behavior]
+
    ## Non-goals
 
    Explicitly out of scope:
@@ -88,6 +105,14 @@ You are speccing a new feature. This command enforces a structured planning proc
    - Should we adjust the scope?
 
 7. **Retain the architectural decisions** from this spec using the Hindsight `retain` tool, so they're available in future sessions.
+
+8. **Hand off to the planning phase**. Invoke `devflow:phase-handoff` with arguments:
+   - `--phase spec`
+   - `--next-phase plan`
+
+   The handoff skill writes a frozen-state file at `.devflow/state/<branch>/spec.md`, gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Plan` (visible in the sidebar). The spawned session's initial prompt points it at the frozen-state file + spec absolute path and instructs it to invoke `/devflow:writing-plans` (the devflow plugin exposes that as a slash command).
+
+   Do NOT auto-invoke `writing-plans` from this skill — context cleanup is the explicit boundary.
 
 ## Important
 
