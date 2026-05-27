@@ -85,13 +85,13 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
 7. **Resolve the next-phase invocation text.** Map `<next-phase>` to what the user must paste after `/clear`:
 
-   | `<next-phase>` | Invocation form | Text to paste |
-   |---|---|---|
-   | `plan` | Slash command (devflow plugin exposes commands) | `/devflow:writing-plans` |
-   | `lock-tests` | Slash command (devflow plugin exposes commands) | `/devflow:lock-tests` |
-   | `impl` | Natural-language skill trigger (superpowers plugin exposes skills only, NOT slash commands) | `Use the superpowers:executing-plans skill to implement the plan task by task, reading the frozen-state file and artefact paths above.` |
+   | `<next-phase>` | Text to paste |
+   |---|---|
+   | `plan` | `/devflow:writing-plans` |
+   | `lock-tests` | `/devflow:lock-tests` |
+   | `impl` | `/executing-plans` |
 
-   **Why `impl` is different:** the `superpowers` plugin manifest (`~/.claude/plugins/cache/claude-plugins-official/superpowers/<ver>/.claude-plugin/plugin.json`) declares NO `commands/` directory. Its skills live under `skills/` and Claude invokes them via the `Skill` tool when triggered by matching natural language. `/superpowers:executing-plans` will NOT appear in the user's slash-command picker — paste the natural-language prompt instead.
+   **Note on `impl`:** the `superpowers` plugin packages `executing-plans` as a skill (under its `skills/` tree), not as a manifest-declared command. Claude Code's plugin runtime auto-exposes skill names as slash commands, so `/executing-plans` resolves to the superpowers skill at invocation time. If the slash command picker does not surface it in a given install (older Claude Code, plugin disabled, etc.), invoke it as a natural-language Skill trigger instead: `Use the superpowers:executing-plans skill to implement the plan task by task, reading the frozen-state file and artefact paths above.`
 
 8. **One-click handoff gate (`AskUserQuestion`).** Ask the user:
 
@@ -105,25 +105,25 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
    If user picks `Show resume prompt`: continue to step 9.
 
-9. **Emit the copy-pasteable resume prompt.** Output the two-step instruction below, with `<placeholders>` substituted, ending in a fenced `text`-tagged code block (use four backticks on the outer fence if the inner block also needs backticks):
+9. **Emit the copy-pasteable resume prompt.** First print the two preparatory sentences below as PROSE (no code fence — they need to render as bold-formatted markdown for the user, not as literal code). Then emit ONE fenced `text`-tagged code block containing the resume content the user will triple-click + copy.
 
-   ```
+   Preparatory prose (substitute `<placeholders>` before emitting):
+
    Phase `<current-phase>` complete. Frozen state at `<worktree-root>/.devflow/state/${branch_slug}/<current-phase>.md`.
 
-   **Step 1:** Run `/clear` now to drop the <current-phase>-phase context entirely. `/clear` is preferred over `/compact` here — `/compact` keeps a biased summary of prior context (often nudging the next phase toward what the summarizer thought mattered); `/clear` gives a true clean slate that reads only the frozen-state file and the artefact paths it lists. The one-time prompt-cache miss is amortized across the next phase.
+   **Step 1:** Run `/clear` now to drop the `<current-phase>`-phase context entirely. `/clear` is preferred over `/compact` here — `/compact` keeps a biased summary of prior context (often nudging the next phase toward what the summarizer thought mattered); `/clear` gives a true clean slate that reads only the frozen-state file and the artefact paths it lists. The one-time prompt-cache miss is amortized across the next phase.
 
    **Step 2:** After `/clear`, paste the block below verbatim into the fresh session. It contains every artefact path the next phase needs, so the cold-started session finds its bearings without conversational memory.
-   ```
 
-   Then immediately output the resume block as a `text`-tagged fenced code block, ready for the user to triple-click + copy:
+   Then output the resume block — a SINGLE `text`-tagged fenced code block. All artefact paths inside the block MUST be ABSOLUTE paths (resolved from `$worktree_root`), so the cold-started session reads them correctly regardless of cwd:
 
    ```text
-   Read these source-of-truth artefacts and execute the next phase of <TICKET-ID> (fresh session, no other context):
+   Read these source-of-truth artefacts and execute the next phase of <TICKET-ID> (fresh session, no other context). All paths below are absolute — readable from any cwd:
 
    - Frozen state (entry point — read first): <worktree-root>/.devflow/state/${branch_slug}/<current-phase>.md
-   - Spec: <resolved spec path, or "not yet produced">
-   - Plan: <resolved plan path, or "not yet produced">
-   - Test inventory: <resolved test-inventory path, or "not yet produced">
+   - Spec: <worktree-root>/<rel-spec-path>  (or "not yet produced")
+   - Plan: <worktree-root>/<rel-plan-path>  (or "not yet produced")
+   - Test inventory: <worktree-root>/<rel-test-inventory-path>  (or "not yet produced")
 
    Worktree: <worktree-root>
    Branch: <branch-name>
