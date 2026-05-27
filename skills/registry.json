@@ -108,7 +108,7 @@
     },
     {
       "name": "phase-handoff",
-      "description": "Hand off between phases of the devflow new-feature pipeline — writes a frozen-state file, marks a chapter, sets terminal title, gates on a one-click AskUserQuestion, then emits a copy-pasteable resume prompt for the user to paste after /clear.",
+      "description": "Hand off between phases of the devflow new-feature pipeline — writes a frozen-state file, marks a chapter, sets terminal title, gates on a one-click AskUserQuestion, then spawns a new Claude Desktop session via mcp__ccd_session__spawn_task titled [<TICKET>] [MR#<N>] <Phase>.",
       "category": "workflow",
       "layer": 4
     },

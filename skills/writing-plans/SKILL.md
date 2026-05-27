@@ -21,8 +21,9 @@ When the following events occur, apply these additions:
 
 Invoke `devflow:phase-handoff` with arguments `--phase plan --next-phase lock-tests`.
 The phase-handoff skill writes the frozen-state file, runs a one-click `AskUserQuestion`
-gate, and emits a copy-pasteable resume prompt for the user to paste after `/clear`.
-Do NOT auto-invoke `devflow:lock-tests` from here — the next phase must start in a clean
-context after `/clear`.
+gate, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled
+`[<TICKET>] [MR#<N>] Lock Tests` (visible in the sidebar). Do NOT auto-invoke
+`devflow:lock-tests` from here — the next phase must start in a fresh spawned session,
+not in this one.
 
 $ARGUMENTS

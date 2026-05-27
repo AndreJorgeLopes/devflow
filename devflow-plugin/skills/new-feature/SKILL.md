@@ -7,6 +7,17 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
 **IMPORTANT:** Do NOT create worktrees or branches — that was already handled by `devflow worktree` before this session started.
 
+## Preamble (first action)
+
+1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+2. Call `mark_chapter` with `{title: "Brainstorm — <TICKET>", summary: "Starting a new feature"}`.
+   If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
+3. Set terminal window title (CLI Claude Code only — silent no-op in Claude Desktop):
+   ```bash
+   [ -t 1 ] && printf '\e]2;%s — Brainstorm\007' "<TICKET>" || true
+   ```
+   In Claude Desktop there is no controlling terminal — the visible phase signal comes from `mark_chapter` (step 2).
+
 ## Steps
 
 1. **Detect workspace context.** Run these commands to understand where you are:
@@ -56,6 +67,12 @@ You have been launched inside a feature worktree. Your job is to orient yourself
    If yes, invoke the `codebase-walkthrough` skill with the feature context. After the walkthrough completes, continue to brainstorming.
 
 6. **Transition to brainstorming.** Once you understand the feature (and optionally completed the walkthrough), invoke the `brainstorming` skill to explore requirements, design, and approach before writing any code.
+
+   The full pipeline from here is:
+   ```
+   brainstorming → spec-feature → writing-plans → lock-tests → executing-plans → finish-feature
+   ```
+   Each phase ends with `devflow:phase-handoff` (writes a frozen-state file, gates via one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] <Phase>`). The spawned session starts cold; its initial prompt hands it absolute paths to the frozen-state file + spec + plan + test inventory as the only authoritative inputs.
 
 ## Important
 

@@ -91,10 +91,13 @@ brainstorming → spec-feature → writing-plans → lock-tests → executing-pl
 
 Each phase ends by invoking `devflow:phase-handoff`, which writes a frozen-state file
 at `.devflow/state/<branch>/<phase>.md` (with worktree-relative artefact paths), gates
-on a one-click `AskUserQuestion`, then emits a copy-pasteable resume prompt (with
-ABSOLUTE artefact paths) for the user to paste after `/clear`. The next phase reads
-only the frozen-state file and the artefact paths the resume block hands it as source
-of truth — the brainstorming context does not bleed into implementation.
+on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via
+`mcp__ccd_session__spawn_task`. The spawned session's title is deterministic:
+`[<TICKET>] [MR#<N>] <Phase>` (e.g. `[MES-4282] [MR#29] Implementation`); the MR#
+slot is omitted when no MR/PR exists yet for the branch. Its initial prompt hands it
+ABSOLUTE paths to the frozen-state file + spec + plan + test inventory as the only
+authoritative inputs — the brainstorming context does not bleed into implementation
+because the spawned session has zero conversational memory of the prior phase.
 
 On feature branches, always complete work with `/devflow:finish-feature` before ending
 the session.
