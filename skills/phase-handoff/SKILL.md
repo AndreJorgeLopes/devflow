@@ -1,9 +1,9 @@
 ---
 name: phase-handoff
-description: Hand off between phases of the devflow new-feature pipeline. Writes a frozen-state file, marks a chapter, sets the terminal title, gates on a one-click AskUserQuestion, then emits a copy-pasteable resume prompt for the user to paste after `/clear`.
+description: Hand off between phases of the devflow new-feature pipeline. Writes a frozen-state file, marks a chapter, sets the terminal title, gates on a one-click AskUserQuestion, then spawns a new session for the next phase via `mcp__ccd_session__spawn_task` so it shows up in the Claude Desktop sidebar with a deterministic title.
 ---
 
-You are at a phase boundary in devflow's new-feature pipeline. Capture the current state to disk, mark the transition, and prompt the user to clear context before the next phase begins.
+You are at a phase boundary in devflow's new-feature pipeline. Capture the current state to disk, mark the transition in the CURRENT session, then spawn a NEW session (`mcp__ccd_session__spawn_task`) for the next phase. The new session starts cold — its only context is the prompt you hand it, which points at the frozen-state file plus absolute artefact paths.
 
 **Arguments expected (parse `$ARGUMENTS`):**
 - `--phase <current-phase>` (required): one of `spec`, `plan`, `lock-tests`
@@ -22,7 +22,7 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
    # Replaces forward-slashes (from feat/X, fix/X conventions) with hyphens.
    branch_slug="$(echo "$branch" | tr '/' '-')"
    ```
-   Extract ticket ID from `$branch` (regex `[A-Z]+-[0-9]+`); if none, use `none`.
+   Extract ticket ID from `$branch` (regex `[A-Z]+-[0-9]+`); if none, use `TICKET-000` as a deterministic placeholder so titles remain consistent.
 
 2. **Compute target paths:**
    - State dir: `<worktree-root>/.devflow/state/${branch_slug}/`
@@ -42,7 +42,7 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
    ```markdown
    # Phase Handoff: <current-phase> → <next-phase>
 
-   **Ticket:** <TICKET-ID or "none">
+   **Ticket:** <TICKET-ID or "TICKET-000">
    **Branch:** <branch-name>
    **Worktree:** <absolute-path>
    **Completed phase:** <current-phase> at <ISO-8601 timestamp>
@@ -66,84 +66,116 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
    If the file already exists (re-entry into this phase), APPEND a `## Re-entry at <timestamp>` section rather than overwriting.
 
-5. **Mark chapter** (Claude Code). Map `<next-phase>` to a human-readable chapter title:
+5. **Mark chapter in the CURRENT session** (Claude Code). Map `<current-phase>` to a human-readable chapter title to mark the phase you are LEAVING:
 
-   | `<next-phase>` | Chapter title |
+   | `<current-phase>` | Chapter title for the current session |
    |---|---|
-   | `plan` | `Plan` |
-   | `lock-tests` | `Lock Tests` |
-   | `impl` | `Implementation` |
+   | `spec` | `Spec complete` |
+   | `plan` | `Plan complete` |
+   | `lock-tests` | `Lock Tests complete` |
 
-   Call `mark_chapter` with `{title: "<mapped-title> — <TICKET>", summary: "Handed off from <current-phase>"}`.
+   Call `mark_chapter` with `{title: "<mapped-title> — <TICKET>", summary: "Handing off to <next-phase> phase"}`.
 
    If `mark_chapter` is unavailable (e.g. running outside Claude Code), skip silently.
 
-6. **Set terminal window title (CLI Claude Code only — silent no-op in Claude Desktop):**
+6. **Set terminal window title for the CURRENT session (CLI Claude Code only — silent no-op in Claude Desktop):**
 
    ```bash
-   [ -t 1 ] && printf '\e]2;%s — %s\007' "<TICKET>" "<mapped-title>" || true
+   [ -t 1 ] && printf '\e]2;%s — %s\007' "<TICKET>" "<current-phase mapped title>" || true
    ```
 
-   In Claude Desktop there is no controlling terminal (stdout is captured by the harness, `/dev/tty` is unavailable), so the escape would never reach a window manager. The visible phase signal comes from `mark_chapter` (step 5).
+   In Claude Desktop there is no controlling terminal (stdout is captured by the harness, `/dev/tty` is unavailable), so the escape would never reach a window manager. The visible phase signal in Claude Desktop comes from `mark_chapter` + the spawned-session sidebar entry (step 9).
 
-7. **Resolve the next-phase invocation text.** Map `<next-phase>` to what the user must paste after `/clear`:
+7. **Resolve next-phase metadata.** Map `<next-phase>` to its display label and invocation form:
 
-   | `<next-phase>` | Text to paste |
-   |---|---|
-   | `plan` | `/devflow:writing-plans` |
-   | `lock-tests` | `/devflow:lock-tests` |
-   | `impl` | `/executing-plans` |
+   | `<next-phase>` | Display label (for spawn_task title) | Skill invocation in the new session |
+   |---|---|---|
+   | `plan` | `Plan` | `/devflow:writing-plans` |
+   | `lock-tests` | `Lock Tests` | `/devflow:lock-tests` |
+   | `impl` | `Implementation` | `/executing-plans` |
 
-   **Note on `impl`:** the `superpowers` plugin packages `executing-plans` as a skill (under its `skills/` tree), not as a manifest-declared command. Claude Code's plugin runtime auto-exposes skill names as slash commands, so `/executing-plans` resolves to the superpowers skill at invocation time. If the slash command picker does not surface it in a given install (older Claude Code, plugin disabled, etc.), invoke it as a natural-language Skill trigger instead: `Use the superpowers:executing-plans skill to implement the plan task by task, reading the frozen-state file and artefact paths above.`
+   **Note on `impl`:** Claude Code's plugin runtime auto-exposes superpowers skills as `/`-prefixed slash commands, so `/executing-plans` resolves to the upstream `superpowers:executing-plans` skill at invocation time. If the slash picker doesn't surface it in a given install (older Claude Code, plugin disabled, etc.), the natural-language fallback is `Use the superpowers:executing-plans skill to implement the plan task by task`.
 
-8. **One-click handoff gate (`AskUserQuestion`).** Ask the user:
+8. **Detect MR/PR number for the current branch.** Optional — included in the spawned-session title when available:
 
-   - Question: `Phase \`<current-phase>\` complete. Frozen state written to \`.devflow/state/${branch_slug}/<current-phase>.md\`. Ready to clear context and continue to \`<next-phase>\`?`
-   - Header: `Handoff`
-   - Single-select. Options:
-     - Label: `Show resume prompt (Recommended)` — Description: `Emit copy-pasteable block; you then run /clear and paste it.`
-     - Label: `Stay in this session` — Description: `Skip /clear. Risk: stale <current-phase> context biases the next phase.`
-
-   If user picks `Stay in this session`: print `Phase-handoff completed but next-phase skill NOT triggered. Re-invoke phase-handoff later if you change your mind.` and exit.
-
-   If user picks `Show resume prompt`: continue to step 9.
-
-9. **Emit the copy-pasteable resume prompt.** First print the two preparatory sentences below as PROSE (no code fence — they need to render as bold-formatted markdown for the user, not as literal code). Then emit ONE fenced `text`-tagged code block containing the resume content the user will triple-click + copy.
-
-   Preparatory prose (substitute `<placeholders>` before emitting):
-
-   Phase `<current-phase>` complete. Frozen state at `<worktree-root>/.devflow/state/${branch_slug}/<current-phase>.md`.
-
-   **Step 1:** Run `/clear` now to drop the `<current-phase>`-phase context entirely. `/clear` is preferred over `/compact` here — `/compact` keeps a biased summary of prior context (often nudging the next phase toward what the summarizer thought mattered); `/clear` gives a true clean slate that reads only the frozen-state file and the artefact paths it lists. The one-time prompt-cache miss is amortized across the next phase.
-
-   **Step 2:** After `/clear`, paste the block below verbatim into the fresh session. It contains every artefact path the next phase needs, so the cold-started session finds its bearings without conversational memory.
-
-   Then output the resume block — a SINGLE `text`-tagged fenced code block. All artefact paths inside the block MUST be ABSOLUTE paths (resolved from `$worktree_root`), so the cold-started session reads them correctly regardless of cwd:
-
-   ```text
-   Read these source-of-truth artefacts and execute the next phase of <TICKET-ID> (fresh session, no other context). All paths below are absolute — readable from any cwd:
-
-   - Frozen state (entry point — read first): <worktree-root>/.devflow/state/${branch_slug}/<current-phase>.md
-   - Spec: <worktree-root>/<rel-spec-path>  (or "not yet produced")
-   - Plan: <worktree-root>/<rel-plan-path>  (or "not yet produced")
-   - Test inventory: <worktree-root>/<rel-test-inventory-path>  (or "not yet produced")
-
-   Worktree: <worktree-root>
-   Branch: <branch-name>
-
-   Then: <invocation text from step 7's table>
+   ```bash
+   # Pick CLI by git remote — prefer gh if remote is github.com, glab if gitlab. Try both as fallback.
+   if git remote -v | grep -q "github.com"; then
+     mr_num="$(gh pr list --head "$branch" --json number -q '.[0].number' 2>/dev/null)"
+     [ -z "$mr_num" ] && mr_num="$(glab mr list --source-branch "$branch" --output json 2>/dev/null | jq -r '.[0].iid // empty' 2>/dev/null)"
+   else
+     mr_num="$(glab mr list --source-branch "$branch" --output json 2>/dev/null | jq -r '.[0].iid // empty' 2>/dev/null)"
+     [ -z "$mr_num" ] && mr_num="$(gh pr list --head "$branch" --json number -q '.[0].number' 2>/dev/null)"
+   fi
    ```
 
-   Files on disk (spec, plan, test inventory, frozen state, source code) survive `/clear` — only conversation memory is wiped. The resume block hands the new session the exact paths to read; no recall, no guessing.
+   If neither CLI returns a number, `mr_num` stays empty — the title just omits the `[MR#N]` slot.
 
-10. **Exit.** Do NOT auto-invoke the next-phase skill. The user's `/clear` + paste is the explicit boundary.
+9. **Build the spawn_task parameters.** Required fields:
+
+   - `title`: deterministic format `[<TICKET>] [MR#<N>] <next-phase-label>`. Examples:
+     - With MR: `[MES-4282] [MR#29] Implementation`
+     - Without MR: `[MES-4282] Lock Tests`
+     - Ticketless flow: `[TICKET-000] Brainstorm`
+
+     If `<mr_num>` is empty, OMIT the `[MR#…]` slot entirely (do NOT emit `[MR#]` with no number). Title must be ≤60 chars — the format above stays well within the budget for typical ticket/MR sizes.
+
+   - `tldr`: 1-2 sentence tooltip. Format: `Continue <feature-area-from-branch>: <next-phase-label> phase. Reads <frozen-state-relpath> + <N> artefact path(s).` Keep under 200 chars.
+
+   - `prompt`: self-contained initial message for the new session. The new session has ZERO conversational memory; the prompt must include everything it needs. Format:
+
+     ```
+     You are picking up the <next-phase-label> phase of <TICKET-ID>. Read these source-of-truth artefacts (absolute paths — readable from any cwd):
+
+     - Frozen state (entry point — read first): <worktree-root>/.devflow/state/${branch_slug}/<current-phase>.md
+     - Spec: <worktree-root>/<rel-spec-path>  (or "not yet produced")
+     - Plan: <worktree-root>/<rel-plan-path>  (or "not yet produced")
+     - Test inventory: <worktree-root>/<rel-test-inventory-path>  (or "not yet produced")
+
+     Worktree: <worktree-root>
+     Branch: <branch-name>
+     Ticket: <TICKET-ID>
+     <If mr_num: MR/PR: #<mr_num>>
+
+     After reading the artefacts above, invoke: <invocation text from step 7's table>
+
+     Do NOT carry over assumptions from any prior session — the artefacts above are the only authoritative inputs.
+     ```
+
+10. **One-click handoff gate (`AskUserQuestion`).** Ask the user:
+
+    - Question: `Phase \`<current-phase>\` complete. Spawn a new session for the \`<next-phase>\` phase? Title will be: \`<computed-title>\``
+    - Header: `Handoff`
+    - Single-select. Options:
+      - Label: `Spawn new session (Recommended)` — Description: `Creates a fresh session in your Claude Desktop sidebar with the title above. Manually drag it into the same group as this session if needed.`
+      - Label: `Stay in this session` — Description: `Skip the spawn. Risk: stale <current-phase> context biases the next phase. Re-invoke phase-handoff later if you change your mind.`
+
+    If user picks `Stay in this session`: print `Phase-handoff completed but new-session NOT spawned. Re-invoke phase-handoff later to spawn when ready.` and exit.
+
+    If user picks `Spawn new session`: continue to step 11.
+
+11. **Spawn the new session via `mcp__ccd_session__spawn_task`.** Call the tool with the three parameters built in step 9 (`title`, `tldr`, `prompt`).
+
+    After the call returns successfully, output exactly:
+
+    ```
+    Spawned new session: `<computed-title>` — visible in the Claude Desktop sidebar.
+
+    The new session starts cold and reads only the frozen-state file + absolute artefact paths above. To continue work, switch to that session in the sidebar.
+
+    Note: `spawn_task` cannot place the new session in a specific group (Claude Desktop UI-only metadata, not exposed via MCP). If you organize by group, drag the new session into the same group as this one.
+    ```
+
+    Then exit.
 
 ## Important
 
 - This skill writes ONLY to `.devflow/state/${branch_slug}/`. Never edits source code.
 - Re-entry: append, never overwrite.
 - If `--no-handoff` was passed, do nothing and return.
-- Prefer `/clear` over `/compact` between phases. The frozen-state file plus the four artefact paths it lists are designed to be sufficient for a cold session — no summary needed.
-- Invocation form differs by next-phase target: `devflow:*` skills ARE slash commands (`/devflow:writing-plans`, `/devflow:lock-tests`); `superpowers:*` skills are NOT (they invoke via the `Skill` tool from natural language). Step 7's table encodes this; do not hand the user a `/superpowers:*` string.
+- The CURRENT session stays open after the handoff — `spawn_task` does NOT close it. The user can keep it as an archive/reference and switch to the new session for the next phase.
+- `spawn_task` is a one-shot spawn — it does NOT auto-resume the new session or auto-invoke the next skill. The new session waits in the sidebar for the user to open it; on first open, the agent there sees the `prompt` and acts on it.
+- Group placement is NOT supported by `spawn_task` (no `group`/`groupId` parameter on the MCP tool, and groups are Claude Desktop UI-only metadata). Manual drag-into-group required after spawn.
+- Invocation form per next-phase: `devflow:*` skills use `/devflow:<name>` slash commands; `executing-plans` uses Claude Code's auto-exposed `/executing-plans` slash command (resolves to superpowers' skill) with a natural-language fallback.
 
 $ARGUMENTS

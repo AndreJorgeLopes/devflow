@@ -109,7 +109,7 @@ You are speccing a new feature. This command enforces a structured planning proc
    - `--phase spec`
    - `--next-phase plan`
 
-   The handoff skill writes a frozen-state file at `.devflow/state/<branch>/spec.md`, gates on a one-click `AskUserQuestion`, then emits a copy-pasteable resume prompt for the user to paste after `/clear`. The resume prompt points the next session at `/devflow:writing-plans` (the devflow plugin exposes a slash command for it; the underlying `superpowers:writing-plans` skill is also reachable via natural-language trigger but the slash command is the canonical entry point).
+   The handoff skill writes a frozen-state file at `.devflow/state/<branch>/spec.md`, gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Plan` (visible in the sidebar). The spawned session's initial prompt points it at the frozen-state file + spec absolute path and instructs it to invoke `/devflow:writing-plans` (the devflow plugin exposes that as a slash command).
 
    Do NOT auto-invoke `writing-plans` from this skill — context cleanup is the explicit boundary.
 
