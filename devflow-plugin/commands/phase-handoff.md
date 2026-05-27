@@ -91,9 +91,9 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
    |---|---|---|
    | `plan` | `Plan` | `/devflow:writing-plans` |
    | `lock-tests` | `Lock Tests` | `/devflow:lock-tests` |
-   | `impl` | `Implementation` | `/executing-plans` |
+   | `impl` | `Implementation` | `/devflow:executing-plans` |
 
-   **Note on `impl`:** Claude Code's plugin runtime auto-exposes superpowers skills as `/`-prefixed slash commands, so `/executing-plans` resolves to the upstream `superpowers:executing-plans` skill at invocation time. If the slash picker doesn't surface it in a given install (older Claude Code, plugin disabled, etc.), the natural-language fallback is `Use the superpowers:executing-plans skill to implement the plan task by task`.
+   **Why every entry uses a `/devflow:` wrapper:** devflow's policy is that no skill in the pipeline ever invokes an upstream skill directly — all calls go through a devflow wrapper. `/devflow:executing-plans` is the wrapper for the upstream executing-plans skill; it delegates the per-task red-green-refactor loop to the upstream flow AND intercepts the terminal handoff so it goes to `/devflow:finish-feature` instead of the upstream default. If the wrapper is missing on a given install, the user can fall back to invoking the upstream skill directly — but the wrapper is the canonical entry point.
 
 8. **Detect MR/PR number for the current branch.** Optional — included in the spawned-session title when available:
 
@@ -121,10 +121,14 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
    - `tldr`: 1-2 sentence tooltip. Format: `Continue <feature-area-from-branch>: <next-phase-label> phase. Reads <frozen-state-relpath> + <N> artefact path(s).` Keep under 200 chars.
 
-   - `prompt`: self-contained initial message for the new session. The new session has ZERO conversational memory; the prompt must include everything it needs. Format:
+   - `prompt`: self-contained initial message for the new session. The new session has ZERO conversational memory; the prompt must include everything it needs.
+
+     **CRITICAL ordering: the FIRST LINE of the prompt MUST be the slash-command invocation for the next phase.** Claude Code's plugin runtime triggers a slash command only when it is the leading content of the user message. If the slash command is buried mid-body, the spawned session treats the prompt as a conversational request — reads the files, then waits for further input — instead of auto-invoking the next-phase skill. Lead with the slash, then provide the context as supporting paths the wrapper skill reads next. Format:
 
      ```
-     You are picking up the <next-phase-label> phase of <TICKET-ID>. Read these source-of-truth artefacts (absolute paths — readable from any cwd):
+     <invocation slash command from step 7's table>
+
+     You are continuing devflow's new-feature pipeline for <TICKET-ID> at the <next-phase-label> phase. The slash command above is your first action — invoke it now, then read these absolute paths inside the invoked skill:
 
      - Frozen state (entry point — read first): <worktree-root>/.devflow/state/${branch_slug}/<current-phase>.md
      - Spec: <worktree-root>/<rel-spec-path>  (or "not yet produced")
@@ -136,9 +140,27 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
      Ticket: <TICKET-ID>
      <If mr_num: MR/PR: #<mr_num>>
 
-     After reading the artefacts above, invoke: <invocation text from step 7's table>
+     Do NOT carry over assumptions from any prior session — the frozen-state file and artefact paths above are the only authoritative inputs.
+     ```
 
-     Do NOT carry over assumptions from any prior session — the artefacts above are the only authoritative inputs.
+     **Example for an `impl` phase handoff on ticket MES-4282, MR #29:**
+
+     ```
+     /devflow:executing-plans
+
+     You are continuing devflow's new-feature pipeline for MES-4282 at the Implementation phase. The slash command above is your first action — invoke it now, then read these absolute paths inside the invoked skill:
+
+     - Frozen state (entry point — read first): /Users/foo/dev/.worktrees/messaging/MES-4282/.devflow/state/MES-4282/lock-tests.md
+     - Spec: /Users/foo/dev/.worktrees/messaging/MES-4282/docs/specs/whatsapp-user-send.md
+     - Plan: /Users/foo/dev/.worktrees/messaging/MES-4282/docs/plans/2026-05-27-whatsapp-user-send-plan.md
+     - Test inventory: /Users/foo/dev/.worktrees/messaging/MES-4282/docs/specs/whatsapp-user-send-test-inventory.md
+
+     Worktree: /Users/foo/dev/.worktrees/messaging/MES-4282
+     Branch: feat/MES-4282/whatsapp-user-send
+     Ticket: MES-4282
+     MR/PR: #29
+
+     Do NOT carry over assumptions from any prior session — the frozen-state file and artefact paths above are the only authoritative inputs.
      ```
 
 10. **One-click handoff gate (`AskUserQuestion`).** Ask the user:

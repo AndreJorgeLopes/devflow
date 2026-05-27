@@ -65,7 +65,7 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
    If yes, invoke the `codebase-walkthrough` skill with the feature context. After the walkthrough completes, continue to brainstorming.
 
-6. **Transition to brainstorming.** Once you understand the feature (and optionally completed the walkthrough), invoke the `brainstorming` skill to explore requirements, design, and approach before writing any code.
+6. **Transition to brainstorming.** Once you understand the feature (and optionally completed the walkthrough), invoke `/devflow:brainstorming` (devflow's thin wrapper around the upstream brainstorming skill — always use the devflow surface, never `/brainstorming` or the upstream skill directly) to explore requirements, design, and approach before writing any code.
 
    The full pipeline from here is:
    ```

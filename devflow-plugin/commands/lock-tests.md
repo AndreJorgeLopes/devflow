@@ -48,7 +48,7 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
    - If user skips: invoke `devflow:phase-handoff --phase lock-tests --next-phase impl --no-handoff`. Then print:
 
    ```
-   Trivial change — lock-tests gate skipped. Context is already small; no new session needed for the implementation phase. Invoke `/executing-plans` here (Claude Code auto-exposes the superpowers skill as a slash command; if the picker doesn't surface it on older installs, use the natural-language trigger `Use the superpowers:executing-plans skill to implement the plan task by task` instead).
+   Trivial change — lock-tests gate skipped. Context is already small; no new session needed for the implementation phase. Invoke `/devflow:executing-plans` here (devflow's wrapper around the upstream executing-plans skill; the wrapper forces the post-implementation handoff to go to `/devflow:finish-feature` instead of the upstream's `finishing-a-development-branch`).
    ```
 
    Then exit.
@@ -155,11 +155,11 @@ Use `AskUserQuestion` with:
 
 ## Phase 2 — GREEN (delegated)
 
-After approval, invoke `devflow:phase-handoff --phase lock-tests --next-phase impl`. The handoff skill writes the frozen-state file, gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Implementation` (visible in the sidebar). The spawned session starts cold; its initial prompt points at the frozen-state file plus absolute artefact paths and instructs it to invoke `/executing-plans` (the superpowers skill auto-exposed as a slash command by Claude Code's plugin runtime), which drives per-task red/green against the tests already locked in this phase.
+After approval, invoke `devflow:phase-handoff --phase lock-tests --next-phase impl`. The handoff skill writes the frozen-state file, gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Implementation` (visible in the sidebar). The spawned session starts cold; its initial prompt leads with the slash-command invocation `/devflow:executing-plans` (devflow's wrapper around the upstream executing-plans skill — guarantees the post-implementation handoff goes to `/devflow:finish-feature`) and hands it absolute paths to the frozen-state file plus the locked test inventory, which drives per-task red/green against the tests already locked in this phase.
 
 ## Phase 3 — REFACTOR (delegated)
 
-Handled per-task inside `superpowers:executing-plans`, not centrally.
+Handled per-task inside `/devflow:executing-plans` (the devflow wrapper, which delegates to the upstream executing-plans flow), not centrally.
 
 ## Important
 
