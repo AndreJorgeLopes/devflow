@@ -198,6 +198,6 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 - The CURRENT session stays open after the handoff — `spawn_task` does NOT close it. The user can keep it as an archive/reference and switch to the new session for the next phase.
 - `spawn_task` is a one-shot spawn — it does NOT auto-resume the new session or auto-invoke the next skill. The new session waits in the sidebar for the user to open it; on first open, the agent there sees the `prompt` and acts on it.
 - Group placement is NOT supported by `spawn_task` (no `group`/`groupId` parameter on the MCP tool, and groups are Claude Desktop UI-only metadata). Manual drag-into-group required after spawn.
-- Invocation form per next-phase: `devflow:*` skills use `/devflow:<name>` slash commands; `executing-plans` uses Claude Code's auto-exposed `/executing-plans` slash command (resolves to superpowers' skill) with a natural-language fallback.
+- Invocation form per next-phase: ALL three next-phases use a `/devflow:<name>` slash command (`/devflow:writing-plans`, `/devflow:lock-tests`, `/devflow:executing-plans`). The `executing-plans` slot points at devflow's wrapper, which internally delegates to upstream `superpowers:executing-plans` and forces the post-implementation handoff to `/devflow:finish-feature`. Never hand the spawned session a `/superpowers:*` slash or a natural-language skill trigger — the devflow wrapper is the canonical entry point for every phase.
 
 $ARGUMENTS

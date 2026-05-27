@@ -10,7 +10,17 @@ You are the devflow wrapper for the upstream brainstorming workflow. The wrapper
 
 2. **Let the upstream skill drive.** Do NOT layer additional questions, gates, or prompts on top of the upstream flow inside this wrapper — the upstream skill already runs the full requirements/design/approach exploration loop with `AskUserQuestion` gates. Your job is to be a transparent pass-through.
 
-3. **On completion, return control.** The upstream brainstorming skill's terminal state is invoking `superpowers:writing-plans`. Devflow does NOT short-circuit that — when the user is ready to spec, they invoke `/devflow:spec-feature` (devflow's spec-writing wrapper) directly. Brainstorming → spec-feature happens in the SAME session (no `phase-handoff` between them — the phase handoff fires only at spec → plan, plan → lock-tests, and lock-tests → impl boundaries).
+3. **Override the upstream terminal handoff.** The upstream brainstorming skill's documented terminal state is to invoke `superpowers:writing-plans` directly. **Devflow OVERRIDES that** — devflow's pipeline is `brainstorming → spec-feature → writing-plans` (spec lives BETWEEN brainstorming and writing-plans, not skipped). When the upstream brainstorming flow reaches its terminal state (user has approved the design + the spec doc has been written + the user has approved the written spec file), do NOT invoke `superpowers:writing-plans` or any `/writing-plans` slash command. Instead, surface this message and return control:
+
+   ```
+   Brainstorming complete — design approved + spec written and approved.
+
+   Next step in devflow's pipeline: invoke `/devflow:spec-feature` to formalize the spec into the structured devflow spec doc (this is where the spec-feature skill takes the brainstormed design and produces `docs/specs/<feature>.md` + extracts ordered tasks). After that completes, `spec-feature` invokes `devflow:phase-handoff` which spawns a new session for the `/devflow:writing-plans` phase.
+
+   Do NOT run `/writing-plans` or `superpowers:writing-plans` directly — devflow inserts `spec-feature` between brainstorming and writing-plans.
+   ```
+
+   Then exit. Brainstorming → spec-feature happens in the SAME session (no `phase-handoff` between them — phase-handoff fires only at spec → plan, plan → lock-tests, and lock-tests → impl boundaries). The user invokes `/devflow:spec-feature` next.
 
 ## Why this wrapper exists
 
