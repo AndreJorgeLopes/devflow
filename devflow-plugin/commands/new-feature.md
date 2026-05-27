@@ -70,7 +70,7 @@ You have been launched inside a feature worktree. Your job is to orient yourself
    ```
    brainstorming → spec-feature → writing-plans → lock-tests → executing-plans → finish-feature
    ```
-   Each phase ends with `devflow:phase-handoff` (writes a frozen-state file, prompts you to run `/compact`). The next phase reads only the frozen-state file as source of truth.
+   Each phase ends with `devflow:phase-handoff` (writes a frozen-state file, gates via one-click `AskUserQuestion`, then emits a copy-pasteable resume prompt for the user to paste after `/clear`). The next phase reads only the frozen-state file and the artefact paths it lists as source of truth.
 
 ## Important
 
