@@ -137,7 +137,7 @@ git clone https://github.com/AndreJorgeLopes/devflow.git ~/dev/devflow
 cd ~/dev/devflow && make link
 ```
 
-**Prerequisites:** git, tmux, Homebrew (macOS). Recommended: Docker CLI + runtime, Claude Code or OpenCode, uv.
+**Prerequisites:** git, tmux, Homebrew (macOS). Recommended: Docker CLI + runtime, Claude Code or OpenCode, uv. Optional: [defuddle](https://github.com/kepano/defuddle) (`npm install -g defuddle`) for clean web-page fetching in `/devflow:review-document`. Without it, web URLs fall back to `WebFetch`.
 
 ### First Run
 
@@ -203,7 +203,7 @@ SKILLS
 
 ## Skills & Commands
 
-`devflow init` installs 18 slash commands. Type `/devflow:` in Claude Code to see them all.
+`devflow init` installs 19 slash commands. Type `/devflow:` in Claude Code to see them all.
 
 | Skill | Layer | What It Does |
 |-------|:-----:|-------------|
@@ -211,6 +211,8 @@ SKILLS
 | `/devflow:finish-feature` | Review + Memory | Verify, commit, create PR/MR, retain learnings, cleanup |
 | `/devflow:create-pr` | Review + Memory | Self-review + code checks + PR creation pipeline |
 | `/devflow:pre-push-check` | Review + Process | Full pre-push review against check rules + CLAUDE.md |
+| `/devflow:review` | Review | Multi-perspective code review of a PR/MR or local diff |
+| `/devflow:review-document` | Review | Multi-perspective prose review (KB/RFC/spike/runbook/PRD) on Google Docs, Confluence, local files, or URLs |
 | `/devflow:spec-feature` | Memory + Process | Architecture recall + spec doc + task breakdown |
 | `/devflow:architecture-decision` | Memory + Process | Document ADR, retain in Hindsight, update CLAUDE.md |
 | `/devflow:best-roi-task` | Process | Find highest ROI task in a Jira Epic |

@@ -41,6 +41,12 @@
       "layer": 3
     },
     {
+      "name": "review-document",
+      "description": "Multi-perspective prose document review (KB / RFC / spike / runbook / PRD / design / KB page) on Google Docs, Confluence, local files, or arbitrary URLs — parallel agents, comment cross-check, severity scoring, chat-only findings. Counterpart to write-spike.",
+      "category": "code-review",
+      "layer": 3
+    },
+    {
       "name": "new-feature",
       "description": "Start a new feature with worktree, memory recall, and workspace setup",
       "category": "worktree-flow",
