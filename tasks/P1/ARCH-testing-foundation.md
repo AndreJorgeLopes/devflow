@@ -120,7 +120,7 @@ bats tests/unit/utils.bats
 
 ## Workflow Integration
 
-This is the entry point for the entire testing effort. An agent session starts here with `/devflow:new-feature` → brainstorming → writing-plans → executing-plans.
+This is the entry point for the entire testing effort. An agent session starts here with `/devflow:new-feature` → `/devflow:brainstorming` → `/devflow:spec-feature` → `/devflow:writing-plans` → `/devflow:lock-tests` → `/devflow:executing-plans` → `/devflow:finish-feature`.
 
 Once this phase lands, every subsequent testing task can run `make test-unit` in its verification step. The helpers created here (`common.bash`, `mocks.bash`, `assertions.bash`) are shared infrastructure used by all test files in Phases 2–4.
 

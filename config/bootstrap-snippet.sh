@@ -14,8 +14,9 @@
 : <<'BREWFILE_SNIPPET'
 
 # AI Dev Environment (devflow)
-brew "agent-deck"      # Session wrapper (if available via brew)
 brew "worktrunk"       # Git worktree manager
+brew "gh"              # GitHub CLI (for /devflow:create-pr and devflow review)
+brew "glab"            # GitLab CLI (for /devflow:create-pr and devflow review)
 # devflow itself installed via local tap or make install
 
 BREWFILE_SNIPPET
