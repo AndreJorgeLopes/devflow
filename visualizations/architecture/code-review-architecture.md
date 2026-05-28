@@ -212,6 +212,107 @@ flowchart TD
 
 ---
 
+## 5. /devflow:review-document — Prose Doc Review
+
+`/devflow:review-document` is the prose-doc counterpart to `devflow review`. Where `devflow review` reviews **code diffs**, `/devflow:review-document` reviews **prose docs** (KB articles, RFCs, spikes, runbooks, PRDs, design docs). Different inputs, different agent set, different output anchor model.
+
+```mermaid
+%%{init: {'flowchart': {'rankSpacing': 50, 'nodeSpacing': 30, 'diagramPadding': 15}}}%%
+flowchart TD
+    START["/devflow:review-document &lt;source&gt;"]
+
+    subgraph P0 [" Phase 0 — Source detection + clean fetch "]
+        DETECT{"Source type?"}
+        GD["Google Doc<br/>Drive MCP<br/>strip strikethrough"]
+        CF["Confluence page<br/>Atlassian MCP<br/>strip change-tracking"]
+        LF["Local file<br/>Read tool"]
+        URL["Arbitrary URL<br/>defuddle (preferred)<br/>WebFetch (fallback)"]
+        ANCHOR["Auto-pick anchor:<br/>file:line for local<br/>§heading+quote for hosted"]
+        DETECT -->|"docs.google.com"| GD
+        DETECT -->|"atlassian.net/wiki"| CF
+        DETECT -->|"path"| LF
+        DETECT -->|"https://"| URL
+        GD --> ANCHOR
+        CF --> ANCHOR
+        LF --> ANCHOR
+        URL --> ANCHOR
+    end
+
+    subgraph P1 [" Phase 1 — Context + comments "]
+        TICKETS["Extract Jira IDs<br/>+ fetch via Atlassian MCP"]
+        MEM["Hindsight recall<br/>(doc title + keywords)"]
+        COMMENTS["Fetch existing platform comments<br/>(Confluence inline/footer,<br/>Google Doc = manual)"]
+        SANITY["Cleaned-text sanity check<br/>(warn if &gt;10% stripped)"]
+    end
+
+    subgraph P2 [" Phase 2 — Parallel agents (per doc type) "]
+        CRITIC["critic (Opus)<br/>correctness + structure"]
+        WRITER["writer (Haiku)<br/>prose / tone / clarity"]
+        DOCSPEC["document-specialist<br/>external claim verification"]
+        ARCH["architect (opt)<br/>system-claim cross-check"]
+        VER["verifier (opt)<br/>code-claim cross-check"]
+        SEC["security-reviewer (opt)<br/>PII / auth / GDPR"]
+    end
+
+    subgraph P3 [" Phase 3 — Scoring + cross-check "]
+        SCORE["Confidence 0-100<br/>drop &lt;50<br/>collapse recurring"]
+        DEDUP["Cross-agent dedup"]
+        XCHECK["Cross-check vs existing comments:<br/>NEW / RAISED-OPEN /<br/>RAISED-RESOLVED-FIXED / -NOT-FIXED"]
+    end
+
+    OUTPUT["🔵 Chat-only output<br/>(no platform posting)<br/>emoji severity + anchor + quote + fix + TL;DR"]
+
+    START --> DETECT
+    ANCHOR --> TICKETS
+    TICKETS --> MEM --> COMMENTS --> SANITY
+    SANITY --> CRITIC
+    SANITY --> WRITER
+    SANITY --> DOCSPEC
+    SANITY -.->|"if signal"| ARCH
+    SANITY -.->|"if signal"| VER
+    SANITY -.->|"if signal"| SEC
+    CRITIC --> SCORE
+    WRITER --> SCORE
+    DOCSPEC --> SCORE
+    ARCH -.-> SCORE
+    VER -.-> SCORE
+    SEC -.-> SCORE
+    SCORE --> DEDUP --> XCHECK --> OUTPUT
+
+    classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
+    classDef cliStyle fill:#374151,color:#fff,stroke:#1f2937
+    classDef inputStyle fill:#6b7280,color:#fff,stroke:#4b5563
+    classDef agentStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
+    classDef condStyle fill:#9ca3af,color:#fff,stroke:#6b7280
+
+    class START cliStyle
+    class DETECT,ANCHOR reviewStyle
+    class GD,CF,LF,URL inputStyle
+    class TICKETS,MEM,COMMENTS,SANITY inputStyle
+    class CRITIC,WRITER,DOCSPEC agentStyle
+    class ARCH,VER,SEC condStyle
+    class SCORE,DEDUP,XCHECK reviewStyle
+    class OUTPUT reviewStyle
+```
+
+### Key differences vs `devflow review`
+
+| Dimension | `devflow review` (code) | `/devflow:review-document` (prose) |
+|---|---|---|
+| Input | git diff or PR/MR URL | Google Doc / Confluence / local file / arbitrary URL |
+| Fetch | `gh pr diff` / `glab mr diff` / `git diff` | Drive MCP / Atlassian MCP / Read / defuddle |
+| Agent set | code-focused (bug scanner, convention, test coverage…) | prose-focused (critic, writer, document-specialist…) |
+| Anchor | `file:line` always | auto-pick: `file:line` for local, `§heading+quote` for hosted |
+| Existing comments cross-check | yes (GitHub reviews / GitLab discussions, paginated) | yes (Confluence footer + inline; Google Doc unsupported by Drive MCP — manual fallback) |
+| Output | code-suggestion fences inline | prose rewrites verbatim |
+| Inline comment posting | optional draft pending (GitHub PENDING / GitLab draft_notes) | chat-only, no platform posting in v1 |
+
+### Soft dependency — defuddle
+
+For arbitrary-URL inputs, the skill prefers the upstream **defuddle** CLI (`github.com/kepano/defuddle`, `npm install -g defuddle`) for clean rendered text. When defuddle is missing, it falls back to `WebFetch` and surfaces that downgrade in the output's Context section. defuddle is intentionally NOT vendored into devflow — it tracks upstream releases via `npm`.
+
+---
+
 ## Notes
 
 - **Why multi-CLI?** Continue.dev (`cn check`) was a single point of failure and required a separate npm dependency. The new dispatch layer uses whichever AI CLI is already installed.
@@ -219,3 +320,4 @@ flowchart TD
 - **Structured output** via `--json-schema` is optional — when provided, Claude Code returns machine-parseable results for CI integration.
 - **Fallback order** is deterministic: env override > claude > opencode. No interactive prompts during dispatch.
 - **`devflow review`** is distinct from `devflow check` — it's a lighter-weight review that doesn't use `.devflow/checks/` rules. It supports two modes: local diff (against CLAUDE.md conventions) and remote PR/MR review by URL (GitHub `gh` or GitLab `glab`).
+- **`/devflow:review-document`** is the sibling for prose docs (KB / RFC / spike / runbook / PRD / design). It uses different agents and a different anchor format because the inputs and audiences are different. See section 5 above.

@@ -263,6 +263,7 @@ graph TD
 | `devflow check`                     | Run code review against .devflow/checks/ (Claude Code primary, OpenCode fallback)                 | L4     |
 | `devflow review`                    | Review local diff against CLAUDE.md conventions via Claude Code                                   | L4, L5 |
 | `devflow review <pr-url>`          | Fetch PR/MR diff (gh/glab) and review via Claude Code                                             | L4     |
+| `/devflow:review-document <src>`    | Multi-perspective prose-doc review (KB/RFC/spike/runbook/PRD) on Google Docs, Confluence, local files, or URLs. Soft dep: defuddle CLI for clean web fetches. | L4     |
 | `devflow web`                       | Open agent-deck web dashboard (:8420)                                                             | L2     |
 | `devflow conductor`                 | Manage conductors (start, stop, status)                                                           | L2     |
 | `devflow skills list`               | List all 10 skills from registry with install status                                              | L5     |

@@ -55,3 +55,12 @@ echo ""
 echo "  devflow init            # Initialize for the current directory"
 echo "  devflow init ~/myapp    # Initialize for a specific project"
 echo ""
+
+# --- Optional soft-dep check: defuddle ----------------------------------------
+if ! command -v defuddle >/dev/null 2>&1; then
+  warn "Optional: defuddle CLI not found."
+  echo "  /devflow:review-document uses defuddle for clean web-page fetches."
+  echo "  Without it, web URLs fall back to WebFetch (still works, just noisier)."
+  echo "  Install with: npm install -g defuddle"
+  echo ""
+fi

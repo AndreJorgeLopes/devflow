@@ -40,6 +40,12 @@ class Devflow < Formula
 
       Optional tools:
         brew install agent-deck worktrunk
+
+      Optional CLI for clean web-page fetching in /devflow:review-document
+      (and the personal defuddle skill if installed):
+        npm install -g defuddle
+      Without defuddle, web URLs fall back to WebFetch — works fine, just
+      noisier output.
     EOS
   end
 
