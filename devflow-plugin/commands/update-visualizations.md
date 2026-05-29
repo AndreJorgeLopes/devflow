@@ -18,6 +18,16 @@ Read the config to determine:
 - `path`: Where visualizations live
 - `style`: Which color palette and init settings to use (default: "devflow")
 - `categories`: Which subfolder categories exist
+- `format`: Which diagram format to emit — `mermaid` (default) or `excalidraw`. Treat a missing/absent `format` key as `mermaid` (backward-compatible).
+
+### Step 1b: Branch on `format` (opt-in Excalidraw)
+
+`format` selects HOW diagrams are produced for the rest of this skill — it does not change WHICH visualizations get updated:
+
+- **`mermaid` (default / absent)** — keep the existing behavior unchanged: edit/create inline Mermaid fenced blocks directly in the `.md` files, following all the steps below.
+- **`excalidraw` (opt-in)** — for each affected visualization, instead of writing Mermaid, produce/update the diagram via the **`/devflow:render-diagram`** skill: author (or edit) the `.excalidraw` next to the visualization `.md`, run `devflow visualizations render <file>.excalidraw`, **Read the resulting PNG to show it inline during this session**, and embed it in the visualization `.md` with `![<alt>](./<name>.png "<Title>")`. Commit the `.excalidraw` + `.svg` + `.png` alongside the `.md`. Everything else about Steps 2–8 (which files to touch, the index, the commit) is identical — only the diagram body changes from a Mermaid block to a rendered-PNG embed.
+
+The rest of this skill is written for the `mermaid` path; when `format` is `excalidraw`, apply the render-diagram substitution wherever a Mermaid block would otherwise be written.
 
 ## Step 2: Analyze Changes
 
@@ -65,6 +75,8 @@ For each affected visualization:
    - Numbered section headings
 
 If a visualization doesn't exist for a new component, **create one** in the appropriate subfolder using the style guide template.
+
+> **If `format` is `excalidraw`** (per Step 1b): produce each diagram via `/devflow:render-diagram` (author `.excalidraw` → `devflow visualizations render` → Read the PNG to show it inline → embed `![](./x.png)` in the `.md`) instead of writing a Mermaid block. The set of visualizations to update is the same; only the diagram body differs.
 
 ## Step 6: Create Default Visualizations (First Run)
 

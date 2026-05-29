@@ -151,6 +151,10 @@ This is the single biggest source of review-noise reduction. Re-flagging already
 
 **Read `TEMPLATES.md` for the structured Markdown output template.** The format uses circle emojis for at-a-glance severity scanning (🔴 critical, 🟠 important, 🟡 suggestion, 🟢 strength/already-fixed, 🔵 info/TL;DR), bolds key terms (bionic-reading-style emphasis), keeps each finding to ~3 lines, and ends with a **TL;DR block** that recaps the verdict + counts of each severity + the top 3 things to fix. Skip empty sections. For Quick mode, drop per-finding confidence numbers and combine into one summary block.
 
+### Phase 4b — Optional architecture-impact diagram (Thorough mode only)
+
+When the change is **structural** — new/removed services, modules, queues, datastores, or rewired call paths — and a picture would help reviewers more than prose, optionally offer to render an architecture-impact diagram of the change via **`/devflow:render-diagram`** (shown inline via the Read tool). Keep it opt-in: skip silently for small or non-structural diffs, and don't block the review on it. This is an enhancement to the output above, not a required step.
+
 ## Phase 5 — Optional draft inline review on the MR (Thorough mode only)
 
 Skip this phase for local diffs. After presenting findings, use `AskUserQuestion`:

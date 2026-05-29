@@ -91,6 +91,14 @@ You are speccing a new feature. This command enforces a structured planning proc
       ...
    ```
 
+   **Add an architecture diagram (optional but encouraged).** Unless the feature is trivial / non-architectural, generate a data-flow / architecture diagram for the feature via `/devflow:render-diagram`, saving the artefacts next to the spec in `docs/specs/` as `<feature-name>-architecture.excalidraw` + `.png` + `.svg`. Then:
+   - **Read the PNG with the Read tool** during the session so the user sees the diagram inline (a markdown embed only shows clickable text in the Claude app).
+   - **Embed it in the `## Architecture Impact` section** of the spec with a relative path:
+     ```markdown
+     ![<feature> architecture](./<feature-name>-architecture.png "<Feature> architecture")
+     ```
+   Skip gracefully (no diagram) if the feature is trivial or the render-diagram skill / its deps are unavailable.
+
 5. **Break into tasks**. Convert the implementation plan into discrete, ordered tasks:
    - Each task should be completable in one session
    - Each task should have clear acceptance criteria

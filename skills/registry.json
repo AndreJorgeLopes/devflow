@@ -95,6 +95,12 @@
       "layer": 4
     },
     {
+      "name": "render-diagram",
+      "description": "Author + render an Excalidraw diagram (pure-node pipeline, no browser/MCP), show it inline via the Read tool, and embed it in docs — the diagram primitive other skills call",
+      "category": "visualizations",
+      "layer": 4
+    },
+    {
       "name": "dependency-update",
       "description": "Check if Brewfile, Formula, or install script need updating when dependencies change",
       "category": "process-discipline",

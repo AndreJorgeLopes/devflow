@@ -203,7 +203,7 @@ SKILLS
 
 ## Skills & Commands
 
-`devflow init` installs 19 slash commands. Type `/devflow:` in Claude Code to see them all.
+`devflow init` installs 20 slash commands. Type `/devflow:` in Claude Code to see them all.
 
 | Skill | Layer | What It Does |
 |-------|:-----:|-------------|
@@ -226,7 +226,8 @@ SKILLS
 | `/devflow:task-prioritize` | Process | Move task between priority folders (P0-P4) |
 | `/devflow:dependency-update` | Process | Check if project dependencies need updating |
 | `/devflow:update-visualizations` | Process | Analyze changes, update architecture diagrams |
-| `/devflow:visualizations-config` | Process | Configure diagram output preferences |
+| `/devflow:visualizations-config` | Process | Configure diagram output preferences (Mermaid or Excalidraw) |
+| `/devflow:render-diagram` | Process | Author + render an Excalidraw diagram (pure-node, no browser/MCP), show it inline via the Read tool, embed in docs |
 
 You can also install skills per-project without the plugin:
 

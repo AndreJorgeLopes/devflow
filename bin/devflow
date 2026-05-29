@@ -59,7 +59,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}check-version${RESET}              Check version consistency across all files
   ${CYAN}version-bump${RESET} <version>     Bump version in all files
   ${CYAN}release${RESET}                    Preview next release (dry-run)
-  ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update)
+  ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update, render)
   ${CYAN}root${RESET}                         Print devflow installation path
   ${CYAN}version${RESET}                      Print version
   ${CYAN}help${RESET}                         Show this help
