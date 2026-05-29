@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # devflow/lib/visualizations.sh — visualization management
-# Commands: config, list, open, update
+# Commands: config, list, open, update, render
 
 VIZ_GLOBAL_CONFIG="${HOME}/.config/devflow/visualizations.json"
 VIZ_PROJECT_CONFIG=".devflow/visualizations.json"
@@ -15,8 +15,32 @@ devflow_visualizations() {
     open)   viz_open "$@" ;;
     update) viz_update "$@" ;;
     path)   viz_path "$@" ;;
-    *)      die "Unknown visualizations action: $action. Use: config, list, open, update, path" ;;
+    render) viz_render "$@" ;;
+    *)      die "Unknown visualizations action: $action. Use: config, list, open, update, path, render" ;;
   esac
+}
+
+# ── Render (.excalidraw → PNG/SVG, pure-node, no browser/MCP) ─────────────────
+
+# viz_render <input.excalidraw> [output-basename] [--width N]
+# Exports via the bundled lib/excalidraw-export.cjs (excalidraw-to-svg + resvg-js).
+# Global npm deps resolve through NODE_PATH. Prints the PNG path on the final
+# stdout line for callers (e.g. the render-diagram skill) to capture and Read.
+viz_render() {
+  local input="${1:-}"
+  [[ -z "$input" ]] && die "Usage: devflow visualizations render <input.excalidraw> [output-basename] [--width N]"
+  [[ -f "$input" ]] || die "Input not found: $input"
+  command -v node >/dev/null 2>&1 || die "node not found (install Node.js via mise)."
+  command -v npm  >/dev/null 2>&1 || die "npm not found."
+
+  local root script global_modules
+  root="$(devflow_root)"
+  script="${root}/lib/excalidraw-export.cjs"
+  [[ -f "$script" ]] || die "Export script missing: $script"
+  global_modules="$(npm root -g 2>/dev/null)"
+
+  NODE_PATH="$global_modules" EXCAL_NODE_MODULES="$global_modules" node "$script" "$@" \
+    || die "Diagram export failed. Ensure canvas, excalidraw-to-svg and @resvg/resvg-js are installed globally."
 }
 
 # ── Resolve visualization path ───────────────────────────────────────────────
@@ -70,16 +94,17 @@ viz_resolve_path() {
 # ── Config ───────────────────────────────────────────────────────────────────
 
 viz_config() {
-  local path="" style="" categories="" global=false show=false
+  local path="" style="" categories="" format="" global=false show=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --path)       path="$2"; shift 2 ;;
       --style)      style="$2"; shift 2 ;;
       --categories) categories="$2"; shift 2 ;;
+      --format)     format="$2"; shift 2 ;;
       --global)     global=true; shift ;;
       --show)       show=true; shift ;;
-      *)            die "Unknown option: $1. Usage: devflow visualizations config [--path <dir>] [--style <preset>] [--categories <list>] [--global] [--show]" ;;
+      *)            die "Unknown option: $1. Usage: devflow visualizations config [--path <dir>] [--style <preset>] [--categories <list>] [--format <mermaid|excalidraw>] [--global] [--show]" ;;
     esac
   done
 
@@ -89,13 +114,13 @@ viz_config() {
   fi
 
   # Interactive mode if no flags
-  if [[ -z "$path" && -z "$style" && -z "$categories" ]]; then
+  if [[ -z "$path" && -z "$style" && -z "$categories" && -z "$format" ]]; then
     _viz_interactive_config "$global"
     return 0
   fi
 
   # Write config from flags
-  _viz_write_config "$path" "$style" "$categories" "$global"
+  _viz_write_config "$path" "$style" "$categories" "$global" "$format"
 }
 
 _viz_show_config() {
@@ -157,11 +182,25 @@ _viz_interactive_config() {
   read -rp "Categories [${default_cats}]: " categories
   categories="${categories:-$default_cats}"
 
-  _viz_write_config "$path" "$style" "$categories" "$global"
+  # Format
+  echo ""
+  info "Diagram format:"
+  echo "  1) mermaid     — Inline Mermaid in .md files (default)"
+  echo "  2) excalidraw  — Author .excalidraw, render to PNG via /devflow:render-diagram"
+  read -rp "Format [1]: " format_choice
+  case "${format_choice:-1}" in
+    1) format="mermaid" ;;
+    2) format="excalidraw" ;;
+    *) format="mermaid" ;;
+  esac
+
+  _viz_write_config "$path" "$style" "$categories" "$global" "$format"
 }
 
 _viz_write_config() {
-  local path="$1" style="${2:-devflow}" categories="${3:-architecture,workflows,integrations,decisions}" global="${4:-false}"
+  local path="$1" style="${2:-devflow}" categories="${3:-architecture,workflows,integrations,decisions}" global="${4:-false}" format="${5:-mermaid}"
+  # Backward-compat: empty/unset format defaults to mermaid (existing behavior).
+  format="${format:-mermaid}"
 
   if ! has_cmd jq; then
     die "jq is required for visualization config. Install with: brew install jq"
@@ -175,10 +214,12 @@ _viz_write_config() {
   config_json=$(jq -n \
     --arg path "$path" \
     --arg style "$style" \
+    --arg format "$format" \
     --argjson categories "$cats_json" \
     '{
       path: $path,
       style: $style,
+      format: $format,
       categories: $categories,
       init: {
         flowchart: {

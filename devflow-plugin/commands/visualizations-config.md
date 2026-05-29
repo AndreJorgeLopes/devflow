@@ -16,6 +16,7 @@ If `$ARGUMENTS` contains specific flags, parse them:
 - `--path <dir>` — set visualization directory
 - `--style <preset>` — set style preset (devflow, minimal, custom)
 - `--categories <list>` — comma-separated category folders to create
+- `--format <fmt>` — set diagram format (`mermaid` default, or `excalidraw`)
 - `--global` — write to global config instead of project config
 - `--show` — just display current config, don't modify
 
@@ -53,6 +54,16 @@ Default categories:
 
 The user can add or remove categories.
 
+### 2d. Diagram Format
+
+Ask: "Which diagram format?"
+
+Options:
+- **mermaid** — Inline Mermaid fenced blocks in the `.md` files (default; current behavior).
+- **excalidraw** — Diagrams authored as `.excalidraw` and rendered to PNG via `/devflow:render-diagram` (`devflow visualizations render`), then embedded in the `.md` as `![](./x.png)`. Opt-in.
+
+Format is independent of `style`: `style` controls the Mermaid color palette/frontmatter; `format` selects whether `/devflow:update-visualizations` emits Mermaid or Excalidraw-rendered PNGs.
+
 ## Step 3: Write Configuration
 
 ### Project config (`.devflow/visualizations.json`):
@@ -61,6 +72,7 @@ The user can add or remove categories.
 {
   "path": "docs/visualizations",
   "style": "devflow",
+  "format": "mermaid",
   "categories": ["architecture", "workflows", "integrations", "decisions"],
   "init": {
     "flowchart": {
@@ -116,6 +128,7 @@ Summarize what was configured:
 - Config file location
 - Visualization path
 - Style preset
+- Diagram format (`mermaid` or `excalidraw`)
 - Categories created
 - Next step: run `/devflow:update-visualizations` to create initial diagrams
 

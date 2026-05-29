@@ -41,6 +41,12 @@ You are documenting an architectural decision. This command ensures decisions ar
    - [What code/patterns must follow from this decision]
    ```
 
+   **Add a diagram when it aids the decision (optional).** When a before/after comparison or an alternatives comparison would clarify the decision, generate a diagram via `/devflow:render-diagram` (the visualizations system reserves a `decisions/` category for these Visual ADRs). **Read the PNG with the Read tool** to show it inline during the session, then embed it in the ADR with a relative path:
+   ```markdown
+   ![<concise alt>](./<adr-name>.png "<Title>")
+   ```
+   Skip when the decision is purely textual or the render-diagram skill / its deps are unavailable.
+
 3. **Present the ADR** to the user for review and approval.
 
 4. **Retain into Hindsight**. Use the Hindsight `retain` tool to store the decision as a **Mental Model** or **Decision** memory:

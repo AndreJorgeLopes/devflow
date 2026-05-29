@@ -17,11 +17,13 @@ Guide the user through a deep technical walkthrough of the codebase areas affect
 
    Extract: what the task changes, which repos/services are involved, what domain concepts are at play.
 
-2. **Trace the end-to-end flow.** Map the complete journey from user action to final effect. Show it as a diagram first (ASCII art), then walk through each leg:
+2. **Trace the end-to-end flow.** Map the complete journey from user action to final effect, then walk through each leg:
 
    - Start with the **main flow** (happy path from trigger to outcome)
    - Then show **side effects** branching off the main flow (observability, billing events, push notifications, data platform events, etc.)
    - For each leg: name the service, the function, the file path, and what data moves between them
+
+   **Lead with a rendered diagram.** Once you've traced the flow, turn it into a **rendered Excalidraw PNG** as the primary visual: invoke `/devflow:render-diagram` with the traced flow (or directly author a `.excalidraw` of the end-to-end flow under `.devflow/diagrams/` and run `devflow visualizations render <path>.excalidraw`). Then **Read the resulting PNG with the Read tool** so it renders inline in the session — that Read-shown PNG is the diagram the user actually sees (a markdown `![](x.png)` embed only shows clickable text in the Claude app). *Fallback:* if the render-diagram skill or its deps are unavailable, hand-draw the flow as ASCII art inline instead.
 
    **CRITICAL:** Show EVERY step including database persistence, queue publishing, and downstream consumers. Do NOT skip the "obvious" steps — they are not obvious to someone learning the codebase.
 
@@ -55,7 +57,7 @@ Guide the user through a deep technical walkthrough of the codebase areas affect
 
 7. **Present the walkthrough.** Structure it so it takes ~30 minutes to read:
 
-   - Lead with the big-picture diagram
+   - Lead with the big-picture diagram — the rendered Excalidraw PNG from Step 2, shown inline via the Read tool (ASCII fallback if render-diagram was unavailable)
    - Walk through each leg with code
    - End with the files-to-read list and assumptions
    - Ask the user if anything is unclear before proceeding
