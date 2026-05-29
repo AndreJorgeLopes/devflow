@@ -2,6 +2,8 @@
 
 Color schemes for different platforms and component types.
 
+> **devflow note:** `/devflow:render-diagram` uses the focused component-type palette defined in this skill's `SKILL.md` and in `visualizations/README.md` — that palette is authoritative for devflow diagrams. The tables below are the broader upstream **ccc** reference (kept verbatim) and may differ in specific hex values (e.g. the Backend/API stroke).
+
 ---
 
 ## Default Palette (Platform-Agnostic)

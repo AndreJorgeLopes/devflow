@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # devflow/lib/visualizations.sh — visualization management
-# Commands: config, list, open, update, render
+# Commands: config, list, open, update, path, render
 
 VIZ_GLOBAL_CONFIG="${HOME}/.config/devflow/visualizations.json"
 VIZ_PROJECT_CONFIG=".devflow/visualizations.json"
@@ -38,6 +38,7 @@ viz_render() {
   script="${root}/lib/excalidraw-export.cjs"
   [[ -f "$script" ]] || die "Export script missing: $script"
   global_modules="$(npm root -g 2>/dev/null)"
+  [[ -n "$global_modules" ]] || die "Could not resolve global npm modules ('npm root -g' returned empty). Install deps: npm i -g canvas excalidraw-to-svg @resvg/resvg-js"
 
   NODE_PATH="$global_modules" EXCAL_NODE_MODULES="$global_modules" node "$script" "$@" \
     || die "Diagram export failed. Ensure canvas, excalidraw-to-svg and @resvg/resvg-js are installed globally."
@@ -107,6 +108,10 @@ viz_config() {
       *)            die "Unknown option: $1. Usage: devflow visualizations config [--path <dir>] [--style <preset>] [--categories <list>] [--format <mermaid|excalidraw>] [--global] [--show]" ;;
     esac
   done
+
+  if [[ -n "$format" && "$format" != "mermaid" && "$format" != "excalidraw" ]]; then
+    die "Invalid --format: '$format'. Use: mermaid | excalidraw"
+  fi
 
   if [[ "$show" == true ]]; then
     _viz_show_config
