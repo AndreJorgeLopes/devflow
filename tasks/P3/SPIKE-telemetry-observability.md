@@ -20,10 +20,9 @@ How can we verify that the right skills, tools, plugins, and MCPs are being call
 1. Can Langfuse traces tell us which skills were invoked per session?
 2. Does Claude Code log skill/plugin invocations anywhere (logs, telemetry, debug output)?
 3. Can we add instrumentation to our hooks that log to Langfuse when skills fire?
-4. Can agent-deck's logging (`[logs]` section) capture skill invocations?
-5. Is there a way to set up alerts when expected skills DON'T fire? (e.g., "brainstorming should fire before any implementation but didn't")
-6. Can we distinguish between "skill was loaded" and "skill instructions were followed"?
-7. What is the performance overhead of adding telemetry to every skill/tool invocation?
+4. Is there a way to set up alerts when expected skills DON'T fire? (e.g., "/devflow:brainstorming should fire before any implementation but didn't")
+5. Can we distinguish between "skill was loaded" and "skill instructions were followed"?
+6. What is the performance overhead of adding telemetry to every skill/tool invocation?
 
 ## Investigation Steps
 
@@ -33,13 +32,7 @@ How can we verify that the right skills, tools, plugins, and MCPs are being call
    - Can we add custom metadata/tags to traces from hooks?
    - Check if Langfuse has a "spans" or "events" concept that could represent skill invocations.
 
-2. **Check agent-deck session logs**
-   - What is logged per session in the `[logs]` section?
-   - Are MCP tool calls logged with timestamps and arguments?
-   - Is there a structured log format we can parse?
-   - Can we add custom log entries from hooks?
-
-3. **Check Claude Code native telemetry**
+2. **Check Claude Code native telemetry**
    - Does Claude Code have debug/verbose logging that captures tool calls?
    - Is there a `--debug` or `--verbose` flag that exposes internal state?
    - Check if the Claude Code plugin API exposes invocation events.
@@ -51,7 +44,7 @@ How can we verify that the right skills, tools, plugins, and MCPs are being call
 
 5. **Research negative alerting (missing invocations)**
    - Can Langfuse alert on the absence of an expected event?
-   - Could we define "skill policies" (e.g., "brainstorming must fire before implementation") and check compliance post-session?
+   - Could we define "skill policies" (e.g., "/devflow:brainstorming must fire before /devflow:executing-plans") and check compliance post-session?
    - Research: is post-session analysis (batch) more practical than real-time alerting?
 
 6. **Research existing observability tools for LLM agents**
@@ -62,7 +55,6 @@ How can we verify that the right skills, tools, plugins, and MCPs are being call
 
 - **Report on current telemetry data availability**:
   - What data Langfuse captures today (with examples).
-  - What data agent-deck logs capture today (with examples).
   - What data Claude Code natively exposes (with examples).
 
 - **Gap analysis**: What telemetry data we NEED but DON'T HAVE, specifically:
@@ -76,7 +68,7 @@ How can we verify that the right skills, tools, plugins, and MCPs are being call
   - Estimated effort per component.
 
 - **Proposed alert system for missing expected invocations**:
-  - Define "skill policies" format (e.g., YAML rules like `before: [implementation] require: [brainstorming]`).
+  - Define "skill policies" format (e.g., YAML rules like `before: [/devflow:executing-plans] require: [/devflow:brainstorming]`).
   - Compliance checker: post-session batch job or real-time monitor?
   - Alert channels: terminal notification, Slack, email, dashboard.
 
@@ -96,5 +88,5 @@ How can we verify that the right skills, tools, plugins, and MCPs are being call
 - Consider using OpenTelemetry as the instrumentation standard — it would make the solution vendor-agnostic (swap Langfuse for any OTEL-compatible backend).
 - The "skill was loaded" vs "skill was followed" distinction is fundamental. Loading can be tracked mechanically; following requires either LLM self-reporting or output analysis.
 - For negative alerting, consider a state machine approach: define expected skill sequences as state machines, feed observed invocations through them, alert on invalid transitions or missing states.
-- agent-deck hooks (`pre_session`, `post_session`, `pre_prompt`) are natural instrumentation points.
+- Claude Code's `UserPromptSubmit`, `PostToolUse`, and `Stop` hooks (registered via `~/.claude/settings.json`) are natural instrumentation points.
 - Consider a lightweight local SQLite database for session telemetry that can be optionally synced to Langfuse — this enables offline analysis and reduces external API dependency.

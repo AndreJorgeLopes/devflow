@@ -22,7 +22,7 @@ Research integrating a Kanban board that connects to Linear and Jira, shows open
 3. Is the Linear CLI feature-complete enough to replace a Kanban UI, or is it query-only?
 4. Can jira-cli trigger custom commands (like `devflow work`) on status transitions?
 5. What is the latency of bidirectional sync for each approach? (Real-time vs polling)
-6. Can agent-deck conductor notifications be triggered from Kanban column transitions?
+6. Can OS-level notifications (terminal-notifier on macOS, notify-send on Linux) be triggered from Kanban column transitions?
 
 ## Investigation Steps
 
@@ -54,7 +54,7 @@ Research integrating a Kanban board that connects to Linear and Jira, shows open
 
 5. Test vendor-agnostic abstraction — can we create a common interface that works with both Linear and Jira?
 6. Prototype: select a task from a board → extract ticket ID → run `devflow work <ticket-id>` → auto-create branch.
-7. Test notification integration with agent-deck conductor.
+7. Test OS-level notification integration (terminal-notifier / notify-send) for column transitions.
 8. Evaluate mobile notification options (push notifications when agent needs attention).
 
 ## Expected Deliverables
@@ -86,6 +86,6 @@ Research integrating a Kanban board that connects to Linear and Jira, shows open
 
 - Consider a layered architecture: abstract task source (Linear, Jira, local YAML) → common task model → Kanban renderer → devflow integration.
 - Bidirectional sync is notoriously hard — research conflict resolution strategies. Last-write-wins may be acceptable for status fields but dangerous for descriptions.
-- agent-deck conductor notifications could use OS-level notifications (terminal-notifier on macOS) or a webhook to a mobile push service.
+- Notification options for agent-needs-attention alerts: OS-level (terminal-notifier on macOS, notify-send on Linux) or a webhook to a mobile push service.
 - The local task board (`tasks/` directory with YAML frontmatter) is already a data source — it should be a first-class citizen alongside Linear/Jira.
 - This spike has a dependency relationship with SPIKE-P3-004 (Task Management Export Format) — coordinate findings.

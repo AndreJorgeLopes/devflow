@@ -19,7 +19,7 @@ Git only allows one worktree per branch. If any worktree has `main` checked out,
 no other worktree can use it. This blocks operations like `git checkout main` in
 other worktrees and can interfere with worktree creation flows.
 
-Current state: `devflow.feat-wrap-superpowers-skills` has `main` checked out,
+Current state: a feature worktree (e.g. `~/dev/.worktrees/devflow/feat-some-feature`) has `main` checked out,
 blocking all other worktrees from using main directly.
 
 ## Industry Pattern

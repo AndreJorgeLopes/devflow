@@ -24,7 +24,7 @@ Devflow is a Bash CLI orchestrating 6 layers of AI dev tooling across 8 library 
 - **No end-to-end tests** for multi-step workflows (init → check → status pipeline)
 - **No CI pipeline** (no GitHub Actions, no automated testing on push/PR)
 - **No test framework** installed (no bats-core, no shunit2)
-- **No test fixtures** or mock infrastructure for external dependencies (Docker, claude, opencode, agent-deck, wt, Hindsight API)
+- **No test fixtures** or mock infrastructure for external dependencies (Docker, claude, opencode, wt, gh, glab, Hindsight API)
 
 Every task file has a `## Verification` section with manual bash commands, but none are automated. As the codebase grows (28 tasks pending), we need confidence that changes don't break existing functionality — especially after large refactors like the recent Continue.dev → Code Review migration that touched 22+ files.
 
@@ -44,7 +44,7 @@ Every task file has a `## Verification` section with manual bash commands, but n
 4. **E2E workflow tests**: Test multi-step flows (init → check → status) in isolated environments.
 5. **CI pipeline**: GitHub Actions workflow that runs tests on every push and PR.
 6. **Test observability**: CI badges in README, test result summaries, failure notifications.
-7. **Mock infrastructure**: Helper functions to mock external CLIs (docker, claude, opencode, wt, agent-deck) for deterministic tests.
+7. **Mock infrastructure**: Helper functions to mock external CLIs (docker, claude, opencode, wt, gh, glab) for deterministic tests.
 
 ## Architecture
 
@@ -107,7 +107,7 @@ Mock targets:
 - `opencode` — mock `run` output (text for check fallback tests)
 - `docker` — mock `info`, `compose` for service tests
 - `wt` — mock worktree operations
-- `agent-deck` — mock session/conductor/group operations
+- `gh` / `glab` — mock PR/MR creation + comment fetching
 - `git` — selective mocking for diff/log output (or use real repos in fixtures)
 - `brew` — mock install operations
 - `uvx` — mock Hindsight operations

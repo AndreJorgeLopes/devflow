@@ -111,15 +111,11 @@ graph TB
         Hindsight[Hindsight MCP<br/>3-tier persistent memory]
     end
 
-    subgraph "Layer 2: Session Management"
-        AgentDeck[Agent Deck<br/>TUI + Conductor]
-    end
-
-    subgraph "Layer 3: Git Isolation"
+    subgraph "Layer 2: Git Isolation"
         Worktrunk[Worktrunk<br/>Worktree lifecycle]
     end
 
-    subgraph "Layer 4: Code Review"
+    subgraph "Layer 3: Code Review"
         Review[Code Review<br/>Pre-push checks]
     end
 

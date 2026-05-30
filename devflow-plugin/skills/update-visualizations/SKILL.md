@@ -50,8 +50,8 @@ For each changed file, determine which visualization(s) it might affect. Use the
 **For devflow projects:**
 - `lib/services.sh`, `docker/docker-compose.yml` → `architecture/runtime-architecture.md`
 - `lib/sync.sh`, MCP/skill config changes → `architecture/sync-architecture.md`
-- `lib/work.sh`, `lib/worktree.sh`, skill workflow changes → `workflows/development-workflow.md`
-- `lib/init.sh`, agent-deck config changes → `integrations/agent-deck-integration.md`
+- `lib/worktree.sh`, skill workflow changes → `workflows/development-workflow.md`
+- `lib/init.sh` setup changes → `architecture/devflow-ecosystem.md`
 - `bin/devflow` (new commands) → `architecture/devflow-ecosystem.md`
 - New skill/plugin → May need a new diagram in `integrations/`
 

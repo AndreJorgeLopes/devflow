@@ -13,14 +13,12 @@ tags: [devflow, visualizations, index, mermaid, excalidraw, style-guide]
 
 | Category | File | What it shows |
 |----------|------|---------------|
-| **Architecture** | [[devflow-ecosystem]] | The 6-layer tool ecosystem — Hindsight, Agent Deck, Worktrunk, Code Review, Skills, Langfuse |
+| **Architecture** | [[devflow-ecosystem]] | The 5-layer tool ecosystem — Hindsight, Worktrunk, Code Review, Skills, Langfuse |
 | **Architecture** | [[code-review-architecture]] | Code review dispatch, check rules pipeline, devflow review dual-mode |
 | **Architecture** | runtime-architecture _(future)_ | Docker containers, Homebrew CLIs, config file locations |
-| **Architecture** | sync-architecture _(future)_ | Skills/MCP sync flow across 7 targets |
-| **Workflows** | [[development-workflow]] | Full SDD workflow: idea to merge request, TDD loop, review gates |
-| **Workflows** | devflow-work-flow _(future)_ | The `devflow work` command flow |
-| **Workflows** | session-lifecycle _(future)_ | Session create → conductor → done → cleanup |
-| **Integrations** | agent-deck-integration _(future)_ | How agent-deck connects to everything |
+| **Architecture** | sync-architecture _(future)_ | Skills/MCP sync flow across delivery targets |
+| **Workflows** | [[development-workflow]] | Full SDD workflow: idea to merge request, TDD loop, review gates, phase-handoff spawns |
+| **Workflows** | session-lifecycle _(future)_ | Session create → phase-handoff spawn → done → cleanup |
 | **Integrations** | hindsight-data-flow _(future)_ | Memory recall/retain/reflect patterns |
 | **Integrations** | langfuse-trace-flow _(future)_ | What gets traced and where |
 | **Decisions** | _(created as needed)_ | Visual ADRs when diagrams help explain decisions |
@@ -57,12 +55,11 @@ Consistent across all diagrams — each devflow component has a fixed color:
 | Component | Color | Hex | classDef name |
 |-----------|-------|-----|---------------|
 | Hindsight | Purple | `#7c3aed` | `hindsightStyle` |
-| Agent Deck | Blue | `#3b82f6` | `agentDeckStyle` |
 | Worktrunk | Green | `#059669` | `worktrunkStyle` |
 | Code Review | Amber | `#d97706` | `reviewStyle` |
 | Skills/Marketplace | Pink | `#be185d` | `skillsStyle` |
 | Langfuse | Cyan | `#0891b2` | `langfuseStyle` |
-| Conductor | Amber variant | `#f59e0b` | `conductorStyle` |
+| Phase-handoff / spawn | Amber variant | `#f59e0b` | `handoffStyle` |
 | CLI/Terminal | Gray | `#374151` | `cliStyle` |
 | Decision nodes | Dark gray | `#374151` | `decisionStyle` |
 | Terminal nodes | Medium gray | `#6b7280` | `terminalStyle` |
@@ -73,12 +70,11 @@ Copy this block into every diagram and apply the relevant classes:
 
 ```mermaid
 classDef hindsightStyle fill:#7c3aed,color:#fff,stroke:#5b21b6
-classDef agentDeckStyle fill:#3b82f6,color:#fff,stroke:#1e40af
 classDef worktrunkStyle fill:#059669,color:#fff,stroke:#047857
 classDef reviewStyle fill:#d97706,color:#fff,stroke:#b45309
 classDef skillsStyle fill:#be185d,color:#fff,stroke:#9d174d
 classDef langfuseStyle fill:#0891b2,color:#fff,stroke:#0e7490
-classDef conductorStyle fill:#f59e0b,color:#fff,stroke:#d97706
+classDef handoffStyle fill:#f59e0b,color:#fff,stroke:#d97706
 classDef cliStyle fill:#374151,color:#fff,stroke:#1f2937
 classDef decisionStyle fill:#374151,color:#fff,stroke:#1f2937
 classDef terminalStyle fill:#6b7280,color:#fff,stroke:#4b5563
@@ -170,4 +166,4 @@ The command will:
 
 ---
 
-_Last updated: 2026-03-10_
+_Last updated: 2026-05-28_

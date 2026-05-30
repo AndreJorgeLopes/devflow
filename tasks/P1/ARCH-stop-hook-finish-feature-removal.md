@@ -20,7 +20,7 @@ The stop hook (`stop-finish-prompt.sh`) is fundamentally flawed as a mechanism f
 prompting finish-feature because:
 
 1. **Fires on ALL agent stops** — including subagents spawned by `devflow review`,
-   refactor flows, agent-deck sessions, etc.
+   refactor flows, phase-handoff spawned sessions, etc.
 2. **Shows "Stop hook error:" in UI** — hardcoded by Claude Code, cannot be suppressed.
 3. **PR/MR detection is fragile** — fails when the reviewed MR is for a different branch
    than the current one, or when `gh`/`glab` CLI has auth issues.

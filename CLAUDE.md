@@ -79,24 +79,26 @@ Protocol: stdin receives JSON payload, exit codes control behavior (0=allow, 2=b
 The expected feature lifecycle within a single session is:
 
 ```
-brainstorming → spec-feature → writing-plans → lock-tests → executing-plans → finish-feature
+/devflow:brainstorming → /devflow:spec-feature → /devflow:writing-plans → /devflow:lock-tests → /devflow:executing-plans → /devflow:finish-feature
 ```
 
-- `new-feature` sets up context, recalls memories, runs scope-check, and starts brainstorming.
-- `spec-feature` writes the spec document.
-- `writing-plans` writes the implementation plan.
-- `lock-tests` writes the full failing-test inventory and gates on user approval before implementation begins.
-- `executing-plans` drives per-task red-green-refactor.
-- `finish-feature` runs verification, creates the PR/MR, retains learnings.
+- `/devflow:new-feature` sets up context, recalls memories, runs scope-check, and starts brainstorming.
+- `/devflow:spec-feature` writes the spec document.
+- `/devflow:writing-plans` writes the implementation plan (devflow wrapper around the upstream writing-plans skill).
+- `/devflow:lock-tests` writes the full failing-test inventory and gates on user approval before implementation begins.
+- `/devflow:executing-plans` drives per-task red-green-refactor (devflow wrapper that forces the post-implementation handoff to `/devflow:finish-feature`).
+- `/devflow:finish-feature` runs verification, creates the PR/MR, retains learnings.
 
-Each phase ends by invoking `devflow:phase-handoff`, which writes a frozen-state file
+**Convention:** all callers always go through `/devflow:*` wrappers — never reach past them to the upstream skill directly. The wrappers are the canonical surface devflow callers see; the upstream skills are an implementation detail of the wrappers.
+
+Each phase ends by invoking `/devflow:phase-handoff`, which writes a frozen-state file
 at `.devflow/state/<branch>/<phase>.md` (with worktree-relative artefact paths), gates
 on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via
 `mcp__ccd_session__spawn_task`. The spawned session's title is deterministic:
 `[<TICKET>] [MR#<N>] <Phase>` (e.g. `[MES-4282] [MR#29] Implementation`); the MR#
 slot is omitted when no MR/PR exists yet for the branch. Its initial prompt hands it
 ABSOLUTE paths to the frozen-state file + spec + plan + test inventory as the only
-authoritative inputs — the brainstorming context does not bleed into implementation
+authoritative inputs — the prior-phase context does not bleed into implementation
 because the spawned session has zero conversational memory of the prior phase.
 
 On feature branches, always complete work with `/devflow:finish-feature` before ending

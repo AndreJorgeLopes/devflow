@@ -35,7 +35,7 @@ Claude Code hooks (PreToolUse, PostToolUse, Stop, SessionStart, Notification, et
 6. **Skill auto-invocation**: Can hooks detect patterns (e.g., "starting a new feature", "creating a PR") and auto-invoke the relevant skill if the agent hasn't already?
    - **Partially addressed:** Stop hook suggests `/devflow:finish-feature` when on feature branch with commits
 
-7. **Agent-deck integration**: The global hooks already use `agent-deck hook-handler` — how can devflow plugin hooks complement these without conflicts?
+7. **Plugin hook coordination**: How do devflow plugin hooks complement Claude Code's native hook system (`UserPromptSubmit`, `PostToolUse`, `Stop`) without conflicts or duplicate firing?
 
 8. **Task completion automation**: When `devflow:finish-feature` or `devflow:create-pr` completes successfully, could a hook auto-invoke `devflow:task-complete`?
    - **Partially addressed:** Stop hook chains to finish-feature which includes task completion in its flow

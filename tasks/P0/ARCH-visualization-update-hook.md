@@ -74,10 +74,8 @@ The visualizations live in the devflow project as the source of truth:
 │   └── sync-architecture.md           # Skills/MCP sync flow (future)
 ├── workflows/                         # Process flow diagrams
 │   ├── development-workflow.md        # Full SDD workflow: idea → MR
-│   ├── devflow-work-flow.md           # The devflow work command flow (future)
-│   └── session-lifecycle.md           # Session create → conductor → done → cleanup (future)
+│   └── session-lifecycle.md           # Session create → phase-handoff spawn → done → cleanup (future)
 ├── integrations/                      # Tool-specific integration diagrams
-│   ├── agent-deck-integration.md      # How agent-deck connects to everything (future)
 │   ├── hindsight-data-flow.md         # Memory recall/retain/reflect patterns (future)
 │   └── langfuse-trace-flow.md         # What gets traced and where (future)
 └── decisions/                         # Visual ADRs
@@ -153,12 +151,11 @@ Session ending. Consider running /devflow:update-visualizations to update archit
 | Component | Color | Hex |
 |-----------|-------|-----|
 | Hindsight | Purple | `#7c3aed` |
-| Agent Deck | Blue | `#3b82f6` |
 | Worktrunk | Green | `#059669` |
 | Code Review | Amber | `#d97706` |
 | Skills/Marketplace | Pink | `#be185d` |
 | Langfuse | Cyan | `#0891b2` |
-| Conductor | Amber variant | `#f59e0b` |
+| Phase-handoff / spawn | Amber variant | `#f59e0b` |
 | CLI/Terminal | Gray | `#374151` |
 
 **Init block** (every mermaid diagram):
