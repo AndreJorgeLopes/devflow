@@ -72,4 +72,12 @@ When the diagram belongs in a doc (spec, ADR, walkthrough, README):
 
 Never embed the raw `.excalidraw` JSON in prose, and never rely on a markdown embed for in-session display — that is what Step 4's Read is for.
 
+## Maintenance notes (export pipeline)
+
+`devflow visualizations render` → `lib/excalidraw-export.cjs` depends on three GLOBAL npm packages: `canvas`, `excalidraw-to-svg`, `@resvg/resvg-js`. If you touch this path:
+- **node ≥ 25 requires `canvas@3+`** — `canvas@2` has no node-25 prebuilt (source build fails); `canvas@3.2.3+` ships a prebuilt binary.
+- **`excalidraw-to-svg` reads `@excalidraw/utils` via a CWD-relative path** (`./node_modules/@excalidraw/utils/dist/excalidraw-utils.min.js`); with globally-installed deps the CLI passes `EXCAL_NODE_MODULES=$(npm root -g)` and the script `chdir`s to the dir whose `node_modules` holds it.
+- **Global deps resolve via `NODE_PATH` — CommonJS `require` only, NOT ESM `import`** (this is why the script is `.cjs`).
+- Don't suppress the `getContext` error — it signals a missing/misconfigured `canvas` (a real failure), unlike the cosmetic "Could not load img" jsdom warnings which are filtered.
+
 $ARGUMENTS
