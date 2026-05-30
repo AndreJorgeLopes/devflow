@@ -140,7 +140,7 @@ check_version_consistency() {
   for cmd_file in "$proj"/devflow-plugin/commands/*.md; do
     [[ -f "$cmd_file" ]] || continue
     local badge_ver
-    badge_ver="$(grep '\[devflow v' "$cmd_file" | head -1 | sed 's/.*\[devflow v//;s/\].*//')"
+    badge_ver="$(grep '\[devflow v' "$cmd_file" | head -1 | sed 's/.*\[devflow v//;s/\].*//' || true)"
     if [[ -n "$badge_ver" ]] && [[ "$badge_ver" != "$makefile_version" ]]; then
       echo "MISMATCH: $(basename "$cmd_file") badge has $badge_ver (expected $makefile_version)" >&2
       mismatches=$((mismatches + 1))
