@@ -124,6 +124,11 @@ Releases are automated via GitHub Actions on push to main (`.github/workflows/re
 - **Preview locally:** `devflow release` shows what the next release would be
 - **Manual bump:** `devflow version-bump <version>` updates all version files locally
 
+**Release pipeline gotchas (fixed in v0.2.0 — do not reintroduce):**
+- `bump-version.sh` runs under `set -o pipefail`. `check_version_consistency` (lib/watch.sh) greps each command file for a `[devflow v]` badge; that grep pipeline MUST be guarded with `|| true` — no command carries the badge, so an unguarded grep returns 1 and `set -e` aborts the whole release silently (right after "All version files updated", before `make release`).
+- release.yml must create an **annotated** tag (`git tag -a "v$X" -m ...`). `git push --follow-tags` does NOT push lightweight tags, which leaves `gh release create` failing with "tag exists locally but has not been pushed".
+- To release an already-merged commit that used `[skip release]`: `gh workflow run release.yml -f bump_override=<minor|patch|major>` (the dispatch override bypasses the skip / "none" detection).
+
 ### Auto-Reinstall
 
 When `devflow watch setup` is run in the devflow source repo, it offers an auto-reinstall opt-in:
