@@ -148,7 +148,7 @@ jobs:
           # 4. Single commit + tag + push
           git add -A
           git commit -m "chore(release): v${NEW_VERSION} [skip release]"
-          git tag "v${NEW_VERSION}"
+          git tag -a "v${NEW_VERSION}" -m "devflow v${NEW_VERSION}"
           git push origin main --follow-tags
 
           # 5. Create GitHub Release with tarball asset
