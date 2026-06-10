@@ -31,10 +31,15 @@ _parse_conventional_commits() {
     return 0
   fi
 
-  # Check for [skip release] in the HEAD commit only (not the entire range)
-  local head_msg
+  # Honor the skip-release marker on the HEAD commit only — and ONLY when it
+  # appears in the subject line or as a standalone trailer line, NOT mid-prose.
+  # (A commit whose body merely mentions the marker while explaining the release
+  # logic must not skip its own release — that footgun silently skipped PR #38.)
+  local head_msg head_subject
   head_msg="$(git -C "$project_dir" log -1 --format='%B' 2>/dev/null || echo "")"
-  if echo "$head_msg" | grep -qi '\[skip release\]'; then
+  head_subject="$(echo "$head_msg" | head -1)"
+  if echo "$head_subject" | grep -qiF '[skip release]' \
+     || echo "$head_msg" | grep -qiE '^[[:space:]]*\[skip release\][[:space:]]*$'; then
     echo "none"
     return 0
   fi
