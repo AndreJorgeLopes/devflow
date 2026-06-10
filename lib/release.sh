@@ -75,6 +75,13 @@ _parse_conventional_commits() {
   done < <(git -C "$project_dir" log "$log_target" --format='%B%x00' 2>/dev/null)
   IFS="$IFS_SAVE"
 
+  # Patch floor: any non-[skip release] merge that has commits cuts AT LEAST a
+  # patch, so docs/chore/refactor/etc. merges still release (keeps "merge =
+  # release"). The empty-range and [skip release] cases already returned "none".
+  if [[ "$bump" == "none" ]]; then
+    bump="patch"
+  fi
+
   # Output
   echo "$bump"
   [[ -n "$feat_msgs" ]] && printf "%b" "$feat_msgs"
@@ -143,11 +150,11 @@ bump_all_versions() {
     _sed_inplace "s/\"version\": \"[^\"]*\"/\"version\": \"${new_version}\"/" "$proj/devflow-plugin/.claude-plugin/marketplace.json"
   fi
 
-  # Command description badges: [devflow vX.Y.Z]
+  # Command description badges: [X.Y.Z] prepended to the description: line
   local cmd_file
   for cmd_file in "$proj"/devflow-plugin/commands/*.md; do
     [[ -f "$cmd_file" ]] || continue
-    _sed_inplace "s/\[devflow v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\]/[devflow v${new_version}]/" "$cmd_file"
+    _sed_inplace "s/^description: \[[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\] /description: [${new_version}] /" "$cmd_file"
   done
 
   echo "All version files updated to ${new_version}"
