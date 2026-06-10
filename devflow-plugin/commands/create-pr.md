@@ -1,5 +1,5 @@
 ---
-description: [0.2.2] Full PR creation pipeline — self-review, code review checks, and PR creation with a structured template.
+description: [0.2.3] Full PR creation pipeline — self-review, code review checks, and PR creation with a structured template.
 ---
 
 You are creating a pull request. This command runs the full PR pipeline.

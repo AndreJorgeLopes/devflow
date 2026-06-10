@@ -1,3 +1,10 @@
+## v0.2.3 — 2026-06-10
+
+### Fixes
+- fix(release): use first non-empty line as commit subject in parser (#40)
+
+---
+
 ## v0.2.2 — 2026-06-10
 
 ### Fixes
