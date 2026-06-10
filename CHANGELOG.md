@@ -1,3 +1,10 @@
+## v0.2.2 — 2026-06-10
+
+### Fixes
+- fix(release): honor skip-release marker only in subject/trailer, not prose (#39)
+
+---
+
 # Changelog
 
 All notable changes to devflow. New entries are prepended automatically by the

@@ -2,7 +2,7 @@
 # devflow/lib/utils.sh — Shared utilities
 # Sourced by all other lib files and the main CLI entry point.
 
-DEVFLOW_VERSION="0.2.1"
+DEVFLOW_VERSION="0.2.2"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'

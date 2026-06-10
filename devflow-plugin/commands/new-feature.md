@@ -1,5 +1,5 @@
 ---
-description: [0.2.1] Post-launch setup for a new feature worktree — detect context, recall memories, and transition to brainstorming.
+description: [0.2.2] Post-launch setup for a new feature worktree — detect context, recall memories, and transition to brainstorming.
 ---
 
 You have been launched inside a feature worktree. Your job is to orient yourself, load context, and start the feature.
