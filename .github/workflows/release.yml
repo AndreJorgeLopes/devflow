@@ -145,6 +145,15 @@ jobs:
             sed -i "s|version \".*\"|version \"${NEW_VERSION}\"|" Formula/devflow.rb
           fi
 
+          # 3b. Prepend this release's notes to CHANGELOG.md
+          CHANGELOG_BODY="$(awk '/^## Install/{exit} !/^## What.?s New/{print}' /tmp/release-notes.md)"
+          {
+            printf '## v%s — %s\n' "${NEW_VERSION}" "$(date -u +%Y-%m-%d)"
+            printf '%s\n\n' "${CHANGELOG_BODY}"
+            [[ -f CHANGELOG.md ]] && cat CHANGELOG.md
+          } > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
+
           # 4. Single commit + tag + push
           git add -A
           git commit -m "chore(release): v${NEW_VERSION} [skip release]"
