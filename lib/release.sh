@@ -56,7 +56,11 @@ _parse_conventional_commits() {
   while IFS= read -r -d '' commit_block; do
     [[ -z "$commit_block" ]] && continue
     local subject
-    subject="$(echo "$commit_block" | head -1)"
+    # The subject is the first NON-EMPTY line. git log --format='%B%x00'
+    # separates records with a newline, so every commit after the newest carries
+    # a leading blank line — `head -1` would return "" and misclassify it as
+    # "other" (this silently bumped a feat-containing range as patch, not minor).
+    subject="$(echo "$commit_block" | awk 'NF{print; exit}')"
 
     # Check for breaking changes (major)
     if [[ "$subject" == *"!"*":"* ]] || echo "$commit_block" | grep -q "^BREAKING CHANGE:"; then
