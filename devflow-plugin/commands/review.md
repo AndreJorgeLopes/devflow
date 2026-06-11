@@ -183,5 +183,7 @@ If any significant pattern, gotcha, or convention was discovered during the revi
 - **For Aircall tickets**, the Jira "Development" field (`customfield_10000`) is the canonical ticket→MR mapping. Use it before any title-based MR search.
 - **Always paginate** when fetching MR discussions / PR comments in Phase 1e (`glab api --paginate` / `gh api --paginate`). A busy MR has comments spilling onto page 2+ and the default `per_page` is small — missing them defeats the cross-check.
 - **Never re-flag a RAISED-RESOLVED-FIXED finding** in the output's Critical/Important/Suggestions sections. List it under "Already addressed in review" instead. Re-flagging closed issues erodes trust in the review.
+- **Skip findings with no meaningful add over existing comments/bots.** If a reviewer or bot (Cursor Bugbot, the security gate, etc.) already raised something you also found, only keep it when you have genuinely new signal (evidence they lacked, a consequence they missed, a concrete fix). Otherwise drop it. Never re-post or `+1` an existing thread.
+- **Write posted comments in a human reviewer's voice (see TEMPLATES.md "Comment body voice").** Lowercase, hedged ("would it make sense to…", "might be worth…", "wdyt"), cite `file:line`, collaborative. NO `**[Agent]** | Severity | Confidence` headers and NO em dashes (`—`) in posted comments. The structured severity/emoji output is for the chat summary only.
 
 $ARGUMENTS

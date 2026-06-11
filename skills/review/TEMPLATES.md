@@ -26,7 +26,7 @@ Score every finding 0–100. Drop anything below 50.
 | Status | Meaning | Output treatment |
 |---|---|---|
 | **NEW** | No prior thread mentions this file:line or issue class | Include in 🔴 / 🟠 / 🟡 section as normal |
-| **RAISED-OPEN** | Existing thread covers this; still unresolved | Include in section + line tag `(also raised by @<user>, thread #N — open)` |
+| **RAISED-OPEN** | Existing thread covers this; still unresolved | Include ONLY if you add new signal the thread is missing (evidence it lacked, a consequence it overlooked, a concrete fix). If you'd just be echoing or `+1`-ing it, SKIP (don't pile on). When kept, lead with the new signal and tag `(builds on @<user>'s thread #N, open)` |
 | **RAISED-RESOLVED-FIXED** | Existing thread covers this AND latest diff confirms fix landed | **DO NOT re-flag.** Add to 🟢 Strengths under "Already addressed in review" with thread # + fix SHA |
 | **RAISED-RESOLVED-NOT-FIXED** | Resolved by author but issue still present at HEAD | Include in section + line tag `(thread #N marked resolved but issue still present)` — high reviewer-trust value |
 
@@ -82,6 +82,9 @@ Compact, emoji-anchored, ADHD-friendly. ~3 lines per finding. Bold the key term 
 <diff or replacement>
 \`\`\`
 
+**Comment** (paste-ready, teammate voice, em-dash-free):
+> <this finding rewritten as a real reviewer note: lowercase, hedged, lead with the observation then the why, cite `file:line`. No severity / Conf / agent labels.>
+
 ## 🟠 Important (should fix)
 
 ### 🟠 <file>:<line> — **<key term>** <what>
@@ -89,6 +92,9 @@ Compact, emoji-anchored, ADHD-friendly. ~3 lines per finding. Bold the key term 
 <why — 1 sentence>
 
 **Fix:** <inline 1-line fix OR fenced block>
+
+**Comment** (paste-ready, teammate voice, em-dash-free):
+> <same finding written as a reviewer note: lowercase, hedged, cite `file:line`. No severity / Conf / agent labels.>
 
 ### 🟠 📄 <file>:<line> — **<key term>** <what> _(external — cannot post inline)_
 **Conf:** <N>/100 • **Scope:** external-unmodified • **Anchor:** `<external_anchor_file>` • **Status:** <NEW / RAISED-OPEN>
@@ -120,6 +126,7 @@ Compact, emoji-anchored, ADHD-friendly. ~3 lines per finding. Bold the key term 
 - **Skip empty sections.** If no critical findings, drop the 🔴 Critical heading entirely (don't print "None").
 - **Bold the key term** in each finding's title (the noun phrase that names the bug class — "duplicate metric emission", "type assertion", "naming inconsistency"). This is the bionic-reading anchor.
 - **3 lines max per finding** in 🔴 / 🟠. One line each in 🟡.
+- **Every 🔴 / 🟠 finding ends with a `**Comment**` block:** the same finding rewritten in the teammate voice (see "Comment body voice"), em-dash-free and paste-ready, shown as a `>` blockquote AFTER the normal structured finding. It is the exact text the user can copy into the MR even when they don't draft inline. 🟡 Suggestions are short enough to write directly in that voice. Skip the Comment block in Quick mode.
 - **Cross-check status is mandatory** on every finding (NEW / RAISED-OPEN / RAISED-RESOLVED-FIXED / RAISED-RESOLVED-NOT-FIXED). RAISED-RESOLVED-FIXED items move to 🟢 Strengths, never appear in 🔴/🟠/🟡.
 - **`scope` is mandatory** on every finding. Findings with `scope=external-unmodified` MUST be prefixed with 📄 and tagged "_(external — cannot post inline)_". `external_anchor_file` MUST be populated.
 - **TL;DR is mandatory.** Counts per severity + top 3 fixes + one-line verdict. The 📄 count is shown separately as "external-only".
@@ -161,22 +168,27 @@ glab api --method POST "projects/:fullpath/merge_requests/<id>/draft_notes" \
   -f "position[new_line]=42"
 ```
 
-### Comment body template (preserves emoji severity)
+### Comment body voice (write like a teammate, not a bot)
 
-```markdown
-🔴 / 🟠 / 🟡 **[<Agent>]** | Severity: <level> | Confidence: <N>/100
+Inline MR/PR comments are NOT the structured chat output. For the posted comment, DROP the `**[Agent]** | Severity | Confidence` header, the `**Why it matters:** / **Suggested fix:**` scaffolding, and the emoji severity tags. That scaffolding is the dead giveaway of AI text and erodes reviewer trust. Write each note the way a real teammate leaves a small, helpful comment:
 
-<what>
+- **Lowercase, conversational, hedged** as a question or soft suggestion: "would it make sense to…", "might be worth…", "should we…?", "i think…", "not for this MR but…". Slang like `wdyt` / `yh` / `dw` is good.
+- **Lead with the observation, then the why in the same breath.** One short paragraph for most; a second only when there's a real consequence to explain. Cite code inline with backticks: `file.ts:line`.
+- **Collaborative framing:** "we", "future us", "before we merge". Leave the call to the author ("i'll leave it to your discretion").
+- **A light `:)` / `:))` sparingly is fine.** Don't force it.
+- **NEVER use em dashes (`—`).** Use a comma, a period, parentheses, or "since" / "so" instead. Hard rule.
+- **Suggest, never command.** No "must fix", no severity labels, no confidence numbers in the posted comment. Severity lives in the chat summary, not the inline note.
 
-**Why it matters:** <why>
+Good (reads human):
+> might be worth checking this against the failure metrics we already emit first. `receiveMessageSyncCommandValidator.ts:40` already emits a failure metric right before it throws, and that throw lands here, so native twilio/bandwidth/legos would bump two metrics. wdyt about reusing `addMetricFor*Messaging` or adding a tag here?
 
-**Suggested fix:**
-\`\`\`suggestion
-<code>
-\`\`\`
-```
+Bad (reads as AI, do NOT post this):
+> 🟠 **[bug-scanner]** | Severity: Important | Confidence: 85/100
+> **Why it matters:** duplicate metric emission. **Suggested fix:** …
 
-After drafting: confirm to the user that the review is in PENDING state — they submit manually from the VCS UI.
+Use a fenced `suggestion` block only when it's a clean one-line replacement the author can click-apply; otherwise plain prose reads more naturally.
+
+After drafting: confirm to the user the review is in PENDING state, and that they submit it manually from the VCS UI.
 
 ### ⚠️ Inline drafting MUST skip `scope=external-unmodified` findings
 
