@@ -1,3 +1,10 @@
+## v0.3.1 — 2026-06-15
+
+### Fixes
+- fix(release): chore/docs-only ranges yield none (revert #38 patch floor) (#42)
+
+---
+
 ## v0.3.0 — 2026-06-11
 
 ### Features
