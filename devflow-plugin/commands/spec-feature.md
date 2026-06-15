@@ -4,6 +4,11 @@ description: [0.3.0] Spec a new feature — recall architecture knowledge, creat
 
 You are speccing a new feature. This command enforces a structured planning process before any code is written.
 
+> **Diagram complexity** — before drawing, rate it:
+> - 🟢 **simple** — linear / ≤4 nodes → plain ASCII is fine.
+> - 🟡 **moderate** — fork-join, 5–8 nodes, or one crossing → OFFER a rendered Excalidraw (the **render-diagram** skill).
+> - 🔴 **complex** — bidirectional, multi-lane, >8 nodes, or cycles → render with the **render-diagram** skill AND show it inline via the Read tool.
+
 ## Preamble (first action)
 
 1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.

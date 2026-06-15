@@ -7,6 +7,11 @@ description: Analyze recent changes and update affected architecture visualizati
 
 You are updating project visualizations (mermaid diagrams) based on recent changes. This skill works standalone — it can be used in any project, not just devflow.
 
+> **Diagram complexity** — before drawing, rate it:
+> - 🟢 **simple** — linear / ≤4 nodes → plain ASCII is fine.
+> - 🟡 **moderate** — fork-join, 5–8 nodes, or one crossing → OFFER a rendered Excalidraw (the **render-diagram** skill).
+> - 🔴 **complex** — bidirectional, multi-lane, >8 nodes, or cycles → render with the **render-diagram** skill AND show it inline via the Read tool.
+
 ## Step 1: Locate Visualization Config
 
 Check for visualization configuration in this order:
