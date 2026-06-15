@@ -15,6 +15,7 @@
     "./skills/pre-push-check/SKILL.md",
     "./skills/review/SKILL.md",
     "./skills/review-document/SKILL.md",
+    "./skills/write-spike/SKILL.md",
     "./skills/new-feature/SKILL.md",
     "./skills/finish-feature/SKILL.md",
     "./skills/create-pr/SKILL.md",

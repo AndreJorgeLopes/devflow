@@ -2,6 +2,26 @@
 # devflow/lib/init.sh — devflow init implementation
 # Initialize devflow for the current user, optionally scoped to a project.
 
+# _inject_devflow_block <target-file> <template-file>
+# Idempotently inject/refresh the devflow-managed block. The template carries its own
+# <!-- devflow --> / <!-- /devflow --> markers. If the target already has the block, replace
+# its contents with the template (so existing installs pick up template updates on re-init);
+# otherwise append. Creates the target from the template if absent. awk-based, bash-3.2-safe.
+_inject_devflow_block() {
+  local target="$1" tmpl="$2"
+  [[ -f "$target" ]] || { cp "$tmpl" "$target"; return 0; }
+  if grep -q '<!-- devflow -->' "$target" && grep -q '<!-- /devflow -->' "$target"; then
+    awk -v tmpl="$tmpl" '
+      /<!-- devflow -->/ { while ((getline line < tmpl) > 0) print line; close(tmpl); skip=1; next }
+      /<!-- \/devflow -->/ { if (skip) { skip=0; next } }
+      !skip { print }
+    ' "$target" > "${target}.tmp" && mv "${target}.tmp" "$target"
+  else
+    printf '\n' >> "$target"
+    cat "$tmpl" >> "$target"
+  fi
+}
+
 devflow_init() {
   local project_dir="${1:-$(pwd)}"
   project_dir="$(cd "$project_dir" && pwd)"
@@ -168,18 +188,15 @@ devflow_init() {
   local claude_home="${HOME}/.claude"
   mkdir -p "${claude_home}"
 
-  # User-scoped CLAUDE.md
-  if [[ -f "${claude_home}/CLAUDE.md" ]]; then
-    if ! grep -q "<!-- devflow -->" "${claude_home}/CLAUDE.md" 2>/dev/null; then
-      info "~/.claude/CLAUDE.md exists — appending devflow section"
-      printf "\n" >> "${claude_home}/CLAUDE.md"
-      cat "${templates_dir}/CLAUDE.md.tmpl" >> "${claude_home}/CLAUDE.md"
-      ok "Appended devflow section to ~/.claude/CLAUDE.md"
-    else
-      skip "~/.claude/CLAUDE.md already contains devflow section"
-    fi
+  # User-scoped CLAUDE.md — inject/refresh the devflow-managed block (idempotent).
+  # Replaces the marker block on re-init so existing installs pick up template updates
+  # (e.g. the diagram-complexity rule), instead of the old append-only-if-absent behavior.
+  local claude_md_existed=false
+  [[ -f "${claude_home}/CLAUDE.md" ]] && claude_md_existed=true
+  _inject_devflow_block "${claude_home}/CLAUDE.md" "${templates_dir}/CLAUDE.md.tmpl"
+  if $claude_md_existed; then
+    ok "Refreshed devflow section in ~/.claude/CLAUDE.md"
   else
-    cp "${templates_dir}/CLAUDE.md.tmpl" "${claude_home}/CLAUDE.md"
     ok "Created ~/.claude/CLAUDE.md"
   fi
 

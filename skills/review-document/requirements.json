@@ -1,0 +1,9 @@
+{
+  "skill": "review-document",
+  "required": [],
+  "optional": [
+    { "name": "defuddle", "check": "command -v defuddle", "why": "clean-fetch a hosted doc (strips suggestion-mode/track-changes noise)", "install": "npm install -g defuddle", "degrade": "fall back to WebFetch for the document body" },
+    { "name": "atlassian", "check": "atlassian", "why": "pull the linked Jira ticket + Confluence context", "install": "connect the Atlassian MCP", "degrade": "ask the user to paste the ticket/page text" },
+    { "name": "hindsight", "check": "hindsight", "why": "recall prior document-review learnings", "install": "docker compose up -d hindsight", "degrade": "proceed without recall" }
+  ]
+}

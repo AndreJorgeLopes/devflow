@@ -76,3 +76,17 @@ teardown() {
   run get_vcs_pr_term
   assert_output "MR"
 }
+
+# ── _inject_devflow_block (lib/init.sh) — idempotent CLAUDE.md block refresh (Phase E: E1) ──
+
+@test "_inject_devflow_block replaces the existing devflow block (idempotent refresh)" {
+  source_lib init.sh
+  local f="${BATS_TEST_TMPDIR}/CLAUDE.md"
+  printf 'pre\n<!-- devflow -->\nOLD\n<!-- /devflow -->\npost\n' > "$f"
+  printf '<!-- devflow -->\nNEW RULE\n<!-- /devflow -->\n' > "${BATS_TEST_TMPDIR}/tmpl"
+  _inject_devflow_block "$f" "${BATS_TEST_TMPDIR}/tmpl"
+  run grep -c "NEW RULE" "$f"; assert_output "1"
+  run grep -c "OLD" "$f";       assert_output "0"
+  run grep -c "<!-- devflow -->" "$f"; assert_output "1"   # exactly one block
+  run grep -c "^pre$" "$f"; assert_output "1"              # surrounding content preserved
+}

@@ -36,7 +36,13 @@ You are finishing a feature. Run the full completion pipeline before handing off
     devflow check
     ```
 
-    If `devflow check` is not available, run lint, types, and tests directly:
+    Also confirm the generated flow mini-plugins are in sync with their canonical skills (a skill edit that forgot `make flows` must not ship a drifted flow):
+
+   ```bash
+   make flows-check
+   ```
+
+   If `devflow check` is not available, run lint, types, and tests directly:
 
    ```bash
    yarn lint

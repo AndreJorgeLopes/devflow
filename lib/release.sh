@@ -164,6 +164,20 @@ bump_all_versions() {
     _sed_inplace "s/^description: \[[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\] /description: [${new_version}] /" "$cmd_file"
   done
 
+  # Flow mini-plugin plugin.json files (generated). Empty glob stays literal, so the
+  # guard skips it — projects without a flows/ dir (e.g. the bump-version fixtures) are untouched.
+  local flow_pj
+  for flow_pj in "$proj"/devflow-plugin/flows/*/.claude-plugin/plugin.json; do
+    [[ -f "$flow_pj" ]] || continue
+    _sed_inplace "s/\"version\": \"[^\"]*\"/\"version\": \"${new_version}\"/" "$flow_pj"
+  done
+
+  # Flow command description badges
+  for cmd_file in "$proj"/devflow-plugin/flows/*/commands/*.md; do
+    [[ -f "$cmd_file" ]] || continue
+    _sed_inplace "s/^description: \[[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\] /description: [${new_version}] /" "$cmd_file"
+  done
+
   echo "All version files updated to ${new_version}"
 }
 

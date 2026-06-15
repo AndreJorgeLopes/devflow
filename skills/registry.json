@@ -38,13 +38,25 @@
       "name": "review",
       "description": "Multi-perspective code review of a PR/MR or local diff — parallel agents, confidence scoring, optional draft review comments",
       "category": "code-review",
-      "layer": 3
+      "layer": 3,
+      "requires": ["git"],
+      "optional": ["gh", "glab", "hindsight"]
     },
     {
       "name": "review-document",
       "description": "Multi-perspective prose document review (KB / RFC / spike / runbook / PRD / design / KB page) on Google Docs, Confluence, local files, or arbitrary URLs — parallel agents, comment cross-check, severity scoring, chat-only findings. Counterpart to write-spike.",
       "category": "code-review",
-      "layer": 3
+      "layer": 3,
+      "requires": [],
+      "optional": ["defuddle", "atlassian", "hindsight"]
+    },
+    {
+      "name": "write-spike",
+      "description": "Write a structured engineering spike / discovery doc for a new initiative — multi-source context assembly, gap classification, diagrams, and a private notes file. Authoring counterpart to review-document.",
+      "category": "code-review",
+      "layer": 3,
+      "requires": [],
+      "optional": ["atlassian", "slack", "hindsight"]
     },
     {
       "name": "new-feature",
@@ -98,7 +110,9 @@
       "name": "render-diagram",
       "description": "Author + render an Excalidraw diagram (pure-node pipeline, no browser/MCP), show it inline via the Read tool, and embed it in docs — the diagram primitive other skills call",
       "category": "visualizations",
-      "layer": 4
+      "layer": 4,
+      "requires": ["node", "npm"],
+      "optional": ["devflow-cli", "hindsight"]
     },
     {
       "name": "dependency-update",
@@ -140,7 +154,9 @@
       "name": "best-roi-task",
       "description": "Find the best ROI task in a Jira Epic — highest points for least effort, unassigned To Do only",
       "category": "process-discipline",
-      "layer": 4
+      "layer": 4,
+      "requires": [],
+      "optional": ["atlassian", "hindsight"]
     },
     {
       "name": "codebase-walkthrough",

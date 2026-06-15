@@ -1,0 +1,11 @@
+{
+  "skill": "review",
+  "required": [
+    { "name": "git", "check": "git --version", "why": "reads the local working-tree diff under review", "install": "https://git-scm.com (usually preinstalled)" }
+  ],
+  "optional": [
+    { "name": "gh", "check": "command -v gh", "why": "fetch a GitHub PR diff + existing review comments", "install": "brew install gh", "degrade": "skip remote-PR fetch; review the local diff only" },
+    { "name": "glab", "check": "command -v glab", "why": "fetch a GitLab MR diff + existing discussion threads", "install": "brew install glab", "degrade": "skip remote-MR fetch; review the local diff only" },
+    { "name": "hindsight", "check": "hindsight", "why": "recall prior review conventions + sibling-MR context", "install": "docker compose up -d hindsight", "degrade": "proceed without recall" }
+  ]
+}

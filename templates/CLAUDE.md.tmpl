@@ -148,4 +148,11 @@ Langfuse tracing may be configured for agent interactions.
 - Traces are collected automatically — no action needed from the agent
 - If you notice unusual latency or errors, mention it to the developer
 - Do not modify Langfuse configuration unless explicitly asked
+
+## Diagram Complexity Rule
+
+Before drawing any diagram, rate its complexity:
+- 🟢 **simple** — linear / ≤4 nodes → plain ASCII is fine, no render needed.
+- 🟡 **moderate** — fork-join, 5–8 nodes, or one crossing → OFFER a rendered Excalidraw (the **render-diagram** skill).
+- 🔴 **complex** — bidirectional, multi-lane, >8 nodes, or cycles → render with the **render-diagram** skill AND show it inline via the Read tool.
 <!-- /devflow -->

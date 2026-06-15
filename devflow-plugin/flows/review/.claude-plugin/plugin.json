@@ -1,0 +1,9 @@
+{
+  "name": "devflow-review",
+  "description": "devflow review flow",
+  "version": "0.3.1",
+  "author": {
+    "name": "Andre Jorge Lopes"
+  },
+  "commands": "./commands/"
+}

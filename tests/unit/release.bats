@@ -228,3 +228,34 @@ FORMULA
   run grep 'version' "$proj/Formula/devflow.rb"
   assert_output --partial "0.2.0"
 }
+
+# ── bump_all_versions: flow plugin.json stamping (Phase A: A3) ─────
+
+@test "bump_all_versions stamps flow plugin.json files" {
+  # Minimal standalone fixture (mirrors the existing bump tests) plus a generated flow
+  # mini-plugin that must ALSO be stamped. Asserts only .version (sidesteps the
+  # [devflow v…] vs [X.Y.Z] command-badge format question, out of scope for this test).
+  local proj="${BATS_TEST_TMPDIR}/flow-bump"
+  mkdir -p "$proj/lib" "$proj/devflow-plugin/.claude-plugin" "$proj/devflow-plugin/commands" \
+           "$proj/devflow-plugin/flows/review/.claude-plugin" "$proj/devflow-plugin/flows/review/commands"
+  cat > "$proj/Makefile" <<'MF'
+VERSION := 0.1.0
+MF
+  cat > "$proj/lib/utils.sh" <<'US'
+DEVFLOW_VERSION="0.1.0"
+US
+  cat > "$proj/devflow-plugin/.claude-plugin/plugin.json" <<'PJ'
+{ "name": "devflow", "version": "0.1.0" }
+PJ
+  cat > "$proj/devflow-plugin/.claude-plugin/marketplace.json" <<'MJ'
+{ "version": "0.1.0" }
+MJ
+  cat > "$proj/devflow-plugin/flows/review/.claude-plugin/plugin.json" <<'FPJ'
+{ "name": "devflow-review", "version": "0.1.0" }
+FPJ
+
+  run bump_all_versions "9.9.9" "$proj"
+  assert_success
+  run jq -r .version "$proj/devflow-plugin/flows/review/.claude-plugin/plugin.json"
+  assert_output "9.9.9"
+}

@@ -1,0 +1,11 @@
+{
+  "skill": "render-diagram",
+  "required": [
+    { "name": "node", "check": "node --version", "why": "runs the pure-node Excalidraw export pipeline", "install": "mise use -g node@latest (or any Node >=25)" },
+    { "name": "npm", "check": "npm --version", "why": "resolves/installs the render deps", "install": "ships with Node" }
+  ],
+  "optional": [
+    { "name": "devflow-cli", "check": "command -v devflow", "why": "convenience wrapper `devflow visualizations render`", "install": "make install (devflow repo)", "degrade": "call node on the bundled excalidraw-export.cjs directly" },
+    { "name": "hindsight", "check": "hindsight", "why": "recall prior diagram conventions for this repo", "install": "docker compose up -d hindsight", "degrade": "proceed without recall" }
+  ]
+}

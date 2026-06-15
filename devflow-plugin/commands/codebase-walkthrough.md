@@ -6,6 +6,11 @@ Guide the user through a deep technical walkthrough of the codebase areas affect
 
 **When to use:** Before brainstorming/implementation, when the user wants to understand what they're about to build and how the existing system works. Especially valuable when the user hasn't worked in this part of the codebase before.
 
+> **Diagram complexity** — before drawing, rate it:
+> - 🟢 **simple** — linear / ≤4 nodes → plain ASCII is fine.
+> - 🟡 **moderate** — fork-join, 5–8 nodes, or one crossing → OFFER a rendered Excalidraw (the **render-diagram** skill).
+> - 🔴 **complex** — bidirectional, multi-lane, >8 nodes, or cycles → render with the **render-diagram** skill AND show it inline via the Read tool.
+
 ## Steps
 
 1. **Gather the task context.** Read the ticket (Jira, Linear, etc.) and recall relevant memories from Hindsight:

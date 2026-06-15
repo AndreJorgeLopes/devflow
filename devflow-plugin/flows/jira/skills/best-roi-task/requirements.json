@@ -1,0 +1,8 @@
+{
+  "skill": "best-roi-task",
+  "required": [],
+  "optional": [
+    { "name": "atlassian", "check": "atlassian", "why": "read the Jira Epic + its child issues to score ROI", "install": "connect the Atlassian MCP", "degrade": "ask the user to paste the epic's tasks" },
+    { "name": "hindsight", "check": "hindsight", "why": "recall prior prioritization decisions", "install": "docker compose up -d hindsight", "degrade": "proceed without recall" }
+  ]
+}

@@ -1,11 +1,21 @@
 ---
 name: review-document
-description: Use when reviewing a prose document — KB article, RFC, spike, runbook, PRD, design doc, knowledge-base page — hosted on Google Docs, Confluence, a local file path, or an arbitrary URL. Checks correctness, internal consistency, audience-fit, prose clarity, and external-claim verification; cross-checks against existing platform comments to avoid re-flagging; returns severity-tagged findings with anchor + quote + concrete fix. Use when asked to "review this doc / KB / RFC / spike / runbook / PRD" and the target is prose, not a code diff. Counterpart to /devflow:write-spike. NOT for code diffs — use /devflow:review for those.
+description: Use when reviewing a prose document — KB article, RFC, spike, runbook, PRD, design doc, knowledge-base page — hosted on Google Docs, Confluence, a local file path, or an arbitrary URL. Checks correctness, internal consistency, audience-fit, prose clarity, and external-claim verification; cross-checks against existing platform comments to avoid re-flagging; returns severity-tagged findings with anchor + quote + concrete fix. Use when asked to "review this doc / KB / RFC / spike / runbook / PRD" and the target is prose, not a code diff. Counterpart to the write-spike skill. NOT for code diffs — use /devflow:review for those.
 ---
 
 # /devflow:review-document — Multi-perspective prose document review
 
-You are a thorough, multi-perspective document reviewer. Counterpart to `/devflow:write-spike`. Reviews prose docs on any platform with deep context gathering and parallel review agents. Sibling to `/devflow:review` (which reviews code diffs).
+You are a thorough, multi-perspective document reviewer. Its authoring counterpart is the **write-spike** skill (`/devflow:write-spike` in the full plugin, `/devflow-review:write-spike` in the review flow). Reviews prose docs on any platform with deep context gathering and parallel review agents. Sibling to `/devflow:review` (which reviews code diffs).
+
+## Preflight (dependency check)
+
+Before doing this skill's work, resolve dependencies from the sibling `requirements.json`:
+
+1. Read `requirements.json` next to this SKILL.md. If absent, skip preflight (no declared deps).
+2. If `devflow` is on PATH, run `devflow deps check review-document` and use its report. Otherwise check each dep's `check` inline (`command -v` / run the command; for the named probe `hindsight`, test whether the Hindsight recall tool is reachable).
+3. **Required dep missing** → STOP. Report the dep `name`, `why`, and `install` hint. Do not continue.
+4. **Optional dep missing** → ask via `AskUserQuestion` (header "Optional dep"): **Provide an alternative** (path/command/endpoint) · **Continue without** (apply the dep's `degrade`) · **Abort**. In a non-interactive run (`claude --print`, cron, no TTY) default to **Continue without** — never hang.
+5. Carry the chosen optional-dep behavior through the rest of the run.
 
 ## Scope guardrails (read before doing anything)
 

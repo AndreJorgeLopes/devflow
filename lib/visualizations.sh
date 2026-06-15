@@ -33,15 +33,18 @@ viz_render() {
   command -v node >/dev/null 2>&1 || die "node not found (install Node.js via mise)."
   command -v npm  >/dev/null 2>&1 || die "npm not found."
 
-  local root script global_modules
+  local root script nm
   root="$(devflow_root)"
   script="${root}/lib/excalidraw-export.cjs"
   [[ -f "$script" ]] || die "Export script missing: $script"
-  global_modules="$(npm root -g 2>/dev/null)"
-  [[ -n "$global_modules" ]] || die "Could not resolve global npm modules ('npm root -g' returned empty). Install deps: npm i -g canvas excalidraw-to-svg @resvg/resvg-js"
 
-  NODE_PATH="$global_modules" EXCAL_NODE_MODULES="$global_modules" node "$script" "$@" \
-    || die "Diagram export failed. Ensure canvas, excalidraw-to-svg and @resvg/resvg-js are installed globally."
+  # Resolve the npm render deps: existing globals → ~/.devflow/render-deps cache → consent install.
+  # Self-provisions with zero `devflow init` and never installs globally / with sudo.
+  source "${root}/lib/render-deps.sh"
+  nm="$(render_deps_resolve)" || die "Could not resolve render deps (canvas, excalidraw-to-svg, @resvg/resvg-js)."
+
+  NODE_PATH="$nm" EXCAL_NODE_MODULES="$nm" node "$script" "$@" \
+    || die "Diagram export failed."
 }
 
 # ── Resolve visualization path ───────────────────────────────────────────────

@@ -1,0 +1,6 @@
+# flow|comma-separated skills   (canonical source = devflow-plugin/{commands,skills})
+# Generated flow mini-plugins live at devflow-plugin/flows/<flow>/ — never hand-edit them;
+# run `make flows` after changing a canonical skill, and `make flows-check` guards drift.
+review|review,review-document,write-spike
+diagrams|render-diagram
+jira|best-roi-task
