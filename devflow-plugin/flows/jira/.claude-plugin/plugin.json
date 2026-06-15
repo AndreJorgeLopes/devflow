@@ -1,0 +1,9 @@
+{
+  "name": "devflow-jira",
+  "description": "devflow jira flow",
+  "version": "0.3.0",
+  "author": {
+    "name": "Andre Jorge Lopes"
+  },
+  "commands": "./commands/"
+}
