@@ -46,5 +46,22 @@ while IFS='|' read -r flow skills || [[ -n "$flow" ]]; do
     cp -R "${PLUGIN}/skills/${sk}" "${outdir}/skills/${sk}"
   done
 
+  # The diagrams flow bundles a standalone renderer so render-diagram works without bin/devflow:
+  # the export script + the dep resolver + a tiny launcher that wires them together.
+  if [[ "$flow" == "diagrams" ]]; then
+    cp "${ROOT}/lib/excalidraw-export.cjs" "${outdir}/skills/render-diagram/excalidraw-export.cjs"
+    cp "${ROOT}/lib/render-deps.sh"        "${outdir}/skills/render-diagram/render-deps.sh"
+    cat > "${outdir}/skills/render-diagram/render.sh" <<'RS'
+#!/usr/bin/env bash
+# Standalone render launcher (no bin/devflow): resolve deps + run the bundled export.
+set -euo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+source "${here}/render-deps.sh"
+nm="$(render_deps_resolve)"
+NODE_PATH="$nm" EXCAL_NODE_MODULES="$nm" node "${here}/excalidraw-export.cjs" "$@"
+RS
+    chmod +x "${outdir}/skills/render-diagram/render.sh"
+  fi
+
   echo "built flow: ${flow} (${skills})"
 done < "$MANIFEST"

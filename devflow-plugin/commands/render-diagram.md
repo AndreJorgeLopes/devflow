@@ -31,7 +31,7 @@ Export runs a pure-node pipeline — `.excalidraw → excalidraw-to-svg → @res
 devflow visualizations render <file>.excalidraw [output-basename]
 ```
 
-No Playwright, no headless Chromium, no MCP server. The deps (`canvas`, `excalidraw-to-svg`, `@resvg/resvg-js`) are installed globally; if the command reports them missing, run `npm i -g canvas excalidraw-to-svg @resvg/resvg-js`. The command prints `PNG <abspath>` as its final stdout line — capture it.
+No Playwright, no headless Chromium, no MCP server. The deps (`canvas`, `excalidraw-to-svg`, `@resvg/resvg-js`) are auto-provisioned by `render-deps.sh` (existing globals → `~/.devflow/render-deps` cache → consent install, no `-g`/sudo). The command prints `PNG <abspath>` as its final stdout line — capture it.
 
 ## Step 1: Determine what to diagram
 From `$ARGUMENTS` (or the calling skill's context), establish the components (nodes) and relationships (edges). Three input modes:
@@ -62,10 +62,19 @@ Write the file to:
 - a **scratch** path (e.g. `.devflow/diagrams/<name>.excalidraw`) for in-session-only display.
 
 ## Step 3: Render
-```
-devflow visualizations render <path>/<name>.excalidraw
-```
-Writes `<name>.svg` + `<name>.png` alongside the source and prints `PNG <abspath>`. Capture that path.
+
+The render deps (`canvas`, `excalidraw-to-svg`, `@resvg/resvg-js`) are auto-provisioned by `render-deps.sh` (existing globals → `~/.devflow/render-deps` cache → consent install, no `-g`/sudo). If they may be missing, ask the user **once** via `AskUserQuestion` whether to install them; on yes, set `DEVFLOW_RENDER_ASSUME_YES=1` on the render command so the resolver installs non-interactively instead of blocking on a `read` prompt (which EOFs to "n" in a non-TTY Bash tool / `claude --print` / cron).
+
+- If `devflow` is on PATH:
+  ```
+  DEVFLOW_RENDER_ASSUME_YES=1 devflow visualizations render <path>/<name>.excalidraw
+  ```
+- Else (standalone `devflow-diagrams` flow install, no `bin/devflow` on PATH):
+  ```
+  DEVFLOW_RENDER_ASSUME_YES=1 bash "$SKILL_DIR/render.sh" <path>/<name>.excalidraw
+  ```
+
+(If the user declined the install, do NOT set the var — the resolver returns non-zero and you report the missing deps.) Both write `<name>.svg` + `<name>.png` alongside the source and print `PNG <abspath>` as the final stdout line. Capture that path, then SHOW it (Step 4).
 
 ## Step 4: SHOW it (mandatory)
 **Read the PNG** with the Read tool. This renders the diagram inline in the session — the primary deliverable, and the only reliable in-session display. (A markdown image embed only shows clickable link text in the Claude app, NOT an inline image — so always Read the PNG to actually show the user.)
