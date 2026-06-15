@@ -1,5 +1,5 @@
 ---
-description: [0.3.0] Finish a feature — run verification, create PR, retain learnings, and hand off cleanup to the terminal.
+description: [0.3.1] Finish a feature — run verification, create PR, retain learnings, and hand off cleanup to the terminal.
 ---
 
 You are finishing a feature. Run the full completion pipeline before handing off to the developer for worktree cleanup.

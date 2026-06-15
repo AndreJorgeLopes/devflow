@@ -84,12 +84,10 @@ _parse_conventional_commits() {
   done < <(git -C "$project_dir" log "$log_target" --format='%B%x00' 2>/dev/null)
   IFS="$IFS_SAVE"
 
-  # Patch floor: any non-[skip release] merge that has commits cuts AT LEAST a
-  # patch, so docs/chore/refactor/etc. merges still release (keeps "merge =
-  # release"). The empty-range and [skip release] cases already returned "none".
-  if [[ "$bump" == "none" ]]; then
-    bump="patch"
-  fi
+  # No patch floor: docs/chore/refactor/test/ci/style/perf-only ranges yield
+  # "none" (no release), matching conventional-commit rules and the documented
+  # release process. Only feat/fix/breaking cut a release. To force a release for
+  # an otherwise-non-releasable range, dispatch release.yml with bump_override.
 
   # Output
   echo "$bump"
