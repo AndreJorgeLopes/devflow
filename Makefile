@@ -4,7 +4,7 @@ LIBDIR := $(PREFIX)/share/devflow
 VERSION := 0.3.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -31,7 +31,7 @@ link: ## Symlink bin/devflow for local development
 	@echo "devflow linked: $(BINDIR)/devflow -> $(CURDIR)/bin/devflow"
 	@echo "DEVFLOW_ROOT will default to $(CURDIR) when running from source."
 
-test: ## Run smoke tests
+test: flows-check ## Run smoke tests
 	@echo "=== devflow smoke tests ==="
 	@if [ -x bin/devflow ]; then \
 		echo "PASS: bin/devflow exists and is executable"; \
@@ -52,6 +52,13 @@ test: ## Run smoke tests
 
 test-unit: ## Run unit tests (bats)
 	@bats tests/unit/
+
+flows: ## Regenerate flow mini-plugins from canonical sources
+	@bash scripts/build-flows.sh
+
+flows-check: ## Fail if generated flows drift from canonical sources (run 'make flows' to fix)
+	@bash scripts/build-flows.sh
+	@git diff --quiet -- devflow-plugin/flows || { echo "flows out of date — run 'make flows' and commit"; git --no-pager diff --stat -- devflow-plugin/flows; exit 1; }
 
 brew-local: ## Install via local Homebrew formula
 	brew install --formula Formula/devflow.rb
