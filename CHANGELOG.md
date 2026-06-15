@@ -1,3 +1,10 @@
+## v0.4.0 — 2026-06-15
+
+### Features
+- feat(flows): flow-separated marketplace + per-skill optional-deps (#43)
+
+---
+
 ## v0.3.1 — 2026-06-15
 
 ### Fixes

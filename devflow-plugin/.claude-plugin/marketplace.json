@@ -1,31 +1,31 @@
 {
   "name": "devflow-marketplace",
   "owner": { "name": "Andre Jorge Lopes" },
-  "metadata": { "description": "Devflow AI dev environment skills", "version": "0.3.1" },
+  "metadata": { "description": "Devflow AI dev environment skills", "version": "0.4.0" },
   "plugins": [
     {
       "name": "devflow",
       "description": "AI development workflow skills",
       "source": "./",
-      "version": "0.3.1"
+      "version": "0.4.0"
     },
     {
       "name": "devflow-review",
       "description": "devflow code-review flow (review, review-document, write-spike)",
       "source": "./flows/review",
-      "version": "0.3.1"
+      "version": "0.4.0"
     },
     {
       "name": "devflow-diagrams",
       "description": "devflow diagram flow (render-diagram)",
       "source": "./flows/diagrams",
-      "version": "0.3.1"
+      "version": "0.4.0"
     },
     {
       "name": "devflow-jira",
       "description": "devflow jira flow (best-roi-task)",
       "source": "./flows/jira",
-      "version": "0.3.1"
+      "version": "0.4.0"
     }
   ]
 }
