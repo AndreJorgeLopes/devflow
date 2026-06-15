@@ -1,0 +1,15 @@
+# /write-spike company configuration
+# Change these values when adapting for a different company.
+# The skill reads this file at startup and adapts which tools it uses.
+
+project_tracker: jira                    # jira | linear | github-issues | none
+project_tracker_tools: atlassian-rovo    # MCP tools for ticket access
+doc_platform: confluence                 # confluence | notion | google-docs | none
+doc_platform_tools: atlassian-rovo       # MCP tools for doc publishing
+chat_platform: slack                     # slack | teams | discord | none
+chat_platform_tools: slack-mcp           # MCP tools for chat access
+vcs_provider: gitlab                     # gitlab | github | bitbucket
+memory_system: hindsight                 # hindsight | none
+default_spike_location: ~/docs/spikes    # global default for spike output
+diagram_tool: mermaid                    # mermaid | excalidraw
+markdown_viewer: markdownviewer.pages.dev

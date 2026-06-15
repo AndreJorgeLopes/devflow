@@ -1,0 +1,9 @@
+{
+  "skill": "write-spike",
+  "required": [],
+  "optional": [
+    { "name": "atlassian", "check": "atlassian", "why": "fetch the Jira ticket + Confluence context", "install": "connect the Atlassian MCP", "degrade": "ask the user to paste the ticket text" },
+    { "name": "slack", "check": "slack", "why": "pull chat context for the initiative", "install": "connect the Slack MCP", "degrade": "skip chat context" },
+    { "name": "hindsight", "check": "hindsight", "why": "recall prior initiative learnings", "install": "docker compose up -d hindsight", "degrade": "proceed without recall" }
+  ]
+}
