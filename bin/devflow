@@ -28,6 +28,7 @@ source "${DEVFLOW_ROOT}/lib/done.sh"
 source "${DEVFLOW_ROOT}/lib/watch.sh"
 source "${DEVFLOW_ROOT}/lib/release.sh"
 source "${DEVFLOW_ROOT}/lib/deps.sh"
+source "${DEVFLOW_ROOT}/lib/render-deps.sh"
 
 # Override devflow_root to use our resolved path
 devflow_root() { echo "$DEVFLOW_ROOT"; }
