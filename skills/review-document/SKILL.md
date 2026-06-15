@@ -7,6 +7,16 @@ description: Use when reviewing a prose document — KB article, RFC, spike, run
 
 You are a thorough, multi-perspective document reviewer. Counterpart to `/devflow:write-spike`. Reviews prose docs on any platform with deep context gathering and parallel review agents. Sibling to `/devflow:review` (which reviews code diffs).
 
+## Preflight (dependency check)
+
+Before doing this skill's work, resolve dependencies from the sibling `requirements.json`:
+
+1. Read `requirements.json` next to this SKILL.md. If absent, skip preflight (no declared deps).
+2. If `devflow` is on PATH, run `devflow deps check review-document` and use its report. Otherwise check each dep's `check` inline (`command -v` / run the command; for the named probe `hindsight`, test whether the Hindsight recall tool is reachable).
+3. **Required dep missing** → STOP. Report the dep `name`, `why`, and `install` hint. Do not continue.
+4. **Optional dep missing** → ask via `AskUserQuestion` (header "Optional dep"): **Provide an alternative** (path/command/endpoint) · **Continue without** (apply the dep's `degrade`) · **Abort**. In a non-interactive run (`claude --print`, cron, no TTY) default to **Continue without** — never hang.
+5. Carry the chosen optional-dep behavior through the rest of the run.
+
 ## Scope guardrails (read before doing anything)
 
 1. **NEVER flag pure styling issues.** Broken markdown table rows, header-level inconsistencies, missing alignment chars, font weight, colour, whitespace — none. Only substance: factual correctness, internal consistency, completeness, prose clarity, audience-fit, external-claim verification. Renderer quirks belong in a linter, not a doc review.

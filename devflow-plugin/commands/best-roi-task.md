@@ -4,6 +4,16 @@ description: [0.3.0] Find the best ROI task in a Jira Epic — highest story poi
 
 You are analyzing a Jira Epic to find the task with the best return on investment (highest story points relative to effort/size) that is available to pick up.
 
+## Preflight (dependency check)
+
+Before doing this skill's work, resolve dependencies from the sibling `requirements.json`:
+
+1. Read `requirements.json` next to this SKILL.md. If absent, skip preflight (no declared deps).
+2. If `devflow` is on PATH, run `devflow deps check best-roi-task` and use its report. Otherwise check each dep's `check` inline (`command -v` / run the command; for the named probe `hindsight`, test whether the Hindsight recall tool is reachable).
+3. **Required dep missing** → STOP. Report the dep `name`, `why`, and `install` hint. Do not continue.
+4. **Optional dep missing** → ask via `AskUserQuestion` (header "Optional dep"): **Provide an alternative** (path/command/endpoint) · **Continue without** (apply the dep's `degrade`) · **Abort**. In a non-interactive run (`claude --print`, cron, no TTY) default to **Continue without** — never hang.
+5. Carry the chosen optional-dep behavior through the rest of the run.
+
 ## Inputs
 
 Provide via `$ARGUMENTS`:
