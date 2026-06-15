@@ -27,6 +27,7 @@ source "${DEVFLOW_ROOT}/lib/visualizations.sh"
 source "${DEVFLOW_ROOT}/lib/done.sh"
 source "${DEVFLOW_ROOT}/lib/watch.sh"
 source "${DEVFLOW_ROOT}/lib/release.sh"
+source "${DEVFLOW_ROOT}/lib/deps.sh"
 
 # Override devflow_root to use our resolved path
 devflow_root() { echo "$DEVFLOW_ROOT"; }
@@ -46,6 +47,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}restart${RESET}                      Restart Docker services (down + up)
   ${CYAN}status${RESET}                       Show status of all layers
   ${CYAN}check${RESET}                        Run code review checks on current diff
+  ${CYAN}deps${RESET} check <skill>           Check a skill's required/optional dependencies
   ${CYAN}skills${RESET} list                  List available skills
   ${CYAN}skills${RESET} install <name>        Install a skill to the current project
   ${CYAN}skills${RESET} remove <name>         Remove a skill from the project
@@ -273,6 +275,7 @@ main() {
     restart)   devflow_restart "$@" ;;
     status)    devflow_status "$@" ;;
     check)     devflow_check "$@" ;;
+    deps)      devflow_deps "$@" ;;
     skills)    devflow_skills "$@" ;;
     seed)      devflow_seed "$@" ;;
     done)      devflow_done "$@" ;;
