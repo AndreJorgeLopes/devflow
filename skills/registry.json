@@ -181,6 +181,12 @@
       "description": "Reprioritize a devflow task — move between priority folders (P0-P4) and update frontmatter",
       "category": "process-discipline",
       "layer": 4
+    },
+    {
+      "name": "verify-first",
+      "description": "Ground-truth every technical claim against the real system before relying on it. Run the probe; docs are not verification.",
+      "category": "process-discipline",
+      "layer": 4
     }
   ]
 }
