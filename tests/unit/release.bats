@@ -161,7 +161,7 @@ PJ
 MJ
   cat > "$proj/devflow-plugin/commands/test-cmd.md" <<'CMD'
 ---
-description: "[devflow v0.1.0] Test command"
+description: [0.1.0] Test command
 ---
 CMD
 
@@ -177,7 +177,7 @@ CMD
   assert_success
   run grep '"version": "0.2.0"' "$proj/devflow-plugin/.claude-plugin/marketplace.json"
   assert_success
-  run grep '\[devflow v0.2.0\]' "$proj/devflow-plugin/commands/test-cmd.md"
+  run grep '\[0.2.0\]' "$proj/devflow-plugin/commands/test-cmd.md"
   assert_success
 }
 
