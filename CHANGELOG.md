@@ -1,3 +1,10 @@
+## v0.5.0 — 2026-06-16
+
+### Features
+- feat(skills): add /devflow:verify-first verification-discipline skill (#45)
+
+---
+
 ## v0.4.0 — 2026-06-15
 
 ### Features
