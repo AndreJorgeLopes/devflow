@@ -35,6 +35,7 @@
     "./skills/codebase-walkthrough/SKILL.md",
     "./skills/resolve-repo/SKILL.md",
     "./skills/task-complete/SKILL.md",
-    "./skills/task-prioritize/SKILL.md"
+    "./skills/task-prioritize/SKILL.md",
+    "./skills/verify-first/SKILL.md"
   ]
 }
