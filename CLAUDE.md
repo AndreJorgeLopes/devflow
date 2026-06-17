@@ -61,7 +61,7 @@ make install             # Install devflow binary to ~/.local/bin/
 
 ## Skill / Command Conventions
 
-- All command descriptions include a `[devflow v0.1.0]` version badge.
+- All command descriptions include a `[X.Y.Z]` version badge (bare, unquoted, no `devflow v` prefix).
 - Reference Hindsight tools as "Hindsight `retain` tool" and "Hindsight `recall` tool" (not MCP tool names).
 - `skills/` directory is NOT symlinked into `~/.claude/skills/` — wrappers require explicit Read instructions.
 - `devflow-plugin/commands/` is the canonical source; `skills/` mirrors them in categorized subdirectories.
