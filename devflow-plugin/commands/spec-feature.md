@@ -1,5 +1,5 @@
 ---
-description: [0.5.0] Spec a new feature — recall architecture knowledge, create a spec document, build an implementation plan, and break into tasks.
+description: [0.6.0] Spec a new feature — recall architecture knowledge, create a spec document, build an implementation plan, and break into tasks.
 ---
 
 You are speccing a new feature. This command enforces a structured planning process before any code is written.

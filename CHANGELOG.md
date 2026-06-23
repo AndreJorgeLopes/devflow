@@ -1,3 +1,10 @@
+## v0.6.0 — 2026-06-23
+
+### Features
+- feat(create-pr): VCS-aware + structured description + GitLab template adaptation (#48)
+
+---
+
 ## v0.5.0 — 2026-06-16
 
 ### Features
