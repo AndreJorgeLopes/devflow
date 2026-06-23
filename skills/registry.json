@@ -72,9 +72,11 @@
     },
     {
       "name": "create-pr",
-      "description": "Full PR creation pipeline with self-review and checks",
+      "description": "VCS-aware PR/MR creation (GitHub gh / GitLab glab) with self-review, checks, and a structured description (TL;DR, change table, mermaid, honest verification status, no em-dashes); on GitLab it adapts the project's MR template",
       "category": "pr-pipeline",
-      "layer": 3
+      "layer": 3,
+      "requires": ["git"],
+      "optional": ["gh", "glab", "devflow-cli"]
     },
     {
       "name": "spec-feature",
