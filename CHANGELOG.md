@@ -1,3 +1,10 @@
+## v0.7.0 — 2026-06-23
+
+### Features
+- feat(render-diagram): ELI5 mode + auto-centered bound text + dark canvas (#47)
+
+---
+
 ## v0.6.0 — 2026-06-23
 
 ### Features
