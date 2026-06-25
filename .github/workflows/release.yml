@@ -72,6 +72,7 @@ jobs:
           NOTES="## What's New"$'\n\n'
           FEATS="$(echo "$PARSE_OUTPUT" | grep '^feat|' | cut -d'|' -f2 || true)"
           FIXES="$(echo "$PARSE_OUTPUT" | grep '^fix|' | cut -d'|' -f2 || true)"
+          IMPRS="$(echo "$PARSE_OUTPUT" | grep '^impr|' | cut -d'|' -f2 || true)"
           OTHERS="$(echo "$PARSE_OUTPUT" | grep '^other|' | cut -d'|' -f2 || true)"
 
           if [[ -n "$FEATS" ]]; then
@@ -82,6 +83,11 @@ jobs:
           if [[ -n "$FIXES" ]]; then
             NOTES+="### Fixes"$'\n'
             while IFS= read -r line; do NOTES+="- ${line}"$'\n'; done <<< "$FIXES"
+            NOTES+=$'\n'
+          fi
+          if [[ -n "$IMPRS" ]]; then
+            NOTES+="### Improvements"$'\n'
+            while IFS= read -r line; do NOTES+="- ${line}"$'\n'; done <<< "$IMPRS"
             NOTES+=$'\n'
           fi
           if [[ -n "$OTHERS" ]]; then
