@@ -1,5 +1,5 @@
 ---
-description: [0.8.0] Lock the full test inventory before any implementation code is written. Reads spec+plan+AC, writes ALL failing tests in a batch, emits a Test Inventory doc, and gates with user approval.
+description: [0.8.1] Lock the full test inventory before any implementation code is written. Reads spec+plan+AC, writes ALL failing tests in a batch, emits a Test Inventory doc, and gates with user approval.
 ---
 
 > **Attribution:** Base TDD workflow vendored and adapted from [haletothewood/behavioural-tdd v1.8](https://tessl.io/registry/haletothewood/behavioural-tdd), Apache-2.0. Modifications: Phase 1 widened from single-test to batch; added Phase 0 (read artefacts) and Phase 1.7 (Test Inventory) and Phase 1.8 (user-approval gate); Phases 2-3 delegated to `/devflow:executing-plans` (the devflow wrapper that delegates to upstream `superpowers:executing-plans` for the per-task red/green/refactor loop AND forces the post-implementation handoff to `/devflow:finish-feature`).

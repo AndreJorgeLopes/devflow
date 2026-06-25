@@ -1,3 +1,10 @@
+## v0.8.1 — 2026-06-25
+
+### Fixes
+- fix(release): bump on impr commits and surface them in release notes (#51)
+
+---
+
 ## v0.8.0 — 2026-06-25
 
 ---
