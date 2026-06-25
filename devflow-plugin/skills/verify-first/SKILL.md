@@ -1,6 +1,6 @@
 ---
 name: verify-first
-description: Ground-truth every technical claim in a plan or design against the real system (run the code, hit the API with curl, probe the live browser DOM/store, or build a minimal proof-of-concept) before it can be relied on. Reading docs, blogs, or training knowledge is NOT verification. Use when stress-testing assumptions, before locking an architectural decision, or when the user says "verify first", "verify with practical tests", "prove it", or "test, don't assume".
+description: Ground-truth every technical claim — and every requirement-coverage claim — in a plan or design against the source of truth (run the code, hit the API with curl, probe the live browser DOM/store, build a proof-of-concept; for requirements, diff the plan section-by-section against the original design doc + ticket) before it can be relied on. Reading docs, blogs, training knowledge, or trusting that the plan captured the requirements is NOT verification. Use when stress-testing assumptions, before locking an architectural decision, or when the user says "verify first", "verify with practical tests", "prove it", or "test, don't assume".
 ---
 
 # Verify First
@@ -56,6 +56,14 @@ From the current design / plan / assumption set, extract EVERY discrete technica
 - "Node 25 has a prebuilt for `canvas@2`."
 
 One claim per row. If a sentence bundles two claims, split it.
+
+**Also enumerate requirement-coverage claims, not only technical ones.** A plan that silently drops a requirement living in the original design doc or ticket is the same failure mode as trusting an untested API — an unverified claim, here *"the plan captures everything the sources asked for."* Verify these against the ORIGINAL design doc + ticket ACs, **never against the plan** (the plan is a lossy compression of those sources, so checking the plan against itself proves nothing). Examples:
+
+- "The plan covers every requirement in the design doc's *detail* sections, not just its summary / migration checklist."
+- "Every acceptance criterion on the ticket maps to a task or a test."
+- "This behavioral rule stated only in design prose (a batching / scoping / ordering constraint) is captured somewhere downstream."
+
+Classify them with the same buckets: `[B]` = diff the plan/spec against the design doc + ticket section-by-section right now; `[V]` once that walk is done and the covered/uncovered list is in hand.
 
 ## Step 2 — Classify each claim
 
@@ -115,6 +123,8 @@ A hand-rolled utility for a solved problem is an unverified claim that "my versi
 
 A decision may NOT be locked, written into the plan as settled, or built upon while any claim it depends on is unclassified or still `[B]`-unrun. The ledger row must show `[V]` (with evidence) or `[R]` (with trigger + success criterion) before the decision is final. `[B]` is a blocker, not a state you ship.
 
+`[R]` claims are deferred verifications, not closed ones. Carry each forward as an open item so it reaches `finish-feature`'s deferral-closure gate — it must be confirmed, explicitly accepted, or pulled in before the feature ships. An `[R]` that silently never closes is the same silent-deferral failure that gate exists to catch.
+
 ## When NOT to use this skill
 
 - Pure brainstorming with no technical claims to ground yet — use `grill-me` first to surface the decision tree, then `verify-first` to ground each branch.
@@ -130,3 +140,4 @@ A decision may NOT be locked, written into the plan as settled, or built upon wh
 | "I'll just write my own debounce/fuzzy-match, it's tiny" | Solved problem = untested edge-case claim. Pick a battle-tested lib, log it in the inventory (Step 5). |
 | "I'll match on the 'Sold'/'Sponsored' label text" | Locale-fragile — breaks on translation. Anchor on DOM structure / class / id / role instead. |
 | "I can lock this decision, the test is trivial" | Trivial means run it now. `[B]` is a blocker — never ship it unrun. |
+| "The plan/spec already captures the requirements" | The plan is a lossy compression of the design doc + ticket. Diff it against the ORIGINAL sources section-by-section — requirements buried in design prose are exactly what gets dropped. |

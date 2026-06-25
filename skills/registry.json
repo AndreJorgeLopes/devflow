@@ -186,7 +186,7 @@
     },
     {
       "name": "verify-first",
-      "description": "Ground-truth every technical claim against the real system before relying on it. Run the probe; docs are not verification.",
+      "description": "Ground-truth every technical AND requirement-coverage claim against the source of truth before relying on it. Run the probe; for requirements, diff the plan against the original design doc + ticket — neither docs nor the plan are verification.",
       "category": "process-discipline",
       "layer": 4
     }
