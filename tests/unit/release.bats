@@ -44,6 +44,24 @@ teardown() {
   assert_line --index 0 "patch"
 }
 
+@test "parse_conventional_commits returns patch for impr: commits" {
+  echo "impr" > "$TEST_REPO/impr.txt"
+  git -C "$TEST_REPO" add . && git -C "$TEST_REPO" commit -m "impr: tighten a gate" --quiet
+  run _parse_conventional_commits "$TEST_REPO"
+  assert_success
+  assert_line --index 0 "patch"
+}
+
+@test "parse_conventional_commits returns minor when feat outranks impr" {
+  echo "a" > "$TEST_REPO/a.txt"
+  git -C "$TEST_REPO" add . && git -C "$TEST_REPO" commit -m "impr: small tweak" --quiet
+  echo "b" > "$TEST_REPO/b.txt"
+  git -C "$TEST_REPO" add . && git -C "$TEST_REPO" commit -m "feat: bigger thing" --quiet
+  run _parse_conventional_commits "$TEST_REPO"
+  assert_success
+  assert_line --index 0 "minor"
+}
+
 @test "parse_conventional_commits returns major for feat!: commits" {
   echo "breaking" > "$TEST_REPO/break.txt"
   git -C "$TEST_REPO" add . && git -C "$TEST_REPO" commit -m "feat!: breaking API change" --quiet

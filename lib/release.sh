@@ -47,6 +47,7 @@ _parse_conventional_commits() {
   local bump="none"
   local feat_msgs=""
   local fix_msgs=""
+  local impr_msgs=""
   local other_msgs=""
 
   # Parse each commit. Stream NUL-delimited blocks directly from git log via
@@ -77,6 +78,10 @@ _parse_conventional_commits() {
         [[ "$bump" == "none" ]] && bump="patch"
         fix_msgs+="fix|${subject}\n"
         ;;
+      impr:*|impr!:*|impr\(*)
+        [[ "$bump" == "none" ]] && bump="patch"
+        impr_msgs+="impr|${subject}\n"
+        ;;
       docs:*|docs!:*|chore:*|chore!:*|refactor:*|refactor!:*|test:*|test!:*|ci:*|ci!:*|style:*|style!:*|perf:*|perf!:*)
         other_msgs+="other|${subject}\n"
         ;;
@@ -86,13 +91,16 @@ _parse_conventional_commits() {
 
   # No patch floor: docs/chore/refactor/test/ci/style/perf-only ranges yield
   # "none" (no release), matching conventional-commit rules and the documented
-  # release process. Only feat/fix/breaking cut a release. To force a release for
-  # an otherwise-non-releasable range, dispatch release.yml with bump_override.
+  # release process. Only feat (minor), fix/impr (patch), and breaking (major)
+  # cut a release — `impr` is this repo's improvement convention and bumps patch.
+  # To force a release for an otherwise-non-releasable range, dispatch release.yml
+  # with bump_override.
 
   # Output
   echo "$bump"
   [[ -n "$feat_msgs" ]] && printf "%b" "$feat_msgs"
   [[ -n "$fix_msgs" ]] && printf "%b" "$fix_msgs"
+  [[ -n "$impr_msgs" ]] && printf "%b" "$impr_msgs"
   [[ -n "$other_msgs" ]] && printf "%b" "$other_msgs"
   return 0
 }
@@ -231,6 +239,7 @@ devflow_release_preview() {
     case "$category" in
       feat)  echo "  ${GREEN}feat${RESET}: $msg" ;;
       fix)   echo "  ${YELLOW}fix${RESET}: $msg" ;;
+      impr)  echo "  ${CYAN}impr${RESET}: $msg" ;;
       other) echo "  ${DIM}$msg${RESET}" ;;
     esac
   done
