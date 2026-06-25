@@ -66,7 +66,7 @@
     },
     {
       "name": "finish-feature",
-      "description": "Finish a feature with checks, commit, merge, and learning retention",
+      "description": "Finish a feature with checks, an adversarial review gate (re-grounded on the original design doc + ticket ACs, not the plan) plus a deferral-closure gate, then commit, PR, and learning retention",
       "category": "worktree-flow",
       "layer": 2
     },
