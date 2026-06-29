@@ -66,6 +66,24 @@ make install             # Install devflow binary to ~/.local/bin/
 - `skills/` directory is NOT symlinked into `~/.claude/skills/` — wrappers require explicit Read instructions.
 - `devflow-plugin/commands/` is the canonical source; `skills/` mirrors them in categorized subdirectories.
 
+## Skill Determinism & Observability
+
+`eval/` is the skill-quality harness (see `eval/OBSERVABILITY.md`):
+- **promptfoo bench** (`eval/promptfooconfig.yaml` + `eval/lib/run-skill.sh`): runs a
+  skill headlessly (`claude --print`, `CLAUDECODE=""`) and asserts on its stdout —
+  deterministic asserts + LLM-judge + side-by-side version compare. This is a curated
+  **test bench**, not live capture (no sampling); it sees only the fixtures you write.
+- **Langfuse** (docker, `:3100`, `restart: unless-stopped`): optional score history via
+  `eval/lib/langfuse-push.sh`. v2 has no OTLP receiver; full Claude-Code-OTel trace
+  ingestion (all real skill activations) needs Langfuse v3 — tracked in
+  `tasks/P3/SPIKE-telemetry-observability.md`.
+
+When authoring or changing a skill, prefer **deterministic logic over AI judgment** for
+computable work, on two axes: **offload** an AI decide/parse/score step to bash/regex/`jq`
+(assert with bats), and **constrain** any free-form result block to a pinned format
+(assert with promptfoo `is-json`/`regex`/no-fences on stdout). Leave genuinely-creative
+steps model-driven. The `determinize-skill` (proof-of-skill) automates this audit.
+
 ## Hooks Architecture
 
 Hook scripts live in `lib/hooks/`, registered in `~/.claude/settings.json` via `devflow init` (step 5d).

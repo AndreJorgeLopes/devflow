@@ -1,0 +1,47 @@
+# Determinism assertions for the new-feature skill (Axis B)
+# Run from repo root: npx -y promptfoo@latest eval -c skills/new-feature/determinism.promptfooconfig.yaml
+# View: npx -y promptfoo@latest view
+description: new-feature skill determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  # run-skill.sh clears CLAUDECODE so the nested claude launches (sdk#573). Run from repo root.
+  - id: 'exec: bash eval/lib/run-skill.sh'
+    label: new-feature@head
+
+defaultTest:
+  options:
+    provider: 'anthropic:messages:claude-haiku-4-5-20251001'
+
+tests:
+  # D5-a: workspace context block must contain all four required keys
+  - description: "D5-a: Feature Workspace block contains Branch/Base/Project/Ticket keys"
+    vars:
+      input: '/devflow:new-feature'
+    assert:
+      - type: icontains
+        value: 'Branch:'
+      - type: icontains
+        value: 'Base:'
+      - type: icontains
+        value: 'Project:'
+      - type: icontains
+        value: 'Ticket:'
+
+  # D5-b: context block must not be wrapped in markdown fences
+  - description: "D5-b: workspace block is not wrapped in markdown code fences"
+    vars:
+      input: '/devflow:new-feature'
+    assert:
+      - type: not-icontains
+        value: "```"
+
+  # D5-c: output must include the Feature Workspace header (pinned section title)
+  - description: "D5-c: output contains Feature Workspace section header"
+    vars:
+      input: '/devflow:new-feature'
+    assert:
+      - type: icontains
+        value: 'Feature Workspace'

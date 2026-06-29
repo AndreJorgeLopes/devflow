@@ -1,0 +1,37 @@
+# Axis B determinism assertions for /devflow:review — pin structural output shape.
+# Run from eval/:  cd eval && npx -y promptfoo@latest eval -c ../skills/review/determinism.promptfooconfig.yaml
+# NOTE: review operates on a diff — run from a repo/worktree that HAS a working-tree diff
+# (or pass a PR URL in `input`), else the skill reports "no changes" and these structural
+# asserts won't apply.
+description: "/devflow:review determinism assertions (Axis B — output shape)"
+
+prompts:
+  - '{{input}}'
+
+providers:
+  # run-skill.sh clears CLAUDECODE so the nested claude can launch (sdk#573).
+  # Raw `exec: claude --print` refuses to start nested.
+  - id: 'exec: bash eval/lib/run-skill.sh'
+    label: review@head
+
+tests:
+  - description: "D7-a: output contains a TL;DR block (Phase 4 requires it)"
+    vars: { input: '/devflow:review quick' }
+    assert:
+      - type: icontains
+        value: 'TL;DR'
+  - description: "D7-b: at least one severity emoji"
+    vars: { input: '/devflow:review quick' }
+    assert:
+      - type: regex
+        value: '(🔴|🟠|🟡|🟢|🔵)'
+  - description: "D7-c: a markdown heading is present"
+    vars: { input: '/devflow:review quick' }
+    assert:
+      - type: regex
+        value: '## '
+  - description: "D7-d: findings are not wrapped in a code fence"
+    vars: { input: '/devflow:review quick' }
+    assert:
+      - type: not-icontains
+        value: "```\n## "
