@@ -1,0 +1,57 @@
+# devflow skill-determinism eval harness (promptfoo)
+# Run:  cd eval && npx promptfoo@latest eval
+# View: npx promptfoo@latest view
+#
+# The provider runs a devflow skill headlessly via `claude --print` (see
+# lib/run-skill.sh) and promptfoo asserts on its raw stdout. This is the
+# "observability for the work" — deterministic assertions on skill output,
+# plus optional LLM-as-judge, plus side-by-side version comparison.
+description: devflow skill determinism eval
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash lib/run-skill.sh'
+    label: skill@head
+
+# To compare skill version N vs N+1, add a second provider pointing at a
+# wrapper that runs the OTHER version (e.g. a worktree on the prior tag), then
+# promptfoo renders both as side-by-side columns in `view`:
+#   - id: 'exec: bash lib/run-skill-prev.sh'
+#     label: skill@prev
+
+defaultTest:
+  options:
+    # keep judge cost down; only used by llm-rubric asserts
+    provider: 'anthropic:messages:claude-haiku-4-5-20251001'
+
+tests:
+  # --- deterministic assertion examples ---
+  - description: resolve-repo asks for the required inputs
+    vars:
+      input: '/devflow:resolve-repo'
+    assert:
+      - type: icontains-all
+        value: ['workspace', 'ticket']
+      - type: not-icontains
+        value: 'error'
+
+  # --- demonstrates the JSON-fence nondeterminism we caught live ---
+  # A naive skill that emits ```json fences fails is-json on raw stdout.
+  # This is exactly the kind of finding the determinism audit should fix.
+  - description: raw JSON output must parse (catches markdown fences)
+    vars:
+      input: 'Reply with exactly this JSON and nothing else: {"ok":true}'
+    assert:
+      - type: is-json
+
+  # --- LLM-as-judge example (uncomment to use; costs judge tokens) ---
+  # - description: output stays on-task and asks for inputs, not hallucinated work
+  #   vars:
+  #     input: '/devflow:resolve-repo'
+  #   assert:
+  #     - type: llm-rubric
+  #       value: >
+  #         The response asks the user for repo-resolution inputs (workspace,
+  #         ticket id) and does NOT fabricate a resolved repository.
