@@ -1,3 +1,10 @@
+## v0.9.0 — 2026-06-29
+
+### Features
+- feat(eval): promptfoo skill-determinism harness + Langfuse observability docs (#52)
+
+---
+
 ## v0.8.1 — 2026-06-25
 
 ### Fixes
