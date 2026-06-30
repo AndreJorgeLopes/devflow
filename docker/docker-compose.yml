@@ -166,7 +166,7 @@ services:
     image: langfuse/langfuse:3.200.0
     container_name: devflow-langfuse-web
     ports:
-      - "3200:3000"
+      - "3100:3000"
     environment:
       # NOTE: shared vars are inlined (NOT via `<<: *langfuse-env`) — Docker Compose's
       # YAML merge key drops the merged vars when mixed with explicit keys + ${}
@@ -192,7 +192,7 @@ services:
       LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
       LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
       LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
-      NEXTAUTH_URL: http://localhost:3200
+      NEXTAUTH_URL: http://localhost:3100
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-devflow-langfuse-secret-change-me}
       # Seed org/project/user on first boot of a fresh DB (values from docker/.env).
       LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-}
