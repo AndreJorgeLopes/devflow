@@ -90,4 +90,4 @@ bash lib/langfuse-push.sh results.json <version>   # native /api/public/ingestio
 
 **Recommendation:** promptfoo + Langfuse now both work. promptfoo stays the primary
 deterministic eval gate; Langfuse v3 gives passive run-history + the UI. Browse traces
-at http://localhost:3100.
+at http://localhost:3200.
