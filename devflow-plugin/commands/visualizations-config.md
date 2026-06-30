@@ -1,5 +1,5 @@
 ---
-description: [0.9.0] Configure visualization location, style presets, and output preferences
+description: [0.10.0] Configure visualization location, style presets, and output preferences
 ---
 
 # Configure Visualizations

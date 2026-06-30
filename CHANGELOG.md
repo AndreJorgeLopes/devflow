@@ -1,3 +1,10 @@
+## v0.10.0 — 2026-06-30
+
+### Features
+- feat(eval): skill-determinism audits + assertion configs + CLAUDE.md determinism guide (#53)
+
+---
+
 ## v0.9.0 — 2026-06-29
 
 ### Features
