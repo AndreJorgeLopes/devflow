@@ -157,6 +157,30 @@ detect_vcs_provider() {
   esac
 }
 
+# detect_agent_provider - Detect the AI coding agent provider (sibling of detect_vcs_provider).
+# Returns: claude-code, opencode, or unknown. Override with DEVFLOW_AGENT.
+# This is the extensibility seam for any provider-specific behavior (e.g. scheduling): add
+# one arm here + one in the consumer's case, and the rest of the flow is untouched.
+detect_agent_provider() {
+  if [[ -n "${DEVFLOW_AGENT:-}" ]]; then echo "$DEVFLOW_AGENT"; return; fi
+  if command -v claude   >/dev/null 2>&1; then echo "claude-code"; return; fi
+  if command -v opencode >/dev/null 2>&1; then echo "opencode";    return; fi
+  echo "unknown"
+}
+
+# agent_invoke_cmd <prompt> - the one provider-specific seam: how to fire a skill/prompt
+# headlessly for the detected agent. Emits a shell-quoted command string.
+# Claude Code: CLAUDECODE="" needed so the nested claude can launch (claude-agent-sdk#573).
+# OpenCode: has no native scheduler; `opencode run` is the headless entry (OS-cron drives it).
+agent_invoke_cmd() {
+  local prompt="$1"
+  case "$(detect_agent_provider)" in
+    claude-code) printf 'env CLAUDECODE="" claude --print %q' "$prompt" ;;
+    opencode)    printf 'opencode run %q' "$prompt" ;;
+    *)           printf '%q' "$prompt" ;;  # unknown: emit bare prompt; caller decides
+  esac
+}
+
 # get_vcs_pr_term — Return the correct term for a PR based on provider
 # Returns: PR (GitHub/generic), MR (GitLab)
 get_vcs_pr_term() {

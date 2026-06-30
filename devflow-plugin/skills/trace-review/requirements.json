@@ -1,0 +1,11 @@
+{
+  "skill": "trace-review",
+  "required": [
+    { "name": "python3", "check": "python3 --version", "why": "runs the deterministic trace aggregation engine (lib/trace-review.py)", "install": "https://www.python.org (usually preinstalled on macOS/Linux)" },
+    { "name": "curl", "check": "curl --version", "why": "Langfuse reachability check + REST queries", "install": "preinstalled on macOS/Linux" }
+  ],
+  "optional": [
+    { "name": "langfuse", "check": "curl -fsS -o /dev/null --connect-timeout 4 ${LANGFUSE_HOST:-http://localhost:3100}/api/public/health", "why": "the trace store this report reads from", "install": "devflow up", "degrade": "STOP and tell the user to run `devflow up` - there is no data to report on without it" },
+    { "name": "langfuse-keys", "check": "test -n \"$LANGFUSE_PUBLIC_KEY\" -a -n \"$LANGFUSE_SECRET_KEY\" || grep -q LANGFUSE_PUBLIC_KEY \"$HOME/.config/zsh/secrets\"", "why": "Basic-auth to the Langfuse public API", "install": "add LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY to ~/.config/zsh/secrets", "degrade": "STOP - the engine cannot authenticate without keys" }
+  ]
+}

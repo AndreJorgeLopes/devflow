@@ -29,6 +29,7 @@ source "${DEVFLOW_ROOT}/lib/watch.sh"
 source "${DEVFLOW_ROOT}/lib/release.sh"
 source "${DEVFLOW_ROOT}/lib/deps.sh"
 source "${DEVFLOW_ROOT}/lib/render-deps.sh"
+source "${DEVFLOW_ROOT}/lib/trace-review.sh"
 
 # Override devflow_root to use our resolved path
 devflow_root() { echo "$DEVFLOW_ROOT"; }
@@ -63,6 +64,7 @@ ${BOLD}COMMANDS${RESET}
   ${CYAN}version-bump${RESET} <version>     Bump version in all files
   ${CYAN}release${RESET}                    Preview next release (dry-run)
   ${CYAN}visualizations${RESET} [action]      Manage visualizations (config, list, open, update, render)
+  ${CYAN}trace-review${RESET} [run|schedule]  Per-skill week-over-week Langfuse regression report
   ${CYAN}root${RESET}                         Print devflow installation path
   ${CYAN}version${RESET}                      Print version
   ${CYAN}help${RESET}                         Show this help
@@ -288,6 +290,7 @@ main() {
     version-bump)   devflow_version_bump "$@" ;;
     release)        devflow_release_preview "$@" ;;
     visualizations|viz) devflow_visualizations "$@" ;;
+    trace-review|traces) devflow_trace_review "$@" ;;
     root)      devflow_root "$@" ;;
     version)   echo "devflow v${DEVFLOW_VERSION}" ;;
     help|-h|--help) usage ;;
