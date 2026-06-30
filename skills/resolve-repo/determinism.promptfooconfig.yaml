@@ -1,0 +1,40 @@
+# resolve-repo determinism assertions (Axis B — pin output shape).
+# Run from repo root: npx -y promptfoo@latest eval -c skills/resolve-repo/determinism.promptfooconfig.yaml
+# Asserts D6 (Repo Match Results block) + D9 (Resolved Repository block) + D1 (platform enum).
+# run-skill.sh clears CLAUDECODE so the nested claude launches (sdk#573).
+description: resolve-repo determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval/lib/run-skill.sh'
+    label: resolve-repo@head
+
+tests:
+  - description: "D9 — Resolved Repository block: pinned fields, no fences"
+    vars:
+      input: '/devflow:resolve-repo WORKSPACE_DIR=~/dev/aircall TICKET_ID=MES-3716 TICKET_TITLE="Fix messaging webhook retry"'
+    assert:
+      - type: not-icontains
+        value: '```'
+      - type: regex
+        value: '\*\*VCS Platform:\*\*\s+(github|gitlab|bitbucket|azure|unknown)\b'
+      - type: regex
+        value: '\*\*Cloned:\*\*\s+(yes|no)'
+  - description: "D6 — Repo Match Results: pinned labels + tags only"
+    vars:
+      input: '/devflow:resolve-repo WORKSPACE_DIR=~/dev/aircall TICKET_ID=MES-3716 TICKET_TITLE="Fix messaging webhook retry"'
+    assert:
+      - type: regex
+        value: '(HIGH|MEDIUM|LOW):'
+      - type: regex
+        value: '\[(LOCAL|REMOTE)\]'
+  - description: "D4 — score bands carry no hedging prose"
+    vars:
+      input: '/devflow:resolve-repo WORKSPACE_DIR=~/dev/aircall TICKET_ID=MES-3716 TICKET_TITLE="Fix messaging webhook retry"'
+    assert:
+      - type: not-icontains
+        value: 'probably'
+      - type: not-icontains
+        value: 'likely'

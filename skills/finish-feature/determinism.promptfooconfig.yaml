@@ -1,0 +1,43 @@
+# finish-feature determinism assertions (Axis B — pin output shape).
+# Run from repo root: npx -y promptfoo@latest eval -c skills/finish-feature/determinism.promptfooconfig.yaml
+# NOTE: finish-feature mutates git state — run against a throwaway fixture worktree on a
+# feature branch with 1 commit ahead of main, or it will refuse (D2 branch guard) / no-op.
+# Asserts D4 (review-gate table), D6 (commit subject format), D7 (PR body headings), D8 (counts).
+description: finish-feature determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval/lib/run-skill.sh'
+    label: finish-feature@head
+
+tests:
+  - description: "D7 — PR body has the pinned section headings"
+    vars: { input: '/devflow:finish-feature' }
+    assert:
+      - type: icontains
+        value: '## Summary'
+      - type: icontains
+        value: '## Ticket'
+      - type: icontains
+        value: '## Testing'
+  - description: "D4 — review-gate findings use the pinned table"
+    vars: { input: '/devflow:finish-feature' }
+    assert:
+      - type: regex
+        value: '\| Finding \| Severity \| Source \|'
+      - type: not-icontains
+        value: 'I found the following issues'
+  - description: "D8 — Commits/Files counts are bare integers"
+    vars: { input: '/devflow:finish-feature' }
+    assert:
+      - type: regex
+        value: '\*\*Commits:\*\* \d+'
+      - type: regex
+        value: '\*\*Files changed:\*\* \d+'
+  - description: "D6 — commit subject follows conventional commits"
+    vars: { input: '/devflow:finish-feature' }
+    assert:
+      - type: regex
+        value: '(feat|fix|refactor|chore|test|docs)(\([^)]+\))?: .{1,72}'
