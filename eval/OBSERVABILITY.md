@@ -59,27 +59,35 @@ Claude Code ── OTLP ──▶ otel-collector :4318 ── +Basic auth ──
   existing `pk-lf-…`/`sk-lf-…` keep working.
 - `restart: unless-stopped` on every service → always-on across reboots.
 
-### ⚠️ Known issues with Langfuse v3.202.1 self-host (as of this build)
-Verified empirically; these are **langfuse-runtime**, not the compose:
-1. **Public read API `/api/public/traces` + `/metrics` error** with
-   `relation "observations_view" does not exist`. That view is intentionally DROPPED
-   by migration `20250221143400_drop_trace_view_observation_view`, yet the compiled
-   `pages/api/public/traces.js` still queries it → the web image's code is inconsistent
-   with its own migrations. The **browser UI** (tRPC, ClickHouse-backed) may still work;
-   verify at http://localhost:3100.
-2. **OTLP ingestion is flaky on boot** — the `/api/public/otel` route 404s until a
-   `docker compose restart langfuse-web`, and ingestion to ClickHouse has been
-   intermittent (verified working at one point: traces reached ClickHouse via the
-   collector; later boots needed a worker restart and sometimes still didn't persist).
+### ✅ Working — verified end-to-end
+A trace pushed to the collector lands in ClickHouse AND is returned by the read API:
+`otel=200`, `read=200`, ClickHouse + `/api/public/traces` both show it. Images pinned
+to **`langfuse/langfuse:3.200.0`** (web + worker, identical).
 
-**Reliable fallback that works today:** the score-push bridge over the **native**
-ingestion API (which returns 207, unaffected by the above):
+### Hard-won gotchas (do NOT regress)
+1. **Inline the shared env on `langfuse-web` — do NOT use the `<<: *langfuse-env`
+   merge.** Docker Compose silently dropped the merged vars (incl. `CLICKHOUSE_URL`)
+   from web when mixed with explicit keys + `${}` interpolation. Without
+   `CLICKHOUSE_URL`, web falls back to the legacy postgres `observations_view` (DROPPED
+   in v3 by migration `20250221…`) → every read 500s. That single missing var caused
+   ALL the "observations_view does not exist" + no-data symptoms — NOT a version bug.
+2. **Project-name collision.** The main repo `~/dev/devflow/docker/` (original
+   `langfuse:2` compose) and a worktree `docker/` both default to compose project
+   **`docker`** → docker mixes their containers. Run compose with an explicit
+   `-f <path> --project-directory <path>`, and once this branch merges to main the
+   main compose IS v3 so the collision disappears.
+3. **Recreate-rename race.** `docker compose up`/`restart` on `langfuse-web` (it has
+   `container_name` + `depends_on: service_healthy`) can fail with
+   `No such container <hash>_devflow-langfuse-web`, leaving the OLD container serving
+   stale env. Fix: a **full `down` then fresh `up`** (a fresh CREATE has no rename), not
+   a partial recreate.
+
+### Reliable score-push bridge (still available)
 ```bash
 cd eval && npx -y promptfoo@latest eval --output results.json
-bash lib/langfuse-push.sh results.json <version>   # uses /api/public/ingestion
+bash lib/langfuse-push.sh results.json <version>   # native /api/public/ingestion
 ```
 
-**Recommendation:** treat **promptfoo as the primary, reliable** eval/observability
-layer. Langfuse v3 OTLP passive tracing is wired but flaky on this version — if you
-want it solid, pin/try a different `langfuse/langfuse` v3 tag, or rely on the
-score-push bridge for version-over-version quality tracking.
+**Recommendation:** promptfoo + Langfuse now both work. promptfoo stays the primary
+deterministic eval gate; Langfuse v3 gives passive run-history + the UI. Browse traces
+at http://localhost:3100.
