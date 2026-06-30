@@ -1,0 +1,43 @@
+# OTel Collector — receives Claude Code OTLP on :4318 (no auth, localhost), adds the
+# Langfuse Basic-auth header, forwards traces to the Langfuse v3 OTLP endpoint.
+# Keeps the Langfuse secret OUT of Claude Code's (tracked) settings.json — it lives
+# only in docker/.env (gitignored) as LANGFUSE_OTEL_BASIC_AUTH.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+    timeout: 5s
+  # Claude Code emits token counts as non-standard span attrs (input_tokens,
+  # output_tokens, cache_*). Langfuse maps usage from the OTel GenAI convention
+  # (gen_ai.usage.*). Rename so Langfuse shows tokens + cost instead of 0.
+  transform/langfuse-usage:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.usage.input_tokens"], attributes["input_tokens"]) where attributes["input_tokens"] != nil
+          - set(attributes["gen_ai.usage.output_tokens"], attributes["output_tokens"]) where attributes["output_tokens"] != nil
+          - set(attributes["gen_ai.usage.cache_read_input_tokens"], attributes["cache_read_tokens"]) where attributes["cache_read_tokens"] != nil
+          - set(attributes["gen_ai.usage.cache_creation_input_tokens"], attributes["cache_creation_tokens"]) where attributes["cache_creation_tokens"] != nil
+
+exporters:
+  # Langfuse appends /v1/traces to this base path.
+  otlphttp/langfuse:
+    endpoint: http://langfuse-web:3000/api/public/otel
+    headers:
+      Authorization: "Basic ${env:LANGFUSE_OTEL_BASIC_AUTH}"
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/langfuse-usage, batch]
+      exporters: [otlphttp/langfuse, debug]
