@@ -1,4 +1,33 @@
-version: "3.9"
+# devflow services: Hindsight (memory) + Langfuse v3 (LLM observability).
+# Secrets read from docker/.env (gitignored) with safe local-dev defaults.
+# Langfuse v3 reuses the existing langfuse-db volume — projects + API keys survive
+# the v2→v3 upgrade (Postgres schema auto-migrates on boot; ClickHouse starts empty).
+
+# Shared Langfuse env (web + worker) — YAML anchor.
+x-langfuse-env: &langfuse-env
+  DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+  SALT: ${SALT:-devflow-salt-change-me}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+  TELEMETRY_ENABLED: "true"
+  LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
+  # ClickHouse (required in v3)
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: clickhouse
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  # Redis (required in v3)
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_AUTH: ${REDIS_AUTH:-myredissecret}
+  # S3 event upload (required) — MinIO
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-miniosecret}
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
 
 services:
   # ── Hindsight (Memory) ──────────────────────────────────────────────
@@ -23,7 +52,7 @@ services:
     networks:
       - devflow
 
-  # ── Langfuse PostgreSQL ─────────────────────────────────────────────
+  # ── Langfuse PostgreSQL (reused across v2→v3) ───────────────────────
   langfuse-db:
     image: postgres:15
     container_name: devflow-langfuse-db
@@ -43,26 +72,141 @@ services:
     networks:
       - devflow
 
-  # ── Langfuse Web (Observability) ────────────────────────────────────
+  # ── Langfuse ClickHouse (analytics store, new in v3) ────────────────
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server
+    container_name: devflow-langfuse-clickhouse
+    hostname: clickhouse
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+      - langfuse-clickhouse-logs:/var/log/clickhouse-server
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 1s
+    restart: unless-stopped
+    networks:
+      devflow:
+        aliases: [clickhouse]
+
+  # ── Langfuse Redis (BullMQ queue, new in v3) ────────────────────────
+  langfuse-redis:
+    image: redis:7
+    container_name: devflow-langfuse-redis
+    hostname: redis
+    command: >
+      --requirepass ${REDIS_AUTH:-myredissecret}
+      --maxmemory-policy noeviction
+    volumes:
+      - langfuse-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      devflow:
+        aliases: [redis]
+
+  # ── Langfuse MinIO (S3 object store, new in v3) ─────────────────────
+  langfuse-minio:
+    image: cgr.dev/chainguard/minio
+    container_name: devflow-langfuse-minio
+    hostname: minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniosecret}
+    ports:
+      - "127.0.0.1:9091:9001" # console (localhost only)
+    volumes:
+      - langfuse-minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      devflow:
+        aliases: [minio]
+
+  # ── Langfuse Worker (background ingestion, new in v3) ───────────────
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    container_name: devflow-langfuse-worker
+    environment:
+      <<: *langfuse-env
+    depends_on:
+      langfuse-db: { condition: service_healthy }
+      langfuse-clickhouse: { condition: service_healthy }
+      langfuse-redis: { condition: service_healthy }
+      langfuse-minio: { condition: service_healthy }
+    restart: unless-stopped
+    networks:
+      - devflow
+
+  # ── Langfuse Web (Observability UI + OTLP ingest) ───────────────────
   langfuse-web:
-    image: langfuse/langfuse:2
+    image: langfuse/langfuse:3
     container_name: devflow-langfuse-web
     ports:
       - "3100:3000"
     environment:
-      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
-      NEXTAUTH_SECRET: devflow-langfuse-secret-change-me
+      <<: *langfuse-env
       NEXTAUTH_URL: http://localhost:3100
-      SALT: devflow-salt-change-me
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-devflow-langfuse-secret-change-me}
+      # Seed org/project/user on first boot of a fresh DB (values from docker/.env).
+      LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID:-}
+      LANGFUSE_INIT_ORG_NAME: ${LANGFUSE_INIT_ORG_NAME:-}
+      LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID:-}
+      LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME:-}
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:-}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-}
     depends_on:
-      langfuse-db:
-        condition: service_healthy
+      langfuse-db: { condition: service_healthy }
+      langfuse-clickhouse: { condition: service_healthy }
+      langfuse-redis: { condition: service_healthy }
+      langfuse-minio: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/public/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/public/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - devflow
+
+  # ── OTel Collector (Claude Code passive-monitor ingest) ─────────────
+  # Claude Code → :4318 (no auth, localhost) → adds Langfuse Basic-auth → forwards
+  # traces. Keeps the Langfuse secret out of Claude's tracked settings.json.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: devflow-otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      LANGFUSE_OTEL_BASIC_AUTH: ${LANGFUSE_OTEL_BASIC_AUTH:-}
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4318:4318" # OTLP HTTP (Claude Code points here)
+      - "127.0.0.1:4317:4317" # OTLP gRPC
+    # No hard dependency on langfuse-web: the OTLP exporter retries, and a
+    # service_healthy gate here caused a recreate race that wedged web.
     restart: unless-stopped
     networks:
       - devflow
@@ -70,6 +214,10 @@ services:
 volumes:
   hindsight-data:
   langfuse-db-data:
+  langfuse-clickhouse-data:
+  langfuse-clickhouse-logs:
+  langfuse-redis-data:
+  langfuse-minio-data:
 
 networks:
   devflow:
