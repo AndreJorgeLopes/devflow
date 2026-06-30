@@ -1,3 +1,10 @@
+## v0.11.1 — 2026-06-30
+
+### Fixes
+- fix(observability): seed langfuse price for claude-opus-4-8[1m] (cost was 0) (#56)
+
+---
+
 ## v0.11.0 — 2026-06-30
 
 ### Features
