@@ -1,3 +1,10 @@
+## v0.11.0 — 2026-06-30
+
+### Features
+- feat(observability): Langfuse v3 stack + OTel collector (passive CC tracing) — has known v3 issues (#54)
+
+---
+
 ## v0.10.0 — 2026-06-30
 
 ### Features
