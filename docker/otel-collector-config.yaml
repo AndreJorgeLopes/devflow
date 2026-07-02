@@ -25,6 +25,12 @@ processors:
           - set(attributes["gen_ai.usage.output_tokens"], attributes["output_tokens"]) where attributes["output_tokens"] != nil
           - set(attributes["gen_ai.usage.cache_read_input_tokens"], attributes["cache_read_tokens"]) where attributes["cache_read_tokens"] != nil
           - set(attributes["gen_ai.usage.cache_creation_input_tokens"], attributes["cache_creation_tokens"]) where attributes["cache_creation_tokens"] != nil
+          # Content: Claude Code emits the prompt as `user_prompt` (on claude_code.interaction);
+          # Langfuse reads observation Input from OpenInference `input.value`. Map it so the
+          # Input field shows the prompt instead of null. (No completion-text attr exists on
+          # the trace signal — Claude Code emits assistant output only via the logs signal,
+          # which Langfuse trace ingestion does not consume; output shows tokens/cost only.)
+          - set(attributes["input.value"], attributes["user_prompt"]) where attributes["user_prompt"] != nil
 
 exporters:
   # Langfuse appends /v1/traces to this base path.
