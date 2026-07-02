@@ -148,7 +148,7 @@ services:
 
   # ── Langfuse Worker (background ingestion, new in v3) ───────────────
   langfuse-worker:
-    image: langfuse/langfuse-worker:3.200.0
+    image: langfuse/langfuse-worker:3.203.3
     container_name: devflow-langfuse-worker
     environment:
       <<: *langfuse-env
@@ -163,7 +163,7 @@ services:
 
   # ── Langfuse Web (Observability UI + OTLP ingest) ───────────────────
   langfuse-web:
-    image: langfuse/langfuse:3.200.0
+    image: langfuse/langfuse:3.203.3
     container_name: devflow-langfuse-web
     ports:
       - "3100:3000"
