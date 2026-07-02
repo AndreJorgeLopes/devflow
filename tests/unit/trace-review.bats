@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
-# tests/unit/trace-review.bats — Unit tests for the trace-review provider seam,
-# scheduler dispatch, and the deterministic regression math in lib/trace-review.py.
-# All tests are network-free (no Langfuse required).
+# tests/unit/trace-review.bats - Unit tests for the trace-review provider seam,
+# scheduler dispatch, and the deterministic aggregation + regression math in
+# lib/trace-review.py. All tests are network-free (no Langfuse required).
 
 setup() {
   load '../helpers/common'
@@ -180,15 +180,101 @@ print('OK')
   assert_output --partial 'OK'
 }
 
-@test "engine percentile is deterministic and nearest-rank" {
+@test "engine percentile is nearest-rank with pinned values" {
   run python3 -c "
 import importlib.util, os
 spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 vals = [1,2,3,4,5,6,7,8,9,10]
-assert m._pct(vals, 50) == m._pct(vals, 50)
+# nearest-rank on 0-based index: p50 -> round(0.5*9)=4 -> vals[4]=5; p95 -> round(0.95*9)=9 -> vals[10th]=10
+assert m._pct(vals, 50) == 5, m._pct(vals, 50)
+assert m._pct(vals, 95) == 10, m._pct(vals, 95)
+assert m._pct(vals, 0) == 1, m._pct(vals, 0)
 assert m._pct([], 95) is None
 assert m._pct([42], 95) == 42
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+# ── core aggregation pipeline (join + attribution + anti-inflation), the functions
+#    the module docstring names as its reason to exist ──
+
+@test "_build_trace_skill_map attributes a trace by the first skill_name span" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+# skill_name lands on claude_code.tool (NOT .execution); map scans all spans on the trace
+obs = [
+  {'traceId': 't1', 'name': 'claude_code.tool.execution', 'metadata': {'attributes': {}}},
+  {'traceId': 't1', 'name': 'claude_code.tool', 'metadata': {'attributes': {'skill_name': 'devflow:review'}}},
+  {'traceId': 't2', 'name': 'claude_code.tool.execution', 'metadata': {'attributes': {}}},
+]
+mp = m._build_trace_skill_map(obs)
+assert mp == {'t1': 'devflow:review'}, mp   # t2 has no skill_name -> absent -> (unattributed) later
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_trace_exec_stats counts executions only and never counts a permission reject as an error" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+obs_by_trace = {'t1': [
+  {'name': 'claude_code.tool.execution', 'level': 'ERROR', 'metadata': {'attributes': {'success': 'false'}}},
+  {'name': 'claude_code.tool.blocked_on_user', 'metadata': {'attributes': {'decision': 'reject'}}},
+  {'name': 'claude_code.tool.execution', 'metadata': {'attributes': {'success': 'true'}}},
+]}
+total, failed = m._trace_exec_stats('t1', obs_by_trace)
+assert (total, failed) == (2, 1), (total, failed)   # reject is not an execution; error_rate = 1/2 not 1/3 or 2/3
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_aggregate joins by traceId, uses per-trace totalCost/latency, and counts unattributed traces" {
+  run python3 -c "
+import importlib.util, os
+from datetime import datetime, timezone
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+lo = datetime(2026,1,1,tzinfo=timezone.utc); hi = datetime(2026,1,8,tzinfo=timezone.utc)
+traces = [
+  {'id': 't1', 'timestamp': '2026-01-02T00:00:00Z', 'totalCost': 2.0, 'latency': 5.0},
+  {'id': 't2', 'timestamp': '2026-01-03T00:00:00Z', 'totalCost': 0.5, 'latency': 9.0},  # no skill -> unattributed
+  {'id': 't3', 'timestamp': '2025-12-31T00:00:00Z', 'totalCost': 99.0, 'latency': 1.0}, # out of window
+]
+obs_by_trace = {'t1': [{'name': 'claude_code.tool.execution', 'metadata': {'attributes': {'success': 'true'}}}]}
+trace_skill = {'t1': 'devflow:review'}
+agg = m._aggregate(traces, obs_by_trace, trace_skill, {}, lo, hi)
+assert agg['devflow:review']['count'] == 1, agg
+assert agg['devflow:review']['cost'] == 2.0, agg          # per-trace totalCost passthrough, not summed spans
+assert agg['devflow:review']['p95_latency'] == 5.0, agg
+assert agg[m.UNATTRIBUTED]['count'] == 1, agg             # t2 bucketed as unattributed
+assert 't3' not in [x for x in agg], 'out-of-window trace leaked'
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_flag_regressions holds (unattributed) OUT of the per-skill ranking" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+this = {'devflow:review': {'count': 3, 'exec_total': 3, 'error_rate': 0.0, 'cost': 1.0, 'p95_latency': 1.0, 'mean_score': None},
+        m.UNATTRIBUTED: {'count': 99, 'exec_total': 99, 'error_rate': 0.0, 'cost': 500.0, 'p95_latency': 300.0, 'mean_score': None}}
+rows = m._flag_regressions(this, {})
+skills = [r['skill'] for r in rows]
+assert m.UNATTRIBUTED not in skills, skills   # never ranked as a skill
+assert skills == ['devflow:review'], skills
 print('OK')
 "
   assert_success

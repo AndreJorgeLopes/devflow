@@ -3,14 +3,21 @@
 
 READ-ONLY. Pulls traces/observations/scores from a self-hosted Langfuse, attributes
 each trace to a skill (via the skill_name attribute Claude Code emits on
-claude_code.tool.execution spans), compares a rolling "this week" vs "last week"
+claude_code.tool spans), compares a rolling "this week" vs "last week"
 window, flags regressions against balanced thresholds, and emits a JSON document.
 
 Why this exists (baseline failure it fixes): a cold agent assumes a `skill.name`
-trace field (the real key is `skill_name` on tool-execution spans), and naively sums
+trace field, when the real key is `skill_name` and it lands on `claude_code.tool`
+spans (NOT on the child `claude_code.tool.execution` span). The join here scans every
+observation on the trace, so it finds skill_name wherever it sits. It also naively sums
 cost/latency across mixed span types (interaction wall-clock + llm latency) which
 inflates totals. This engine joins by traceId and uses Langfuse's already-aggregated
 per-trace `totalCost`/`latency`, so the numbers are correct and reproducible.
+
+Attribution coverage caveat: skill_name is only present when a Claude Code skill was
+active, so ordinary tool activity buckets into "(unattributed)". That bucket is kept in
+the totals for honesty but held OUT of the per-skill regression ranking (it is not a
+skill). Per-skill grouping is therefore only as complete as skill_name is in the traces.
 
 Output: a single JSON object on stdout. The skill renders it to markdown from a
 pinned template. No AI judgement in here - pure deterministic aggregation.
@@ -29,7 +36,9 @@ UNATTRIBUTED = "(unattributed)"
 
 
 def _die(msg, code=1):
-    print(json.dumps({"error": msg}), file=sys.stdout)
+    # stderr, NOT stdout: a caller redirecting stdout to a report file must not end up
+    # with the error JSON written into that file when the run fails.
+    print(json.dumps({"error": msg}), file=sys.stderr)
     sys.exit(code)
 
 
@@ -41,19 +50,30 @@ def _api(host, auth_b64, path, params):
         return json.load(resp)
 
 
-def _paginate(host, auth_b64, path, params, hard_cap=5000):
-    """Page through a list endpoint. Langfuse list endpoints use page/limit."""
+def _paginate(host, auth_b64, path, params, hard_cap=20000):
+    """Page through a list endpoint. Langfuse list endpoints use page/limit.
+
+    A missing `meta` block is treated as an error rather than "one page" - the latter
+    would silently truncate the whole dataset to the first 100 rows with no signal.
+    Hitting `hard_cap` mid-dataset also warns (to stderr) so a partial pull is never
+    mistaken for a complete one.
+    """
     out, page = [], 1
     while len(out) < hard_cap:
         p = dict(params); p["limit"] = 100; p["page"] = page
         d = _api(host, auth_b64, path, p)
         rows = d.get("data") or []
         out.extend(rows)
-        meta = d.get("meta") or {}
+        meta = d.get("meta")
+        if not isinstance(meta, dict) or "totalPages" not in meta:
+            raise ValueError(f"{path}: response missing pagination meta - cannot page safely")
         total_pages = meta.get("totalPages") or 1
         if page >= total_pages or not rows:
             break
         page += 1
+    if len(out) >= hard_cap:
+        print(json.dumps({"warning": f"{path}: hit hard_cap={hard_cap}; results truncated, "
+                                     "aggregates are partial. Narrow --window."}), file=sys.stderr)
     return out
 
 
@@ -94,7 +114,7 @@ def _trace_exec_stats(tid, obs_by_trace):
     """Per-execution error stats for a trace, counted at TOOL-EXECUTION granularity.
 
     Returns (total_executions, failed_executions). We count only
-    claude_code.tool.execution spans — a failed one is success=='false', ERROR
+    claude_code.tool.execution spans; a failed one is success=='false', ERROR
     level, or carries an `error` attr. Permission gates (claude_code.tool.blocked_on_user,
     decision=reject) are NOT tool executions and never count as errors, so a user
     declining a tool call is not a skill regression. Per-execution (not per-trace) so a
@@ -126,9 +146,9 @@ def _aggregate(traces, obs_by_trace, trace_skill, scores_by_trace, lo, hi):
     agg = {}
     for t in traces:
         ts = _parse_ts(t.get("timestamp"))
-        if ts is None or not (lo <= ts < hi):
+        tid = t.get("id")
+        if tid is None or ts is None or not (lo <= ts < hi):
             continue
-        tid = t["id"]
         skill = trace_skill.get(tid, UNATTRIBUTED)
         a = agg.setdefault(skill, {
             "count": 0, "exec_total": 0, "exec_failed": 0, "latencies": [], "cost": 0.0,
@@ -184,7 +204,9 @@ def _parse_ts(s):
 def _flag_regressions(this_m, last_m):
     """Compare this vs last per skill, return regression flags + severity."""
     rows = []
-    skills = sorted(set(this_m) | set(last_m))
+    # (unattributed) is not a skill - it holds ordinary tool activity with no skill_name.
+    # Keep it in the totals (see main), but never rank it as a regressing skill.
+    skills = sorted((set(this_m) | set(last_m)) - {UNATTRIBUTED})
     for skill in skills:
         cur = this_m.get(skill, {})
         prev = last_m.get(skill, {})
@@ -260,6 +282,11 @@ def render_markdown(doc):
     t = doc["totals"]
     L.append(f"**Scope:** {t['traces_kept']} traces ({t['traces_excluded_as_noise']} excluded as analysis-noise), "
              f"{t['observations']} observations, {t['scores']} scores.")
+    un = doc.get("unattributed") or {}
+    if un.get("count"):
+        L.append(f"_{un['count']} of these traces carried no `skill_name` (ordinary tool activity), "
+                 f"totalling ${un.get('cost', 0.0):.4f}. Not shown per-skill - attribution needs "
+                 "`skill_name` on the trace, which Claude Code only stamps when a skill is active._")
     if not doc.get("has_last_week"):
         L.append("")
         L.append("> ⚠️ **No last-week baseline** in range - every skill below is shown as `🆕 NEW`. "
@@ -354,7 +381,9 @@ def main():
     kept = []
     excluded = 0
     for t in traces:
-        tid = t["id"]
+        tid = t.get("id")
+        if tid is None:
+            continue
         if trace_skill.get(tid) == exclude_skill:
             excluded += 1; continue
         if exclude_session and t.get("sessionId") == exclude_session:
@@ -364,6 +393,13 @@ def main():
     this_m = _aggregate(kept, obs_by_trace, trace_skill, scores_by_trace, this_lo, now)
     last_m = _aggregate(kept, obs_by_trace, trace_skill, scores_by_trace, last_lo, last_hi)
     rows = _flag_regressions(this_m, last_m)
+
+    # (unattributed) is reported as a footnote, not ranked as a skill (see _flag_regressions).
+    un_this, un_last = this_m.get(UNATTRIBUTED, {}), last_m.get(UNATTRIBUTED, {})
+    unattributed = {
+        "count": un_this.get("count", 0) + un_last.get("count", 0),
+        "cost": round(un_this.get("cost", 0.0) + un_last.get("cost", 0.0), 6),
+    }
 
     total_scores = sum(len(v) for v in scores_by_trace.values())
     project_id = (traces[0].get("projectId") if traces else None) or "default"
@@ -389,8 +425,9 @@ def main():
             "scores": total_scores,
             "skills_attributed": sorted([s for s in trace_skill.values()]) and sorted(set(trace_skill.values())),
         },
-        "has_last_week": any(m.get("count") for m in last_m.values()),
+        "has_last_week": any(m.get("count") for k, m in last_m.items() if k != UNATTRIBUTED),
         "has_scores": total_scores > 0,
+        "unattributed": unattributed,
         "rows": rows,
     }
     if out_format == "md":

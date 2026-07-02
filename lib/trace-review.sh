@@ -61,7 +61,7 @@ _trace_review_run() {
       --output)    output="$2"; shift 2 ;;
       --window)    window="$2"; shift 2 ;;
       --since-now) now="$2"; shift 2 ;;   # ISO timestamp; pins "now" for reproducible runs
-      --project)   shift 2 ;;             # accepted for cron-entry symmetry; engine is project-agnostic
+      --project)   shift; [[ $# -gt 0 ]] && shift ;;  # accepted for cron-entry symmetry; value ignored (engine is project-agnostic). Guarded so a trailing --project with no value does not abort under set -euo pipefail.
       *)           shift ;;
     esac
   done
