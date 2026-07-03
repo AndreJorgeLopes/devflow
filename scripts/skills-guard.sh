@@ -34,7 +34,10 @@ if [[ -n "${BASE:-}" ]]; then
 elif git rev-parse --verify -q origin/main >/dev/null 2>&1; then
   base="$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD)"
 else
-  base="HEAD"
+  # No origin/main (shallow clone, offline). Falling back to HEAD would make the delta
+  # cover only uncommitted changes, so a hand-edit already COMMITTED on this branch would
+  # look like pre-existing drift. Use the branch root so committed history is in scope.
+  base="$(git rev-list --max-parents=0 HEAD 2>/dev/null | tail -1 || echo HEAD)"
 fi
 changed="$(
   { git diff --name-only "$base" 2>/dev/null          # base -> working tree (unstaged)
@@ -92,9 +95,7 @@ done
 [[ -n "$predrift" ]] && echo "skills-guard: pre-existing drift, source is authoritative (run 'make skills-sync'):$predrift"
 
 if [[ -z "$misplaced" && -z "$ambiguous" ]]; then
-  # Only benign staleness / pre-existing drift — not this guard's rescue job.
-  [[ "$MODE" == "check" ]] && exit 0
-  exit 0
+  exit 0   # only benign staleness / pre-existing drift — not this guard's rescue job
 fi
 
 echo "skills-guard: edits made in the GENERATED trees (source of truth is skills/<name>/SKILL.md):"
@@ -145,13 +146,21 @@ for n in $misplaced; do
 
   if $cmd_ch; then
     cmd="devflow-plugin/commands/${n}.md"; src="skills/${n}/SKILL.md"
+    # Parse BEFORE writing. A malformed hand-edit (dropped closing '---' fence, or a
+    # missing/typo'd description key) would otherwise parse to empty and overwrite the
+    # source with a frontmatter-only stub — the exact data loss this guard exists to prevent.
     new_desc="$(_desc_from_cmd "$cmd")"
+    if [[ -z "$new_desc" || -z "$(_body_after_fm "$cmd")" ]]; then
+      echo "  ! ${n}: could not parse ${cmd} (empty description or body — malformed frontmatter?); refusing to fold."
+      ambiguous="$ambiguous $n"
+      continue
+    fi
     {
       printf -- '---\n'
       printf 'name: %s\n' "$n"
       printf 'description: %s\n' "$new_desc"
       printf -- '---\n'
-      _body_after_fm "$cmd"
+      _body_after_fm "$cmd"   # stream body verbatim (preserves exact trailing bytes)
     } > "$src"
     echo "  ↩ folded ${cmd} -> ${src} (name preserved; description + body taken from command)"
   fi

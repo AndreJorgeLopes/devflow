@@ -57,6 +57,12 @@ for skdir in "$SRC"/*/; do
   src_skill="${skdir}SKILL.md"
   [[ -f "$src_skill" ]] || { echo "build-skills: ${n}/ has no SKILL.md — skipping" >&2; continue; }
 
+  # Fail loud if the frontmatter carries keys beyond name/description: the command
+  # transform (2b) only preserves the description, so any extra key (e.g. allowed-tools)
+  # would be silently dropped. Force a conscious update of this generator instead.
+  extra_keys="$(awk 'BEGIN{n=0} /^---[[:space:]]*$/{n++; if(n>=2)exit; next} n==1 && /^[a-zA-Z_-]+:/{k=$0; sub(/:.*/,"",k); if(k!="name"&&k!="description") print k}' "$src_skill")"
+  [[ -z "$extra_keys" ]] || { echo "build-skills: ${n}/SKILL.md has unsupported frontmatter key(s): $(echo $extra_keys) — update scripts/build-skills.sh to carry them into the command form before adding them" >&2; exit 1; }
+
   # 2a. Plugin skill dir: fresh byte copy of the source minus dev-only files.
   out_skdir="${PLUGIN_SKILLS}/${n}"
   rm -rf "$out_skdir"
@@ -83,3 +89,28 @@ for skdir in "$SRC"/*/; do
 
   echo "built skill: ${n}"
 done
+
+# ── 3. Regenerate the plugin.json "skills" array so a newly added/removed skill is
+# actually loaded. Order follows skills/registry.json; any source dir not in the
+# registry is appended alphabetically. All other plugin.json fields are preserved. ──
+REAL_PJ="${ROOT}/devflow-plugin/.claude-plugin/plugin.json"
+REGISTRY="${SRC}/registry.json"
+skill_names="$(for d in "$SRC"/*/; do [[ -f "${d}SKILL.md" ]] && basename "$d"; done | sort)"
+ordered=""
+if [[ -f "$REGISTRY" ]]; then
+  while IFS= read -r rn; do
+    [[ -n "$rn" ]] || continue
+    printf '%s\n' "$skill_names" | grep -qx "$rn" && ordered="${ordered}${rn}"$'\n'
+  done < <(jq -r '.skills[].name' "$REGISTRY")
+fi
+# Append any source skills the registry did not list (keeps them loadable, flags the gap by order).
+while IFS= read -r sn; do
+  [[ -n "$sn" ]] || continue
+  printf '%s\n' "$ordered" | grep -qx "$sn" || ordered="${ordered}${sn}"$'\n'
+done <<< "$skill_names"
+
+skills_array="$(printf '%s\n' "$ordered" | sed '/^$/d' | sed 's#^#./skills/#; s#$#/SKILL.md#' | jq -R . | jq -s .)"
+out_pj="${OUT}/.claude-plugin/plugin.json"
+mkdir -p "${OUT}/.claude-plugin"
+jq --argjson skills "$skills_array" '.skills = $skills' "$REAL_PJ" > "${out_pj}.tmp" && mv "${out_pj}.tmp" "$out_pj"
+echo "built plugin.json skills array ($(printf '%s\n' "$ordered" | sed '/^$/d' | wc -l | tr -d ' ') skills)"

@@ -59,7 +59,7 @@ skills-sync: ## Regenerate plugin skill/command copies + flows from repo-root sk
 
 skills-check: ## Fail if generated plugin skills/commands drift from repo-root skills/ (run 'make skills-sync' to fix)
 	@bash scripts/build-skills.sh
-	@git diff --quiet -- devflow-plugin/skills devflow-plugin/commands || { echo "plugin skill copies out of date — run 'make skills-sync' and commit"; git --no-pager diff --stat -- devflow-plugin/skills devflow-plugin/commands; exit 1; }
+	@git diff --quiet -- devflow-plugin/skills devflow-plugin/commands devflow-plugin/.claude-plugin/plugin.json || { echo "plugin skill copies out of date — run 'make skills-sync' and commit"; git --no-pager diff --stat -- devflow-plugin/skills devflow-plugin/commands devflow-plugin/.claude-plugin/plugin.json; exit 1; }
 
 skills-guard: ## Detect skill edits made in the WRONG (generated) tree and fold them into the source
 	@bash scripts/skills-guard.sh
