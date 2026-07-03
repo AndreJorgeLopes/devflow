@@ -37,10 +37,20 @@ else
   base="HEAD"
 fi
 changed="$(
-  { git diff --name-only "$base" 2>/dev/null
+  { git diff --name-only "$base" 2>/dev/null          # base -> working tree (unstaged)
+    git diff --name-only --cached "$base" 2>/dev/null  # base -> index (staged-only, else missed)
     git ls-files --others --exclude-standard 2>/dev/null; } | sort -u
 )"
-_changed_under() { printf '%s\n' "$changed" | grep -q "^$1" 2>/dev/null; }
+# Literal prefix match: iterate with a case glob so '.' in a path (e.g. commands/<n>.md) is
+# not treated as a regex metacharacter (which grep "^$1" would do).
+_changed_under() {
+  local pfx="$1" p
+  while IFS= read -r p; do
+    [[ -n "$p" ]] || continue
+    case "$p" in "$pfx"*) return 0 ;; esac
+  done <<< "$changed"
+  return 1
+}
 
 # ── Render source -> throwaway tree, find skills whose real copy differs ──
 tmp="$(mktemp -d)"
