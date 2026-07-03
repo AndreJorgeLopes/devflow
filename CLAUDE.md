@@ -169,7 +169,7 @@ Releases are automated via GitHub Actions on push to main (`.github/workflows/re
 - **Manual bump:** `devflow version-bump <version>` updates all version files locally
 
 **Release pipeline gotchas (fixed in v0.2.0 — do not reintroduce):**
-- `bump-version.sh` runs under `set -o pipefail`. `check_version_consistency` (lib/watch.sh) greps each command file for a `[devflow v]` badge; that grep pipeline MUST be guarded with `|| true` — no command carries the badge, so an unguarded grep returns 1 and `set -e` aborts the whole release silently (right after "All version files updated", before `make release`).
+- `bump-version.sh` runs under `set -o pipefail`. `check_version_consistency` (lib/watch.sh) greps each command file for its `^description: [X.Y.Z]` badge; that grep pipeline MUST stay guarded with `|| true` — a command with no matching badge makes the grep return 1, and unguarded that would abort the whole release silently under `set -e` (right after "All version files updated", before `make release`). Every generated command carries the badge today, but the guard is the safety net if one ever does not.
 - release.yml must create an **annotated** tag (`git tag -a "v$X" -m ...`). `git push --follow-tags` does NOT push lightweight tags, which leaves `gh release create` failing with "tag exists locally but has not been pushed".
 - To release an already-merged commit that used `[skip release]`: `gh workflow run release.yml -f bump_override=<minor|patch|major>` (the dispatch override bypasses the skip / "none" detection).
 
