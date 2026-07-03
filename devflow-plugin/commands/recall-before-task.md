@@ -1,5 +1,5 @@
 ---
-description: [0.11.0] Recall relevant memories from Hindsight before starting a task. Injects past learnings, decisions, and context into the current session.
+description: [0.12.0] Recall relevant memories from Hindsight before starting a task. Injects past learnings, decisions, and context into the current session.
 ---
 
 You are about to start a task. Before doing anything else, recall relevant memories so you have full context.

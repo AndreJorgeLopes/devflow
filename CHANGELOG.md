@@ -1,3 +1,15 @@
+## v0.12.0 — 2026-07-03
+
+### Features
+- feat(skills): single source of truth + generation + pre-PR rescue guard + determinism propagation (#58)
+
+### Fixes
+- fix(observability): drop container_name so Langfuse web needs no post-boot restart (#61)
+- fix(observability): map Claude Code user_prompt -> input.value so Langfuse Input isn't null (#59)
+- fix(observability): seed langfuse price for claude-opus-4-8[1m] (cost was 0) (#56)
+
+---
+
 ## v0.11.0 — 2026-06-30
 
 ### Features

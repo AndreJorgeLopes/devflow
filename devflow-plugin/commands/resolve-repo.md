@@ -1,5 +1,5 @@
 ---
-description: [0.11.0] Resolve the correct repository for a task — detect VCS platform, match ticket to repo, clone if missing. Run this in a sub-agent to avoid filling main context.
+description: [0.12.0] Resolve the correct repository for a task — detect VCS platform, match ticket to repo, clone if missing. Run this in a sub-agent to avoid filling main context.
 ---
 
 You are resolving which repository a task should be worked on. This skill handles VCS platform detection, scoped repo discovery, and cloning when needed.
