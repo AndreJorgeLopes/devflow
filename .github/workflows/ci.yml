@@ -1,0 +1,24 @@
+name: CI
+
+# Blocks merging any change that leaves the generated plugin copies (devflow-plugin/{skills,
+# commands} + plugin.json + flows) out of sync with the single source (skills/<name>/SKILL.md),
+# and runs the bats unit suite. This is the drift gate: `make test` regenerates into the working
+# tree and fails if anything differs from what was committed.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive   # tests/lib/bats-support + bats-assert
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y bats jq
+      - name: Drift gate + smoke (skills-check, flows-check)
+        run: make test
+      - name: Unit tests
+        run: make test-unit
