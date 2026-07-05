@@ -25,6 +25,28 @@ You will receive these as context when invoked:
 - `TICKET_LABELS` — labels/components from the ticket (if any)
 - `TICKET_ID` — the ticket ID (e.g., `MES-3716`)
 
+## Determinism (offload to the shared lib; AI only on abstain)
+
+Source the determinism-fix lib once before your bash work:
+
+```bash
+for f in ~/.claude/lib/determinism/functions/*.sh; do . "$f"; done
+```
+
+These functions are **sound, not complete** (see `~/.claude/lib/determinism/CONTRACT.md`):
+they return a value (exit `0`) only for unambiguous input and **abstain (exit `10`) /
+error (exit `1`)** otherwise. Use them deterministic-first; fall back to model judgment
+ONLY on a non-zero exit — never as a second opinion on a confident answer:
+
+```bash
+val=$(detect_vcs_platform "$REMOTE") || val=""   # empty ⇒ lib abstained ⇒ you infer it
+```
+
+Used in this skill: `detect_vcs_platform`, `extract_repo_group`, `extract_ticket_id`.
+**Do NOT determinize the repo SCORING / ranking** (Steps 2 & 4) — that is judgment and a
+deterministic version is confidently worse; keep it model-driven and only pin its OUTPUT
+format (Steps 4 & 6).
+
 ## Steps
 
 ### 1. Scan local repos and detect VCS platform
@@ -43,12 +65,20 @@ for dir in "$WORKSPACE_DIR"/*/; do
 done
 ```
 
-From the remote URLs, extract:
-- **VCS Platform**: `github.com` → `github`, `gitlab.com` or `gitlab.` → `gitlab`, etc.
-- **Group/Subgroup**: The specific group path from the URL — this is your search scope.
-  - SSH: `git@gitlab.com:aircall/messaging/repo.git` → `aircall/messaging`
-  - HTTPS: `https://github.com/aircall-org/repo.git` → `aircall-org`
-  - **Use the most specific common group** across local repos. If repos share `aircall/messaging` as a prefix, scope to that — not to `aircall` (which could have thousands of repos).
+From each remote URL, extract platform + group **with the lib** (D1, D2 — deterministic,
+abstain→AI). Do NOT classify the host or "judge the group" in prose:
+
+```bash
+PLATFORM=$(detect_vcs_platform "$REMOTE") || PLATFORM=""   # github|gitlab|bitbucket|azure ; "" ⇒ abstained (unknown/self-hosted)
+GROUP=$(extract_repo_group "$REMOTE")     || GROUP=""      # e.g. aircall/messaging ; "" ⇒ abstained (no group segment)
+```
+
+- If `PLATFORM` is empty (lib abstained on an unknown/self-hosted host), THEN infer it
+  yourself from the URL — that is the only case AI runs.
+- **Group/Subgroup scope** = the **longest common path-prefix** of the non-empty
+  `GROUP`s across local repos (deterministic — compute it, don't judge "most specific").
+  If repos share `aircall/messaging`, scope to that, not `aircall`. If the common prefix
+  is empty or the repos diverge at the org root, fall back to asking the user.
 
 If no local repos exist, ask the user for the platform and group.
 
@@ -56,13 +86,19 @@ If no local repos exist, ask the user for the platform and group.
 
 **Always try local repos before going remote.** Score each local repo against the ticket:
 
-1. **Ticket ID prefix match** (strongest): `MES` in `MES-3716` → match against repo names containing "mes" or "messaging" (case-insensitive)
-2. **Component/label match**: Jira components or labels → match against repo names directly
-3. **Keyword overlap**: Significant words from ticket title → match against repo name and `package.json` description. Ignore stop words.
+1. **Ticket ID prefix match** (strongest): extract the prefix deterministically (D3) —
+   `ID=$(extract_ticket_id "$TICKET_ID") || ID="$TICKET_ID"; PREFIX="${ID%%-*}"` — then
+   case-insensitive substring-match `PREFIX` against repo names. No hand-coded synonym list.
+2. **Component/label match**: ticket components/labels → substring-match repo names directly.
+3. **Keyword overlap**: significant title words → match repo name + `package.json` description.
+   Drop stop words with a FIXED list (D5), not by judgment:
+   `the|a|an|for|in|on|of|to|and|or|with|is|are|fix|add|update|support`.
 
-**If a local repo scores HIGH (clear winner)** → skip remote lookup entirely and return it. Done.
-
-**If ambiguous or no confident match** → proceed to step 3.
+**Scoring stays model-driven (judgment — do NOT determinize: a fixed weight table is
+confidently worse here).** Weigh the signals and assign each repo a band, but emit ONLY the
+pinned labels **`HIGH` / `MEDIUM` / `LOW`** — never qualifiers ("probably", "likely",
+"confident"). A HIGH local match (clear winner) skips remote lookup and returns it; an
+ambiguous / no-confident match → step 3.
 
 ### 3. Fetch SCOPED remote repo list (only if needed)
 
@@ -92,7 +128,11 @@ gh repo list "<org>" --limit 50 --json name,description --jq '.[] | "\(.name)|\(
 
 Merge local and remote lists. For repos that exist both locally and remotely, prefer the local entry.
 
-Score using the same signals from step 2. Present a concise ranked list:
+Score using the same signals from step 2. **Order deterministically (D7):** sort by band
+(HIGH → MEDIUM → LOW), then alphabetically by repo name within a band. Emit EXACTLY this
+block (D6) — output ONLY the block, no prose before/after, no markdown fences; each line
+`N. **<name>** — <BAND>: <reasons> [LOCAL|REMOTE]` with `<BAND>` ∈ {HIGH, MEDIUM, LOW} and
+the tag ∈ {[LOCAL], [REMOTE]}:
 
 ```
 ## Repo Match Results
@@ -125,6 +165,10 @@ Score using the same signals from step 2. Present a concise ranked list:
 **If no match** → ask the user which repo, or if they need a different group/subgroup.
 
 ### 6. Return result
+
+Emit EXACTLY this block (D9) — these fields, in this order; output ONLY the block, no
+leading/trailing prose, no markdown fences. `VCS Platform` ∈ {github, gitlab, bitbucket,
+azure, unknown}; `Cloned` ∈ {yes (just now), no (already existed)}:
 
 ```
 ## Resolved Repository

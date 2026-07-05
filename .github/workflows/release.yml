@@ -136,6 +136,10 @@ jobs:
           # 1. Bump all version files
           bash scripts/bump-version.sh "$NEW_VERSION"
 
+          # 1b. Regenerate the plugin copies from the single source so a release can never
+          # ship generated copies that drifted from skills/<name>/SKILL.md at merge time.
+          make skills-sync
+
           # 2. Create tarball
           make release
 

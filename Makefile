@@ -1,10 +1,10 @@
 PREFIX ?= $(HOME)/.local
 BINDIR := $(PREFIX)/bin
 LIBDIR := $(PREFIX)/share/devflow
-VERSION := 0.11.0
+VERSION := 0.12.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check skills-sync skills-check skills-guard
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -31,7 +31,7 @@ link: ## Symlink bin/devflow for local development
 	@echo "devflow linked: $(BINDIR)/devflow -> $(CURDIR)/bin/devflow"
 	@echo "DEVFLOW_ROOT will default to $(CURDIR) when running from source."
 
-test: flows-check ## Run smoke tests
+test: skills-check flows-check ## Run smoke tests
 	@echo "=== devflow smoke tests ==="
 	@if [ -x bin/devflow ]; then \
 		echo "PASS: bin/devflow exists and is executable"; \
@@ -52,6 +52,17 @@ test: flows-check ## Run smoke tests
 
 test-unit: ## Run unit tests (bats)
 	@bats tests/unit/
+
+skills-sync: ## Regenerate plugin skill/command copies + flows from repo-root skills/ (the source of truth)
+	@bash scripts/build-skills.sh
+	@bash scripts/build-flows.sh
+
+skills-check: ## Fail if generated plugin skills/commands drift from repo-root skills/ (run 'make skills-sync' to fix)
+	@bash scripts/build-skills.sh
+	@git diff --quiet -- devflow-plugin/skills devflow-plugin/commands devflow-plugin/.claude-plugin/plugin.json || { echo "plugin skill copies out of date — run 'make skills-sync' and commit"; git --no-pager diff --stat -- devflow-plugin/skills devflow-plugin/commands devflow-plugin/.claude-plugin/plugin.json; exit 1; }
+
+skills-guard: ## Detect skill edits made in the WRONG (generated) tree and fold them into the source
+	@bash scripts/skills-guard.sh
 
 flows: ## Regenerate flow mini-plugins from canonical sources
 	@bash scripts/build-flows.sh

@@ -233,7 +233,7 @@ SKILLS
 You can also install skills per-project without the plugin:
 
 ```bash
-devflow skills list                    # Browse 15 categorized skills
+devflow skills list                    # Browse the 28 skills
 devflow skills install new-feature     # Copy to .claude/commands/
 ```
 
@@ -457,15 +457,12 @@ devflow/
 │   └── hooks/                   #   Claude Code hook scripts
 ├── devflow-plugin/              # Claude Code plugin (marketplace-ready)
 │   ├── .claude-plugin/          #   Plugin + marketplace manifests
-│   ├── commands/                #   18 slash command definitions
-│   └── skills/                  #   Recall-before-task skill
-├── skills/                      # Categorized skill marketplace (15 skills)
-│   ├── registry.json            #   Authoritative skill registry
-│   ├── memory-recall/           #   Layer 1 skills
-│   ├── worktree-flow/           #   Layer 2 skills
-│   ├── code-review/             #   Layer 3 skills
-│   ├── process-discipline/      #   Layer 4 skills
-│   └── observability/           #   Layer 5 skills
+│   ├── commands/                #   Slash commands (GENERATED from skills/)
+│   └── skills/                  #   Plugin skills (GENERATED from skills/)
+├── skills/                      # SOURCE OF TRUTH — 28 skills, one dir each
+│   ├── registry.json            #   Skill catalog (category, layer, description)
+│   └── <name>/SKILL.md          #   Authored skill; run `make skills-sync` to
+│                                #   regenerate devflow-plugin/{skills,commands} + flows
 ├── templates/                   # Init templates (CLAUDE.md, checks, configs)
 ├── docker/                      # Docker Compose (Langfuse + Postgres)
 ├── visualizations/              # Architecture diagrams (Mermaid)

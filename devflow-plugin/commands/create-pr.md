@@ -1,10 +1,18 @@
 ---
-description: [0.11.0] Full PR/MR creation pipeline. VCS-aware (GitHub `gh` / GitLab `glab`), runs self-review + checks, and writes a structured description (TL;DR, change table, mermaid flow, honest verification status, no em-dashes). On GitLab it adapts the project's `.gitlab/merge_request_templates` template, filling its sections and appending only the extras it lacks. Opens as a draft when verification is incomplete.
+description: [0.12.0] Full PR/MR creation pipeline. VCS-aware (GitHub `gh` / GitLab `glab`), runs self-review + checks, and writes a structured description (TL;DR, change table, mermaid flow, honest verification status, no em-dashes). On GitLab it adapts the project's `.gitlab/merge_request_templates` template, filling its sections and appending only the extras it lacks. Opens as a draft when verification is incomplete.
 ---
 
 You are creating a pull request (GitHub) or merge request (GitLab). This runs the full pipeline: review, build a structured description, adapt the project template if there is one, and open it with the right tool.
 
 ## Steps
+
+0. **Skills source-of-truth guard (only when working inside the devflow repo).** If the repo root has `scripts/skills-guard.sh` (i.e. this IS the devflow repo), a skill may have been edited in a generated tree (`devflow-plugin/{skills,commands}`) instead of the single source (`skills/<name>/SKILL.md`). Those edits would be lost on the next `make skills-sync`, so rescue them before the PR:
+
+   ```bash
+   [ -f scripts/skills-guard.sh ] && make skills-guard
+   ```
+
+   If it folds edits back into `skills/<name>/SKILL.md`, review `git diff skills/`, re-stage, and include the regenerated copies in this PR. If it reports an ambiguous case (both source and a generated copy changed), resolve it by hand before continuing. Skip this step entirely in any other repo.
 
 1. **Gather context + detect the VCS provider.**
 

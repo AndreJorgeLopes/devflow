@@ -38,7 +38,6 @@ services:
   # ── Hindsight (Memory) ──────────────────────────────────────────────
   hindsight:
     image: ghcr.io/vectorize-io/hindsight:latest
-    container_name: devflow-hindsight
     ports:
       - "8888:8888" # API
       - "9999:9999" # UI
@@ -60,7 +59,6 @@ services:
   # ── Langfuse PostgreSQL (reused across v2→v3) ───────────────────────
   langfuse-db:
     image: postgres:15
-    container_name: devflow-langfuse-db
     environment:
       POSTGRES_USER: langfuse
       POSTGRES_PASSWORD: langfuse
@@ -80,7 +78,6 @@ services:
   # ── Langfuse ClickHouse (analytics store, new in v3) ────────────────
   langfuse-clickhouse:
     image: clickhouse/clickhouse-server
-    container_name: devflow-langfuse-clickhouse
     hostname: clickhouse
     user: "101:101"
     environment:
@@ -104,7 +101,6 @@ services:
   # ── Langfuse Redis (BullMQ queue, new in v3) ────────────────────────
   langfuse-redis:
     image: redis:7
-    container_name: devflow-langfuse-redis
     hostname: redis
     command: >
       --requirepass ${REDIS_AUTH:-myredissecret}
@@ -124,7 +120,6 @@ services:
   # ── Langfuse MinIO (S3 object store, new in v3) ─────────────────────
   langfuse-minio:
     image: cgr.dev/chainguard/minio
-    container_name: devflow-langfuse-minio
     hostname: minio
     entrypoint: sh
     command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
@@ -148,8 +143,7 @@ services:
 
   # ── Langfuse Worker (background ingestion, new in v3) ───────────────
   langfuse-worker:
-    image: langfuse/langfuse-worker:3.200.0
-    container_name: devflow-langfuse-worker
+    image: langfuse/langfuse-worker:3.203.3
     environment:
       <<: *langfuse-env
     depends_on:
@@ -163,8 +157,7 @@ services:
 
   # ── Langfuse Web (Observability UI + OTLP ingest) ───────────────────
   langfuse-web:
-    image: langfuse/langfuse:3.200.0
-    container_name: devflow-langfuse-web
+    image: langfuse/langfuse:3.203.3
     ports:
       - "3100:3000"
     environment:
@@ -224,7 +217,6 @@ services:
   # traces. Keeps the Langfuse secret out of Claude's tracked settings.json.
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: devflow-otel-collector
     command: ["--config=/etc/otelcol/config.yaml"]
     environment:
       LANGFUSE_OTEL_BASIC_AUTH: ${LANGFUSE_OTEL_BASIC_AUTH:-}
