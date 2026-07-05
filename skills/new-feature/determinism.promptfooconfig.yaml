@@ -8,7 +8,7 @@ prompts:
 
 providers:
   # run-skill.sh clears CLAUDECODE so the nested claude launches (sdk#573). Run from repo root.
-  - id: 'exec: bash eval/lib/run-skill.sh'
+  - id: 'exec: bash eval-run.sh'
     label: new-feature@head
 
 defaultTest:

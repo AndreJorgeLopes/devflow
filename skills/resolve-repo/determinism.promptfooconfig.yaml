@@ -8,7 +8,7 @@ prompts:
   - '{{input}}'
 
 providers:
-  - id: 'exec: bash eval/lib/run-skill.sh'
+  - id: 'exec: bash eval-run.sh'
     label: resolve-repo@head
 
 tests:

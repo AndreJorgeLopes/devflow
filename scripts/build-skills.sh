@@ -28,10 +28,13 @@ command -v jq >/dev/null 2>&1 || { echo "build-skills: jq is required" >&2; exit
 # VERSION always comes from the real plugin manifest, even when rendering to a temp OUT.
 VERSION="$(jq -r .version "${ROOT}/devflow-plugin/.claude-plugin/plugin.json")"
 
-# Files that live beside a skill at repo root for dev/CI but must NOT ship in the plugin.
+# Files that live beside a skill at repo root for dev/CI but must NOT ship in the plugin:
+# the promptfoo determinism config and its exec-provider harness (references bin/devflow via a
+# repo-relative path that does not exist in a plugin install).
 _is_dev_only() {
   case "$(basename "$1")" in
     determinism.promptfooconfig.yaml) return 0 ;;
+    eval-run.sh) return 0 ;;
     *) return 1 ;;
   esac
 }
