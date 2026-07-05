@@ -4,7 +4,7 @@ LIBDIR := $(PREFIX)/share/devflow
 VERSION := 0.14.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check skills-sync skills-check skills-guard determinism
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check skills-sync skills-check skills-guard determinism mirror
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -78,6 +78,9 @@ determinism: ## Run the promptfoo determinism gate for skills with a config (nee
 	[ "$$ran" = 1 ] || { echo "determinism: no config matched$(if $(SKILL), for SKILL=$(SKILL),)"; exit 1; }; \
 	[ "$$fail" = 0 ] || { echo "determinism gate FAILED"; exit 1; }; \
 	echo "determinism gate passed"
+
+mirror: ## Mirror skills/<name>/SKILL.md into Langfuse prompt-management (needs Langfuse + keys). One: make mirror SKILL=<name>
+	@bin/devflow skills mirror $(if $(SKILL),--name $(SKILL),)
 
 flows: ## Regenerate flow mini-plugins from canonical sources
 	@bash scripts/build-flows.sh
