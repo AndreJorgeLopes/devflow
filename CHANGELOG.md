@@ -1,3 +1,10 @@
+## v0.14.0 — 2026-07-05
+
+### Features
+- feat(skills): runnable determinism gate + fix broken gate providers + plugin leak (#62)
+
+---
+
 ## v0.13.0 — 2026-07-05
 
 ### Features
