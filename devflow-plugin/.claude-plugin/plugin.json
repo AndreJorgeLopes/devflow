@@ -22,6 +22,7 @@
     "./skills/spec-feature/SKILL.md",
     "./skills/architecture-decision/SKILL.md",
     "./skills/session-summary/SKILL.md",
+    "./skills/trace-review/SKILL.md",
     "./skills/update-visualizations/SKILL.md",
     "./skills/visualizations-config/SKILL.md",
     "./skills/render-diagram/SKILL.md",
