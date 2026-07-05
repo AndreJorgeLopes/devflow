@@ -1,3 +1,10 @@
+## v0.13.0 — 2026-07-05
+
+### Features
+- feat(trace-review): per-skill Langfuse regression report + attribution ladder + enrichment hook (#57)
+
+---
+
 ## v0.12.0 — 2026-07-03
 
 ### Features

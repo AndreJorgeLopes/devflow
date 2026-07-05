@@ -1,5 +1,5 @@
 ---
-description: [0.12.0] Extends superpowers:writing-plans with devflow's phase-handoff at the end.
+description: [0.13.0] Extends superpowers:writing-plans with devflow's phase-handoff at the end.
 ---
 
 This skill extends `superpowers:writing-plans`. Follow the superpowers skill completely.
