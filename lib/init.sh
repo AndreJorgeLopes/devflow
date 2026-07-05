@@ -273,6 +273,9 @@ with open(config_path, 'r+') as f:
   fi
 
   # ── 5. Install Claude Code plugins ────────────────────────────────────────
+  # Defined here (not in 5b) because the plugin-settings python block below references
+  # it; a later `local` definition would leave this use unbound under `set -u`.
+  local settings_file="${HOME}/.claude/settings.json"
   if has_cmd claude; then
     section "Installing Claude Code plugins"
     claude plugin marketplace add max-sixty/worktrunk 2>/dev/null
@@ -343,7 +346,6 @@ with open(settings_path, 'w') as f:
   # ── 5b. Claude Code hooks ────────────────────────────────────────────────
   section "Registering Claude Code hooks"
 
-  local settings_file="${HOME}/.claude/settings.json"
   if [[ -f "$settings_file" ]]; then
     python3 -c "
 import json, sys
