@@ -1,0 +1,53 @@
+# Determinism assertions for /devflow:trace-review - pin the engine's output shape.
+# The analysis is fully deterministic (lib/trace-review.py), so these asserts run the
+# CLI directly via eval-run.sh (no nested LLM). Requires Langfuse reachable.
+#   Run from repo root:  npx -y promptfoo@latest eval -c skills/trace-review/determinism.promptfooconfig.yaml
+# (promptfoo runs the exec provider from this config's directory, so eval-run.sh is local.)
+description: "/devflow:trace-review determinism assertions (engine output shape)"
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval-run.sh'
+    label: trace-review@head
+
+tests:
+  - description: "D1: --json output is valid JSON"
+    vars: { input: 'run --json' }
+    assert:
+      - type: is-json
+
+  - description: "D2: --json carries the contract keys"
+    vars: { input: 'run --json' }
+    assert:
+      - type: contains
+        value: '"rows"'
+      - type: contains
+        value: '"has_last_week"'
+      - type: contains
+        value: '"has_scores"'
+
+  - description: "D3: markdown report has the per-skill table header"
+    vars: { input: 'run' }
+    assert:
+      - type: contains
+        value: '| Sev | Skill |'
+
+  - description: "D4: markdown report carries a severity glyph"
+    vars: { input: 'run' }
+    assert:
+      - type: regex
+        value: '(🔴|🟠|🆕|🟢|⚪)'
+
+  - description: "D5: markdown report ends with a TL;DR block"
+    vars: { input: 'run' }
+    assert:
+      - type: contains
+        value: '## TL;DR'
+
+  - description: "D6: the per-skill table is NOT wrapped in a code fence"
+    vars: { input: 'run' }
+    assert:
+      - type: not-contains
+        value: "```"

@@ -22,3 +22,7 @@ dist/
 
 # devflow phase-handoff frozen-state files (per-worktree, ephemeral)
 .devflow/state/
+
+# Python bytecode (lib/trace-review.py engine)
+__pycache__/
+*.pyc

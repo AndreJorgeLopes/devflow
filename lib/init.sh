@@ -396,6 +396,18 @@ if not any('post-pr-continue' in str(entry) for entry in ptu_hooks):
 else:
     print('Skip: PostToolUse hook already registered')
 
+# PreToolUse hook (matcher: Skill) — trace-review attribution enrichment.
+# Logs session_id+ts+skill to the sidecar so trace-review can attribute traces even
+# when Claude Code emits no skill_name span. Forward-only (no effect on past traces).
+pre_hooks = hooks.setdefault('PreToolUse', [])
+pre_cmd = hook_root + '/lib/hooks/skill-activation-log.sh'
+if not any('skill-activation-log' in str(entry) for entry in pre_hooks):
+    pre_hooks.append({'matcher': 'Skill', 'hooks': [{'type': 'command', 'command': pre_cmd}]})
+    changed = True
+    print('Added PreToolUse hook: skill-activation-log')
+else:
+    print('Skip: skill-activation-log hook already registered')
+
 if changed:
     with open(settings_path, 'w') as f:
         json.dump(settings, f, indent=2)

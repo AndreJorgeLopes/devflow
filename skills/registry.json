@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "description": "Devflow Skills Marketplace — folder-based skills (each entry is skills/<name>/SKILL.md). Categories are metadata only.",
+  "description": "Devflow Skills Marketplace \u2014 folder-based skills (each entry is skills/<name>/SKILL.md). Categories are metadata only.",
   "layers": {
     "1": "Hindsight (memory)",
     "2": "Worktrunk (git worktrees)",
@@ -36,27 +36,41 @@
     },
     {
       "name": "review",
-      "description": "Multi-perspective code review of a PR/MR or local diff — parallel agents, confidence scoring, optional draft review comments",
+      "description": "Multi-perspective code review of a PR/MR or local diff \u2014 parallel agents, confidence scoring, optional draft review comments",
       "category": "code-review",
       "layer": 3,
-      "requires": ["git"],
-      "optional": ["gh", "glab", "hindsight"]
+      "requires": [
+        "git"
+      ],
+      "optional": [
+        "gh",
+        "glab",
+        "hindsight"
+      ]
     },
     {
       "name": "review-document",
-      "description": "Multi-perspective prose document review (KB / RFC / spike / runbook / PRD / design / KB page) on Google Docs, Confluence, local files, or arbitrary URLs — parallel agents, comment cross-check, severity scoring, chat-only findings. Counterpart to write-spike.",
+      "description": "Multi-perspective prose document review (KB / RFC / spike / runbook / PRD / design / KB page) on Google Docs, Confluence, local files, or arbitrary URLs \u2014 parallel agents, comment cross-check, severity scoring, chat-only findings. Counterpart to write-spike.",
       "category": "code-review",
       "layer": 3,
       "requires": [],
-      "optional": ["defuddle", "atlassian", "hindsight"]
+      "optional": [
+        "defuddle",
+        "atlassian",
+        "hindsight"
+      ]
     },
     {
       "name": "write-spike",
-      "description": "Write a structured engineering spike / discovery doc for a new initiative — multi-source context assembly, gap classification, diagrams, and a private notes file. Authoring counterpart to review-document.",
+      "description": "Write a structured engineering spike / discovery doc for a new initiative \u2014 multi-source context assembly, gap classification, diagrams, and a private notes file. Authoring counterpart to review-document.",
       "category": "code-review",
       "layer": 3,
       "requires": [],
-      "optional": ["atlassian", "slack", "hindsight"]
+      "optional": [
+        "atlassian",
+        "slack",
+        "hindsight"
+      ]
     },
     {
       "name": "new-feature",
@@ -75,8 +89,14 @@
       "description": "VCS-aware PR/MR creation (GitHub gh / GitLab glab) with self-review, checks, and a structured description (TL;DR, change table, mermaid, honest verification status, no em-dashes); on GitLab it adapts the project's MR template",
       "category": "pr-pipeline",
       "layer": 3,
-      "requires": ["git"],
-      "optional": ["gh", "glab", "devflow-cli"]
+      "requires": [
+        "git"
+      ],
+      "optional": [
+        "gh",
+        "glab",
+        "devflow-cli"
+      ]
     },
     {
       "name": "spec-feature",
@@ -97,6 +117,12 @@
       "layer": 5
     },
     {
+      "name": "trace-review",
+      "description": "[0.11.0] Per-skill week-over-week Langfuse trace regression report (error rate / latency / cost / score), severity-tagged with exemplar trace links; provider-agnostic scheduler.",
+      "category": "observability",
+      "layer": 5
+    },
+    {
       "name": "update-visualizations",
       "description": "Analyze recent changes and update affected architecture visualizations",
       "category": "visualizations",
@@ -110,11 +136,17 @@
     },
     {
       "name": "render-diagram",
-      "description": "Author + render an Excalidraw diagram (pure-node pipeline, no browser/MCP), show it inline via the Read tool, and embed it in docs — the diagram primitive other skills call",
+      "description": "Author + render an Excalidraw diagram (pure-node pipeline, no browser/MCP), show it inline via the Read tool, and embed it in docs \u2014 the diagram primitive other skills call",
       "category": "visualizations",
       "layer": 4,
-      "requires": ["node", "npm"],
-      "optional": ["devflow-cli", "hindsight"]
+      "requires": [
+        "node",
+        "npm"
+      ],
+      "optional": [
+        "devflow-cli",
+        "hindsight"
+      ]
     },
     {
       "name": "dependency-update",
@@ -130,7 +162,7 @@
     },
     {
       "name": "brainstorming",
-      "description": "Devflow wrapper for the upstream brainstorming skill. Thin pass-through that lets callers invoke /devflow:brainstorming as the single canonical entry point — never reach past it to the upstream skill directly.",
+      "description": "Devflow wrapper for the upstream brainstorming skill. Thin pass-through that lets callers invoke /devflow:brainstorming as the single canonical entry point \u2014 never reach past it to the upstream skill directly.",
       "category": "workflow",
       "layer": 4
     },
@@ -142,51 +174,54 @@
     },
     {
       "name": "lock-tests",
-      "description": "Lock the full test inventory before any implementation code is written — writes failing tests, emits a Test Inventory doc, and gates with user approval.",
+      "description": "Lock the full test inventory before any implementation code is written \u2014 writes failing tests, emits a Test Inventory doc, and gates with user approval.",
       "category": "workflow",
       "layer": 4
     },
     {
       "name": "phase-handoff",
-      "description": "Hand off between phases of the devflow new-feature pipeline — writes a frozen-state file, marks a chapter, sets terminal title, gates on a one-click AskUserQuestion, then spawns a new Claude Desktop session via mcp__ccd_session__spawn_task titled [<TICKET>] [MR#<N>] <Phase>.",
+      "description": "Hand off between phases of the devflow new-feature pipeline \u2014 writes a frozen-state file, marks a chapter, sets terminal title, gates on a one-click AskUserQuestion, then spawns a new Claude Desktop session via mcp__ccd_session__spawn_task titled [<TICKET>] [MR#<N>] <Phase>.",
       "category": "workflow",
       "layer": 4
     },
     {
       "name": "best-roi-task",
-      "description": "Find the best ROI task in a Jira Epic — highest points for least effort, unassigned To Do only",
+      "description": "Find the best ROI task in a Jira Epic \u2014 highest points for least effort, unassigned To Do only",
       "category": "process-discipline",
       "layer": 4,
       "requires": [],
-      "optional": ["atlassian", "hindsight"]
+      "optional": [
+        "atlassian",
+        "hindsight"
+      ]
     },
     {
       "name": "codebase-walkthrough",
-      "description": "Deep codebase walkthrough before implementation — trace the full flow and build understanding",
+      "description": "Deep codebase walkthrough before implementation \u2014 trace the full flow and build understanding",
       "category": "process-discipline",
       "layer": 4
     },
     {
       "name": "resolve-repo",
-      "description": "Resolve the correct repository for a task — detect VCS platform, match ticket to repo, clone if missing",
+      "description": "Resolve the correct repository for a task \u2014 detect VCS platform, match ticket to repo, clone if missing",
       "category": "git-platform",
       "layer": 4
     },
     {
       "name": "task-complete",
-      "description": "Mark a devflow task as done — update status, move to done/ folder, and retain learnings",
+      "description": "Mark a devflow task as done \u2014 update status, move to done/ folder, and retain learnings",
       "category": "process-discipline",
       "layer": 4
     },
     {
       "name": "task-prioritize",
-      "description": "Reprioritize a devflow task — move between priority folders (P0-P4) and update frontmatter",
+      "description": "Reprioritize a devflow task \u2014 move between priority folders (P0-P4) and update frontmatter",
       "category": "process-discipline",
       "layer": 4
     },
     {
       "name": "verify-first",
-      "description": "Ground-truth every technical AND requirement-coverage claim against the source of truth before relying on it. Run the probe; for requirements, diff the plan against the original design doc + ticket — neither docs nor the plan are verification.",
+      "description": "Ground-truth every technical AND requirement-coverage claim against the source of truth before relying on it. Run the probe; for requirements, diff the plan against the original design doc + ticket \u2014 neither docs nor the plan are verification.",
       "category": "process-discipline",
       "layer": 4
     }
