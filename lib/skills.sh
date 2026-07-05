@@ -21,7 +21,8 @@ devflow_skills() {
     install) skills_install "$@" ;;
     remove)  skills_remove "$@" ;;
     convert) skills_convert "$@" ;;
-    *)       die "Unknown skills action: $action. Use: list, install, remove, convert" ;;
+    mirror)  langfuse_mirror "$@" ;;
+    *)       die "Unknown skills action: $action. Use: list, install, remove, convert, mirror" ;;
   esac
 }
 
