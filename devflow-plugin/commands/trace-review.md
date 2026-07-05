@@ -35,7 +35,7 @@ flowchart TD
 
 **Do NOT hand-roll the analysis.** The aggregation is deterministic and lives in the `devflow trace-review` CLI (`lib/trace-review.py`). You run it and present its output. Two reasons this is mandatory, both from observed baseline failures:
 
-1. **Attribution.** A skill is attributed via the `skill_name` attribute Claude Code emits on `claude_code.tool.execution` spans, joined to its sibling cost/token spans **by `traceId`**. There is no `skill.name` trace field - assuming one finds nothing. The engine does the join; you must not reinvent it.
+1. **Attribution.** There is no `skill.name` trace field - assuming one finds nothing. A trace is attributed via a precedence ladder joined **by `traceId`**: (1) the `skill_name` attribute on any `claude_code.tool` span (incl. `tool_name=='Skill'`), else (2) a leading-slash `user_prompt` on the interaction span, else (3) a `session_id + timestamp` window join against the enrichment sidecar written by the `skill-activation-log` PreToolUse hook (installed by `devflow init`). Rungs 1-2 are retroactive; rung 3 is forward-only. Claude Code does not stamp `skill_name` on most sessions, so without the hook coverage is thin (observed 3/57) and the rest buckets into `(unattributed)`. The engine does the ladder + join; you must not reinvent it.
 2. **Correct aggregation.** Per-skill cost and latency use Langfuse's already-computed per-trace `totalCost` / `latency`. Naively summing observation costs/latencies across mixed span types (interaction wall-clock + LLM latency) inflates the totals. The engine avoids this; ad-hoc summing does not.
 
 ## Running it
@@ -81,7 +81,7 @@ devflow trace-review unschedule
 | If you think... | Reality |
 |---|---|
 | "I'll just query the traces and tabulate them myself" | Hand-rolling re-introduces the wrong-attribution + inflated-sum bugs. Run `devflow trace-review`. |
-| "Filter by `skill.name`" | The key is `skill_name`, on tool-execution spans, joined by `traceId`. The engine handles it. |
+| "Filter by `skill.name`" | The key is `skill_name`, on `claude_code.tool` spans, joined by `traceId` via the attribution ladder (skill_name -> slash -> hook sidecar). The engine handles it. |
 | "No last week / no scores, so the report is blocked" | Render the report degraded (NEW rows, `-` scores). Blocked is a baseline failure, not an outcome. |
 | "Skip the severity tags / trace links since nothing regressed" | Always emit the full table with severity + exemplar links. |
 | "Default to a cron job" / "use Claude's scheduler" | Ask the user the backend. OpenCode has no native scheduler; cron is the portable default. |

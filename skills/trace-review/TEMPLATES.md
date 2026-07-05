@@ -53,12 +53,18 @@ prior value). NEW/GONE skills are surfaced but never error-flagged.
 
 ## Data model (why the engine, not hand-rolled queries)
 
-- `skill_name` is emitted on `claude_code.tool.execution` spans (when a Skill tool
-  fires). It is **not** a top-level trace field, and is **not** `skill.name`.
+- `skill_name` is emitted on `claude_code.tool` spans (incl. `tool_name=='Skill'`),
+  NOT on the child `claude_code.tool.execution` span. It is **not** a top-level trace
+  field, and is **not** `skill.name`. Claude Code stamps it only on some sessions.
 - Cost / tokens live on sibling `claude_code.llm_request` spans under the same trace.
-- The engine maps `traceId → skill_name`, then attributes each trace's
-  Langfuse-computed `totalCost` + `latency` (already aggregated, correct) to that skill.
-  Traces with no skill activation fall into `(unattributed)`.
+- The engine attributes `traceId → skill` via a precedence ladder: (1) `skill_name` on
+  any span, else (2) a leading-slash `user_prompt` on the interaction span, else (3) a
+  `session_id + timestamp` window join against the enrichment sidecar
+  (`~/.devflow/skill-activations.jsonl`, written by the `skill-activation-log`
+  PreToolUse hook). One trace == one interaction, so rung 3 binds each trace to the
+  LATEST skill invoked at-or-before its timestamp in the session. It then attributes
+  each trace's Langfuse-computed `totalCost` + `latency` (already aggregated, correct)
+  to that skill. Traces matching no rung fall into `(unattributed)`.
 - Scores come from `/api/public/scores`, joined to skills via `traceId`.
 - Error rate is per `claude_code.tool.execution` span (failed = `success==false` /
   ERROR level / `error` attr), aggregated over the skill's traces. Permission gates

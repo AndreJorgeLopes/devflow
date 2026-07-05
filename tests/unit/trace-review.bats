@@ -288,6 +288,29 @@ print('OK')
   assert_output --partial 'OK'
 }
 
+# ── enrichment hook (WRITE side of rung 3) ──
+
+@test "skill-activation-log hook writes a row only for the Skill tool" {
+  local hook="${DEVFLOW_ROOT:-$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)}/lib/hooks/skill-activation-log.sh"
+  export TRACE_REVIEW_SIDECAR="${BATS_TEST_TMPDIR}/sidecar.jsonl"
+  rm -f "$TRACE_REVIEW_SIDECAR"
+  echo '{"session_id":"S1","tool_name":"Skill","tool_input":{"skill":"devflow:review"}}' | bash "$hook"
+  echo '{"session_id":"S1","tool_name":"Bash","tool_input":{"command":"ls"}}' | bash "$hook"
+  echo 'not json at all' | bash "$hook"
+  run bash -c "wc -l < '$TRACE_REVIEW_SIDECAR' | tr -d ' '"
+  assert_output "1"                                  # only the Skill invocation logged
+  run cat "$TRACE_REVIEW_SIDECAR"
+  assert_output --partial '"skill": "devflow:review"'
+  assert_output --partial '"session_id": "S1"'
+}
+
+@test "skill-activation-log hook never fails the tool call (exit 0) on bad payload" {
+  local hook="${DEVFLOW_ROOT:-$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)}/lib/hooks/skill-activation-log.sh"
+  export TRACE_REVIEW_SIDECAR="${BATS_TEST_TMPDIR}/sidecar2.jsonl"
+  run bash -c "echo 'garbage{' | bash '$hook'"
+  assert_success                                     # exit 0 even when parsing fails
+}
+
 @test "_load_sidecar skips malformed lines and returns sorted per-session entries" {
   run python3 -c "
 import importlib.util, os, tempfile
