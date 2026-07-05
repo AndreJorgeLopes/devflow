@@ -28,6 +28,13 @@ Attribution ladder (best signal wins, per trace):
                      the same session - a flat session->skill map would mis-attribute
                      every turn of a multi-skill session. This rung is forward-only: it
                      can only attribute traces produced after the hook is installed.
+                     Two known heuristic limits: (a) it PROPAGATES, it does not backfill
+                     - the skill's own invocation turn is caught by rung 1 (skill_name on
+                     the Skill span); rung 3 carries that skill forward to later turns.
+                     (b) it attributes ALL subsequent same-session turns to the last
+                     skill until another fires, so unrelated work a user pivots to
+                     mid-session is charged to that skill (can surface as a phantom cost
+                     regression). No finer signal exists; documented, not hidden.
 
 Coverage caveat: a trace that matches no rung buckets into "(unattributed)" (ordinary
 tool activity with no skill marker). That bucket is kept in the totals for honesty but
@@ -135,7 +142,11 @@ def _load_sidecar(path):
 
     Each line is a JSON object {"session_id","ts","skill"}. Malformed lines are skipped
     (the reader must never abort on a truncated tail the hook was mid-write on). A
-    missing/empty file yields an empty map (the sidecar rung is then inert)."""
+    missing/empty file yields an empty map (the sidecar rung is then inert).
+
+    Note: reads the whole file each run and the sidecar does not self-rotate. Fine at
+    current volume; if it grows unbounded over months, cap or rotate it (rows older than
+    the analysis window are never consulted)."""
     m = {}
     if not path or not os.path.exists(path):
         return m
