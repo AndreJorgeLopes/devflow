@@ -201,19 +201,108 @@ print('OK')
 # ── core aggregation pipeline (join + attribution + anti-inflation), the functions
 #    the module docstring names as its reason to exist ──
 
-@test "_build_trace_skill_map attributes a trace by the first skill_name span" {
+@test "_attribute_traces rung 1: attributes a trace by the first skill_name span" {
   run python3 -c "
 import importlib.util, os
 spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-# skill_name lands on claude_code.tool (NOT .execution); map scans all spans on the trace
-obs = [
-  {'traceId': 't1', 'name': 'claude_code.tool.execution', 'metadata': {'attributes': {}}},
-  {'traceId': 't1', 'name': 'claude_code.tool', 'metadata': {'attributes': {'skill_name': 'devflow:review'}}},
-  {'traceId': 't2', 'name': 'claude_code.tool.execution', 'metadata': {'attributes': {}}},
+# skill_name lands on claude_code.tool (NOT .execution); scan finds it wherever it sits
+traces = [{'id': 't1'}, {'id': 't2'}]
+obs_by_trace = {'t1': [
+  {'name': 'claude_code.tool.execution', 'metadata': {'attributes': {}}},
+  {'name': 'claude_code.tool', 'metadata': {'attributes': {'skill_name': 'devflow:review'}}},
+], 't2': [{'name': 'claude_code.tool.execution', 'metadata': {'attributes': {}}}]}
+skill, src = m._attribute_traces(traces, obs_by_trace, {})
+assert skill == {'t1': 'devflow:review'}, skill   # t2 unmatched -> (unattributed) later
+assert src == {'t1': 'skill_name'}, src
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_attribute_traces rung 2: recovers a skill from a leading-slash user_prompt" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+traces = [{'id': 't1'}]
+obs_by_trace = {'t1': [
+  {'name': 'claude_code.interaction', 'metadata': {'attributes': {'user_prompt': '/devflow:review run --json'}}},
+]}
+skill, src = m._attribute_traces(traces, obs_by_trace, {})
+assert skill == {'t1': 'devflow:review'}, skill   # first token, slash stripped
+assert src == {'t1': 'slash_command'}, src
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_attribute_traces rung 1 beats rung 2 (skill_name wins over slash_command)" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+traces = [{'id': 't1'}]
+obs_by_trace = {'t1': [
+  {'name': 'claude_code.interaction', 'metadata': {'attributes': {'user_prompt': '/some-alias'}}},
+  {'name': 'claude_code.tool', 'metadata': {'attributes': {'skill_name': 'devflow:review'}}},
+]}
+skill, src = m._attribute_traces(traces, obs_by_trace, {})
+assert skill == {'t1': 'devflow:review'}, skill
+assert src == {'t1': 'skill_name'}, src
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_attribute_traces rung 3: sidecar join binds each trace to the LATEST skill <= its ts (multi-skill session)" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+# One session, two skills invoked at different times; three interaction-grained traces.
+# t_a (09:05) after skillA(09:00); t_b (10:05) after skillB(10:00); t_early (08:00) before any.
+sidecar = m._load_sidecar  # sanity: symbol exists
+sc = {'S1': [
+  (m._parse_ts('2026-01-01T09:00:00Z'), 'skillA'),
+  (m._parse_ts('2026-01-01T10:00:00Z'), 'skillB'),
+]}
+traces = [
+  {'id': 't_early', 'sessionId': 'S1', 'timestamp': '2026-01-01T08:00:00Z'},
+  {'id': 't_a',     'sessionId': 'S1', 'timestamp': '2026-01-01T09:05:00Z'},
+  {'id': 't_b',     'sessionId': 'S1', 'timestamp': '2026-01-01T10:05:00Z'},
+  {'id': 't_other', 'sessionId': 'S2', 'timestamp': '2026-01-01T10:05:00Z'},  # no sidecar rows
 ]
-mp = m._build_trace_skill_map(obs)
-assert mp == {'t1': 'devflow:review'}, mp   # t2 has no skill_name -> absent -> (unattributed) later
+skill, src = m._attribute_traces(traces, {}, sc)
+assert 't_early' not in skill, skill      # before first invocation -> unattributed
+assert skill['t_a'] == 'skillA', skill    # not skillB (that is later)
+assert skill['t_b'] == 'skillB', skill
+assert 't_other' not in skill, skill
+assert src['t_a'] == 'hook_sidecar', src
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_load_sidecar skips malformed lines and returns sorted per-session entries" {
+  run python3 -c "
+import importlib.util, os, tempfile
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+p = tempfile.mktemp()
+open(p,'w').write(
+  '{\"session_id\":\"S1\",\"ts\":\"2026-01-01T10:00:00Z\",\"skill\":\"late\"}\n'
+  '{\"session_id\":\"S1\",\"ts\":\"2026-01-01T09:00:00Z\",\"skill\":\"early\"}\n'
+  'not-json-truncated-tail\n'
+  '{\"session_id\":\"S1\",\"skill\":\"no-ts-dropped\"}\n')
+sc = m._load_sidecar(p)
+os.unlink(p)
+assert [s for _,s in sc['S1']] == ['early','late'], sc   # sorted by ts; no-ts row dropped; junk skipped
+assert m._load_sidecar('/nonexistent/path') == {}
 print('OK')
 "
   assert_success

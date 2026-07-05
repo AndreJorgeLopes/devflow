@@ -2,9 +2,9 @@
 """devflow trace-review engine - per-skill week-over-week Langfuse regression analysis.
 
 READ-ONLY. Pulls traces/observations/scores from a self-hosted Langfuse, attributes
-each trace to a skill (via the skill_name attribute Claude Code emits on
-claude_code.tool spans), compares a rolling "this week" vs "last week"
-window, flags regressions against balanced thresholds, and emits a JSON document.
+each trace to a skill via a precedence ladder, compares a rolling "this week" vs
+"last week" window, flags regressions against balanced thresholds, and emits a JSON
+document.
 
 Why this exists (baseline failure it fixes): a cold agent assumes a `skill.name`
 trace field, when the real key is `skill_name` and it lands on `claude_code.tool`
@@ -14,15 +14,31 @@ cost/latency across mixed span types (interaction wall-clock + llm latency) whic
 inflates totals. This engine joins by traceId and uses Langfuse's already-aggregated
 per-trace `totalCost`/`latency`, so the numbers are correct and reproducible.
 
-Attribution coverage caveat: skill_name is only present when a Claude Code skill was
-active, so ordinary tool activity buckets into "(unattributed)". That bucket is kept in
-the totals for honesty but held OUT of the per-skill regression ranking (it is not a
-skill). Per-skill grouping is therefore only as complete as skill_name is in the traces.
+Attribution ladder (best signal wins, per trace):
+  1. skill_name    - the `skill_name` attribute on any span (Claude Code stamps it on
+                     the `claude_code.tool` span, incl. `tool_name=='Skill'` spans).
+  2. slash_command - a leading-slash `user_prompt` on the interaction span (a user who
+                     typed `/devflow:review ...`); the first token (minus the slash) is
+                     the skill. Recovers skills that ran without a skill_name span.
+  3. hook_sidecar  - a `session_id + timestamp` window join against the enrichment hook's
+                     JSONL (see lib/hooks/skill-activation-log.sh, registered by
+                     `devflow init`). Because one Langfuse trace == one Claude Code
+                     interaction (many per session), the join attributes each trace to
+                     the LATEST skill invocation at-or-before that trace's timestamp in
+                     the same session - a flat session->skill map would mis-attribute
+                     every turn of a multi-skill session. This rung is forward-only: it
+                     can only attribute traces produced after the hook is installed.
+
+Coverage caveat: a trace that matches no rung buckets into "(unattributed)" (ordinary
+tool activity with no skill marker). That bucket is kept in the totals for honesty but
+held OUT of the per-skill regression ranking (it is not a skill). The report prints the
+per-source attribution breakdown so thin coverage is visible, not hidden.
 
 Output: a single JSON object on stdout. The skill renders it to markdown from a
 pinned template. No AI judgement in here - pure deterministic aggregation.
 """
 import sys, os, json, base64, urllib.request, urllib.parse, urllib.error
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 # ── Config (balanced thresholds; overridable via env) ──
@@ -97,17 +113,104 @@ def _pct(values, q):
     return s[k]
 
 
-def _build_trace_skill_map(observations):
-    """traceId -> skill_name (first non-null skill_name seen on the trace's spans)."""
+def _slash_skill(obs_list):
+    """Skill parsed from a leading-slash `user_prompt` on any of the trace's spans.
+
+    A user prompt like "/devflow:review run" -> "devflow:review" (first token, slash
+    stripped). Returns None when no span carries a leading-slash user_prompt.
+    """
+    for o in obs_list:
+        up = _attr(o, "user_prompt")
+        if isinstance(up, str):
+            s = up.strip()
+            if s.startswith("/") and len(s) > 1:
+                tok = s[1:].split()[0]
+                if tok:
+                    return tok
+    return None
+
+
+def _load_sidecar(path):
+    """session_id -> sorted [(ts, skill)] from the enrichment hook's JSONL log.
+
+    Each line is a JSON object {"session_id","ts","skill"}. Malformed lines are skipped
+    (the reader must never abort on a truncated tail the hook was mid-write on). A
+    missing/empty file yields an empty map (the sidecar rung is then inert)."""
     m = {}
-    for o in observations:
-        tid = o.get("traceId")
+    if not path or not os.path.exists(path):
+        return m
+    try:
+        fh = open(path, encoding="utf-8")
+    except OSError:
+        return m
+    with fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except (ValueError, TypeError):
+                continue
+            sid, ts, sk = r.get("session_id"), _parse_ts(r.get("ts")), r.get("skill")
+            if sid and ts and sk:
+                m.setdefault(sid, []).append((ts, sk))
+    for sid in m:
+        m[sid].sort(key=lambda x: x[0])
+    return m
+
+
+def _sidecar_skill(sidecar, session_id, trace_ts):
+    """Latest skill invoked at-or-before trace_ts within the same session (None if none).
+
+    Interaction-grained: one session runs many skills across turns, so we bind a trace to
+    the skill whose invocation timestamp is the greatest <= the trace's timestamp."""
+    if not session_id or trace_ts is None:
+        return None
+    best = None
+    for ts, sk in sidecar.get(session_id, []):
+        if ts <= trace_ts:
+            best = sk
+        else:
+            break
+    return best
+
+
+def _attribute_traces(traces, obs_by_trace, sidecar=None):
+    """Attribute each trace to a skill via the precedence ladder (see module docstring).
+
+    Returns (skill_map, source_map): traceId -> skill, and traceId -> which rung won
+    ("skill_name" | "slash_command" | "hook_sidecar"). Unmatched traces appear in
+    neither map and bucket into (unattributed) downstream.
+    """
+    skill_map, source_map = {}, {}
+    sidecar = sidecar or {}
+    for t in traces:
+        tid = t.get("id")
         if not tid:
             continue
-        sn = _attr(o, "skill_name")
-        if sn and tid not in m:
-            m[tid] = sn
-    return m
+        ol = obs_by_trace.get(tid, [])
+        skill = source = None
+        # rung 1: skill_name attribute (first span that carries it)
+        for o in ol:
+            sn = _attr(o, "skill_name")
+            if sn:
+                skill, source = sn, "skill_name"
+                break
+        # rung 2: leading-slash user_prompt
+        if not skill:
+            sk = _slash_skill(ol)
+            if sk:
+                skill, source = sk, "slash_command"
+        # rung 3: session + timestamp sidecar window (forward-only enrichment)
+        if not skill:
+            sk = _sidecar_skill(sidecar, t.get("sessionId"), _parse_ts(t.get("timestamp")))
+            if sk:
+                skill, source = sk, "hook_sidecar"
+        if skill:
+            skill_map[tid] = skill
+            source_map[tid] = source
+    return skill_map, source_map
 
 
 def _trace_exec_stats(tid, obs_by_trace):
@@ -282,11 +385,19 @@ def render_markdown(doc):
     t = doc["totals"]
     L.append(f"**Scope:** {t['traces_kept']} traces ({t['traces_excluded_as_noise']} excluded as analysis-noise), "
              f"{t['observations']} observations, {t['scores']} scores.")
+    at = doc.get("attribution") or {}
+    if at.get("total"):
+        bs = at.get("by_source") or {}
+        parts = [f"{lbl} {bs[k]}" for k, lbl in
+                 (("skill_name", "skill_name"), ("slash_command", "slash"), ("hook_sidecar", "hook"))
+                 if bs.get(k)]
+        breakdown = f" ({', '.join(parts)})" if parts else ""
+        L.append(f"**Attribution:** {at.get('attributed', 0)}/{at['total']} traces mapped to a skill{breakdown}.")
     un = doc.get("unattributed") or {}
     if un.get("count"):
-        L.append(f"_{un['count']} of these traces carried no `skill_name` (ordinary tool activity), "
-                 f"totalling ${un.get('cost', 0.0):.4f}. Not shown per-skill - attribution needs "
-                 "`skill_name` on the trace, which Claude Code only stamps when a skill is active._")
+        L.append(f"_{un['count']} trace(s) matched no attribution rung (ordinary tool activity, no skill "
+                 f"marker), totalling ${un.get('cost', 0.0):.4f}. Not shown per-skill. Coverage grows once the "
+                 "skill-activation hook (`devflow init`) starts stamping every session._")
     if not doc.get("has_last_week"):
         L.append("")
         L.append("> ⚠️ **No last-week baseline** in range - every skill below is shown as `🆕 NEW`. "
@@ -370,7 +481,10 @@ def main():
     obs_by_trace = {}
     for o in observations:
         obs_by_trace.setdefault(o.get("traceId"), []).append(o)
-    trace_skill = _build_trace_skill_map(observations)
+    sidecar_path = os.environ.get("TRACE_REVIEW_SIDECAR",
+                                  os.path.join(os.path.expanduser("~"), ".devflow", "skill-activations.jsonl"))
+    sidecar = _load_sidecar(sidecar_path)
+    trace_skill, attr_sources = _attribute_traces(traces, obs_by_trace, sidecar)
     scores_by_trace = {}
     for s in scores:
         v = s.get("value")
@@ -404,6 +518,16 @@ def main():
     total_scores = sum(len(v) for v in scores_by_trace.values())
     project_id = (traces[0].get("projectId") if traces else None) or "default"
 
+    # attribution breakdown over KEPT traces (what the report actually ranks): how many
+    # traces got a skill, and via which rung. Makes thin coverage visible, not hidden.
+    kept_ids = {t.get("id") for t in kept}
+    by_source = Counter(src for tid, src in attr_sources.items() if tid in kept_ids)
+    attribution = {
+        "attributed": sum(1 for tid in trace_skill if tid in kept_ids),
+        "total": len(kept),
+        "by_source": dict(by_source),
+    }
+
     doc = {
         "generated_at": now.isoformat(),
         "host": host,
@@ -427,6 +551,7 @@ def main():
         },
         "has_last_week": any(m.get("count") for k, m in last_m.items() if k != UNATTRIBUTED),
         "has_scores": total_scores > 0,
+        "attribution": attribution,
         "unattributed": unattributed,
         "rows": rows,
     }
