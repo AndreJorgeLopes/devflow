@@ -51,7 +51,7 @@ Window is **rolling**: this week = `now-7d..now`, last week = `now-14d..now-7d`.
 
 **Degraded data is normal, not a blocker.** Render the report anyway:
 - No prior week of traces → every skill shows `🆕 NEW`; the report says "baseline building". Do NOT declare the report impossible.
-- Zero scores → the score column shows `-` and a note to seed scores. Do NOT omit the table.
+- Zero scores → the score column shows `-`. Seed a varying quality signal with `eval/lib/tessl-push.sh <skill> <score-0-100>` (tessl review score) or `eval/lib/langfuse-push.sh <results.json> <skill>` (promptfoo). Do NOT omit the table.
 - Always present the severity-tagged per-skill table with exemplar trace links, even when nothing is flagged.
 
 ## Scheduling (provider-agnostic, extensible)

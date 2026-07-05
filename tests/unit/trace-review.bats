@@ -332,6 +332,67 @@ print('OK')
   assert_output --partial 'OK'
 }
 
+# ── eval-score join (per-skill-version quality, keyed by skill + time) ──
+
+@test "_eval_trace_skill recognizes a devflow-eval trace and its skill; ignores prod traces" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+# via metadata.skill_name
+assert m._eval_trace_skill({'tags': ['devflow-eval'], 'metadata': {'skill_name': 'create-skill'}}) == 'create-skill'
+# via skill: tag when metadata absent
+assert m._eval_trace_skill({'tags': ['devflow-eval', 'skill:devflow:review']}) == 'devflow:review'
+# a production trace (no eval marker) is NOT an eval trace
+assert m._eval_trace_skill({'tags': [], 'metadata': {'skill_name': 'create-skill'}}) is None
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_build_eval_scores keys scores by skill+ts and returns the eval trace ids to exclude" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+traces = [
+  {'id': 'e1', 'tags': ['devflow-eval'], 'metadata': {'skill_name': 'create-skill'}, 'timestamp': '2026-01-02T00:00:00Z'},
+  {'id': 'e2', 'tags': ['devflow-eval'], 'metadata': {'skill_name': 'create-skill'}, 'timestamp': '2026-01-01T00:00:00Z'},
+  {'id': 'p1', 'tags': [], 'timestamp': '2026-01-02T00:00:00Z'},  # prod trace, not eval
+]
+scores_by_trace = {'e1': [0.9], 'e2': [0.8], 'p1': [0.5]}
+by_skill, eval_ids = m._build_eval_scores(traces, scores_by_trace)
+assert eval_ids == {'e1','e2'}, eval_ids                    # p1 excluded
+assert [v for _,v in by_skill['create-skill']] == [0.8, 0.9], by_skill  # sorted by ts
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_aggregate merges in-window eval scores into a prod skill and ignores out-of-window ones" {
+  run python3 -c "
+import importlib.util, os
+from datetime import datetime, timezone
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+lo = datetime(2026,1,1,tzinfo=timezone.utc); hi = datetime(2026,1,8,tzinfo=timezone.utc)
+traces = [{'id': 't1', 'timestamp': '2026-01-02T00:00:00Z', 'totalCost': 1.0, 'latency': 2.0}]
+trace_skill = {'t1': 'create-skill'}
+eval_scores = {'create-skill': [
+  (m._parse_ts('2026-01-03T00:00:00Z'), 0.90),   # in window
+  (m._parse_ts('2025-12-20T00:00:00Z'), 0.10),   # out of window -> ignored
+]}
+agg = m._aggregate(traces, {}, trace_skill, {}, lo, hi, eval_scores)
+assert agg['create-skill']['mean_score'] == 0.90, agg     # only the in-window eval score
+assert agg['create-skill']['n_scores'] == 1, agg
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
 @test "_trace_exec_stats counts executions only and never counts a permission reject as an error" {
   run python3 -c "
 import importlib.util, os

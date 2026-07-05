@@ -65,7 +65,14 @@ prior value). NEW/GONE skills are surfaced but never error-flagged.
   LATEST skill invoked at-or-before its timestamp in the session. It then attributes
   each trace's Langfuse-computed `totalCost` + `latency` (already aggregated, correct)
   to that skill. Traces matching no rung fall into `(unattributed)`.
-- Scores come from `/api/public/scores`, joined to skills via `traceId`.
+- Scores come from two places: (a) production-trace annotations joined by `traceId`,
+  and (b) `devflow-eval` traces (promptfoo / tessl runs) keyed by skill + timestamp,
+  since a per-skill-version quality score has no production trace id to join to. Eval
+  scores augment a skill already present in the window and are held out of the cost /
+  latency / count aggregation. Feed them with `eval/lib/langfuse-push.sh <results.json>
+  <skill>` (promptfoo pass-rate) or `eval/lib/tessl-push.sh <skill> <score-0-100>` (the
+  tessl review score, which actually varies with quality; shape-only promptfoo asserts
+  sit at 1.0 and never flag).
 - Error rate is per `claude_code.tool.execution` span (failed = `success==false` /
   ERROR level / `error` attr), aggregated over the skill's traces. Permission gates
   (`claude_code.tool.blocked_on_user`, `decision=reject`) are not executions and never

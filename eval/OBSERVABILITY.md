@@ -82,12 +82,21 @@ to **`langfuse/langfuse:3.200.0`** (web + worker, identical).
    stale env. Fix: a **full `down` then fresh `up`** (a fresh CREATE has no rename), not
    a partial recreate.
 
-### Reliable score-push bridge (still available)
+### Score-push bridge (feeds `devflow trace-review`'s score column)
+Push a skill's quality score as a `devflow-eval` trace so trace-review can key it by
+skill + timestamp (a per-skill-version score has no production trace id to join to):
 ```bash
+# promptfoo pass-rate (varies only if the skill's config has a quality/judge assert)
 cd eval && npx -y promptfoo@latest eval --output results.json
-bash lib/langfuse-push.sh results.json <version>   # native /api/public/ingestion
-```
+bash lib/langfuse-push.sh results.json <skill> [version]   # tags devflow-eval + skill:<name>
 
-**Recommendation:** promptfoo + Langfuse now both work. promptfoo stays the primary
-deterministic eval gate; Langfuse v3 gives passive run-history + the UI. Browse traces
-at http://localhost:3100.
+# tessl review score (varies with real quality — the signal that makes score-down meaningful)
+score=$(tessl review run --workspace <ws> --json | python3 -c 'import sys,json;print(json.load(sys.stdin)["review"]["reviewScore"])')
+bash lib/tessl-push.sh <skill> "$score" [version]          # normalises 0..100 -> 0..1
+```
+Both stamp `devflow-eval` + `skill:<name>` + metadata.skill_name; trace-review excludes
+those eval traces from production cost/latency aggregation and only uses their scores.
+
+**Recommendation:** promptfoo stays the primary deterministic eval gate; push the tessl
+review score for the trace-review quality trend (shape-only promptfoo asserts sit at 1.0
+and never flag). Langfuse gives passive run-history + the UI. Browse at http://localhost:3100.
