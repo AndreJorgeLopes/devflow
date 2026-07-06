@@ -120,11 +120,25 @@ def _pct(values, q):
     return s[k]
 
 
+# Claude Code built-in slash commands are NOT skills. Attributing them would pollute the
+# per-skill ranking with phantom rows (a session that runs /compact would otherwise show
+# a "compact" skill). Mirror the write-side hook (lib/hooks/skill-activation-log.sh),
+# which uses PreToolUse:Skill precisely to avoid recording these.
+BUILTIN_SLASH = {
+    "compact", "clear", "config", "model", "help", "review", "init", "cost", "quit",
+    "exit", "resume", "logout", "login", "status", "doctor", "memory", "vim", "agents",
+    "mcp", "hooks", "permissions", "context", "export", "bug", "release-notes", "add-dir",
+    "terminal-setup", "ide", "pr-comments", "fast",
+}
+
+
 def _slash_skill(obs_list):
     """Skill parsed from a leading-slash `user_prompt` on any of the trace's spans.
 
     A user prompt like "/devflow:review run" -> "devflow:review" (first token, slash
-    stripped). Returns None when no span carries a leading-slash user_prompt.
+    stripped). Built-in Claude Code commands (see BUILTIN_SLASH) are skipped so they fall
+    through to (unattributed) instead of ranking as phantom skills. Returns None when no
+    span carries a leading-slash user_prompt that names a skill.
     """
     for o in obs_list:
         up = _attr(o, "user_prompt")
@@ -132,7 +146,7 @@ def _slash_skill(obs_list):
             s = up.strip()
             if s.startswith("/") and len(s) > 1:
                 tok = s[1:].split()[0]
-                if tok:
+                if tok and tok.lower() not in BUILTIN_SLASH:
                     return tok
     return None
 
@@ -280,8 +294,10 @@ def _build_eval_scores(traces, scores_by_trace):
 
     Quality scores (promptfoo pass-rate, tessl review) are per-skill-version, not
     production-trace annotations, so they can never join to a production trace's id.
-    Key them by skill + timestamp instead, and return the eval trace ids so the caller
-    can hold those traces OUT of the production cost/latency/count aggregation."""
+    Key them by skill + timestamp instead, carrying the score NAME (so different score
+    types are not averaged together downstream), and return the eval trace ids so the
+    caller can hold those traces OUT of the production cost/latency/count aggregation.
+    Entries are (ts, name, value)."""
     by_skill, eval_ids = {}, set()
     for t in traces:
         sk = _eval_trace_skill(t)
@@ -294,22 +310,47 @@ def _build_eval_scores(traces, scores_by_trace):
         ts = _parse_ts(t.get("timestamp"))
         if ts is None:
             continue
-        for v in scores_by_trace.get(tid, []):
-            by_skill.setdefault(sk, []).append((ts, v))
+        for (nm, v) in scores_by_trace.get(tid, []):
+            by_skill.setdefault(sk, []).append((ts, nm, v))
     for sk in by_skill:
         by_skill[sk].sort(key=lambda x: x[0])
     return by_skill, eval_ids
 
 
+# When several score types coexist for a skill in a window, average only ONE type (never
+# mix e.g. a binary promptfoo pass/fail with a graded tessl review, which yields a
+# meaningless mean). Prefer the varying quality signal; fall back deterministically.
+SCORE_PREFERENCE = ("tessl_review", "assert_pass")
+
+
+def _preferred_mean(named_scores):
+    """(mean, n, kind) over a single score name chosen from [(name, value), ...].
+
+    Picks the first name in SCORE_PREFERENCE that is present, else the alphabetically
+    first name (deterministic). Returns (None, 0, None) when there are no scores."""
+    if not named_scores:
+        return None, 0, None
+    by_name = {}
+    for nm, v in named_scores:
+        by_name.setdefault(nm or "score", []).append(v)
+    for pref in SCORE_PREFERENCE:
+        if pref in by_name:
+            vals = by_name[pref]
+            return sum(vals) / len(vals), len(vals), pref
+    nm = sorted(by_name)[0]
+    vals = by_name[nm]
+    return sum(vals) / len(vals), len(vals), nm
+
+
 def _aggregate(traces, obs_by_trace, trace_skill, scores_by_trace, lo, hi, eval_scores_by_skill=None):
     """Aggregate per skill for traces whose timestamp is in [lo, hi).
 
-    A skill's mean_score merges (a) any production-trace scores joined by traceId with
-    (b) eval scores for that skill whose timestamp falls in the window - so a skill that
-    ran in production shows its bench/review quality trend even though eval scores live
-    on separate eval traces. Eval scores augment skills already present in the production
-    aggregation; a skill with eval scores but zero production traces in-window is not
-    surfaced (there is no cost/latency/count to rank it by)."""
+    A skill's mean_score pools (a) production-trace scores joined by traceId and (b) eval
+    scores for that skill whose timestamp falls in the window, then averages only ONE
+    score type via _preferred_mean (never mixing e.g. tessl review with promptfoo
+    pass/fail). score_kind names which type was used. Eval scores augment skills already
+    present in the production aggregation; a skill with eval scores but zero production
+    traces in-window is not surfaced (there is no cost/latency/count to rank it by)."""
     agg = {}
     for t in traces:
         ts = _parse_ts(t.get("timestamp"))
@@ -337,15 +378,17 @@ def _aggregate(traces, obs_by_trace, trace_skill, scores_by_trace, lo, hi, eval_
             a["max_cost"] = cost
             a["exemplar_cost"] = tid
         a["tokens"] += _trace_tokens(tid, obs_by_trace)
-        for sv in scores_by_trace.get(tid, []):
-            a["scores"].append(sv)
+        # production-trace scores arrive as (name, value) so they can be segregated by type
+        for nm, sv in scores_by_trace.get(tid, []):
+            a["scores"].append((nm, sv))
     # finalize
     eval_scores_by_skill = eval_scores_by_skill or {}
     out = {}
     for skill, a in agg.items():
         cnt = a["count"]
-        eval_in_window = [v for (ts, v) in eval_scores_by_skill.get(skill, []) if lo <= ts < hi]
-        all_scores = a["scores"] + eval_in_window
+        eval_in_window = [(nm, v) for (ts, nm, v) in eval_scores_by_skill.get(skill, []) if lo <= ts < hi]
+        named_scores = a["scores"] + eval_in_window          # [(name, value), ...]
+        mean_score, n_scores, score_kind = _preferred_mean(named_scores)
         out[skill] = {
             "count": cnt,
             "error_rate": (a["exec_failed"] / a["exec_total"]) if a["exec_total"] else 0.0,
@@ -355,8 +398,9 @@ def _aggregate(traces, obs_by_trace, trace_skill, scores_by_trace, lo, hi, eval_
             "p95_latency": _pct(a["latencies"], 95),
             "cost": round(a["cost"], 6),
             "tokens": a["tokens"],
-            "mean_score": (sum(all_scores) / len(all_scores)) if all_scores else None,
-            "n_scores": len(all_scores),
+            "mean_score": mean_score,
+            "n_scores": n_scores,
+            "score_kind": score_kind,
             "exemplar_trace": a["exemplar_error"] or a["exemplar_cost"],
         }
     return out
@@ -366,9 +410,15 @@ def _parse_ts(s):
     if not s:
         return None
     try:
-        return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(timezone.utc)
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
     except Exception:
         return None
+    # A naive timestamp (no Z/offset) is read as UTC, NOT shifted by the host's local
+    # offset. astimezone() on a naive value would assume machine-local time and move a
+    # trace/score into the wrong week-over-week window on a non-UTC host.
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _flag_regressions(this_m, last_m):
@@ -560,7 +610,8 @@ def main():
     for s in scores:
         v = s.get("value")
         if isinstance(v, (int, float)):
-            scores_by_trace.setdefault(s.get("traceId"), []).append(float(v))
+            # keep the score NAME so different types are not averaged together downstream
+            scores_by_trace.setdefault(s.get("traceId"), []).append((s.get("name") or "score", float(v)))
 
     # eval traces (promptfoo/tessl quality runs) carry per-skill-version scores that
     # cannot join to a production trace id; key them by skill + timestamp, and hold the

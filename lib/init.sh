@@ -458,9 +458,14 @@ if changed:
   local seed_script="${root}/docker/langfuse-seed-models.sh"
   if [[ -f "$seed_script" ]]; then
     (
-      set -a
+      # Contain the source: a user's secrets file may end in a non-zero-returning line
+      # (e.g. `command -v <absent-tool>`); under the inherited `set -euo pipefail` that
+      # would abort the whole subshell before any sentinel prints, silently killing
+      # `devflow init` before step 6. set +e around the source (|| true on `source`
+      # alone is NOT enough on bash 3.2 — set -e fires inside the sourced file first).
+      set -a; set +e
       [[ -f "$HOME/.config/zsh/secrets" ]] && source "$HOME/.config/zsh/secrets" 2>/dev/null
-      set +a
+      set -e; set +a
       : "${LANGFUSE_HOST:=http://localhost:3100}"
       if [[ -n "${LANGFUSE_PUBLIC_KEY:-}" && -n "${LANGFUSE_SECRET_KEY:-}" ]] \
          && curl -fsS -o /dev/null --connect-timeout 3 "${LANGFUSE_HOST}/api/public/health" 2>/dev/null; then

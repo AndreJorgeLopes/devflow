@@ -30,10 +30,16 @@ SKILL_DIR="${2:-$ROOT/skills/$SKILL}"
 VERSION="${3:-$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo head)}"
 WORKSPACE="${TESSL_WORKSPACE:-andrejorgelopes}"
 
-# credentials (graceful)
+# credentials (graceful). Contain the source under set +e: a secrets file ending in a
+# non-zero-returning line would otherwise abort this script under set -e (|| true on
+# `source` alone is insufficient on bash 3.2 - set -e fires inside the sourced file).
 if [[ -z "${LANGFUSE_PUBLIC_KEY:-}" || -z "${LANGFUSE_SECRET_KEY:-}" ]]; then
-  # shellcheck disable=SC1091
-  [[ -f "$HOME/.config/zsh/secrets" ]] && { set -a; source "$HOME/.config/zsh/secrets" 2>/dev/null || true; set +a; }
+  if [[ -f "$HOME/.config/zsh/secrets" ]]; then
+    set -a; set +e
+    # shellcheck disable=SC1091
+    source "$HOME/.config/zsh/secrets" 2>/dev/null
+    set -e; set +a
+  fi
 fi
 export LANGFUSE_HOST="${LANGFUSE_HOST:-http://localhost:3100}"
 
@@ -64,13 +70,16 @@ fi
 # ── 2. promptfoo -> langfuse-push (only if a config exists for this skill) ──
 cfg="$SKILL_DIR/determinism.promptfooconfig.yaml"
 if [[ -f "$cfg" ]]; then
-  results="$(mktemp).json"
+  # mktemp returns a real file; the promptfoo output needs a .json name. Track BOTH the
+  # base file mktemp created and the .json we actually write, so cleanup removes both
+  # (appending .json to $(mktemp) would orphan the base file).
+  results_base="$(mktemp)"; results="${results_base}.json"
   if (cd "$SKILL_DIR" && npx -y promptfoo@latest eval -c "$cfg" --output "$results" >/dev/null 2>&1); then
     bash "$HERE/langfuse-push.sh" "$results" "$SKILL" "$VERSION" && pushed_any=1
   else
     echo "eval-and-push: promptfoo eval failed — skipping promptfoo push" >&2
   fi
-  rm -f "$results"
+  rm -f "$results" "$results_base"
 else
   echo "eval-and-push: no determinism.promptfooconfig.yaml for $SKILL — skipping promptfoo push" >&2
 fi

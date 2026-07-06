@@ -27,10 +27,13 @@ VERSION="${3:-head}"
 : "${LANGFUSE_PUBLIC_KEY:?set LANGFUSE_PUBLIC_KEY}"
 : "${LANGFUSE_SECRET_KEY:?set LANGFUSE_SECRET_KEY}"
 
-python3 - "$SKILL" "$SCORE" "$VERSION" "$LANGFUSE_HOST" "$LANGFUSE_PUBLIC_KEY" "$LANGFUSE_SECRET_KEY" <<'PY'
-import sys, json, base64, urllib.request, time
+# Keys read from the environment inside python, NEVER passed as argv (ps-visible). The
+# child inherits the required LANGFUSE_* env vars checked above.
+python3 - "$SKILL" "$SCORE" "$VERSION" "$LANGFUSE_HOST" <<'PY'
+import sys, os, json, base64, urllib.request, urllib.error, time
 
-skill, score_raw, version, host, pk, sk = sys.argv[1:7]
+skill, score_raw, version, host = sys.argv[1:5]
+pk, sk = os.environ["LANGFUSE_PUBLIC_KEY"], os.environ["LANGFUSE_SECRET_KEY"]
 try:
     score = float(score_raw)
 except ValueError:
@@ -58,4 +61,6 @@ try:
         print(f"pushed tessl_review score {value:.3f} (skill={skill} version={version}) -> {resp.status}")
 except urllib.error.HTTPError as e:
     print(f"HTTP {e.code}: {e.read().decode()[:300]}", file=sys.stderr); sys.exit(1)
+except urllib.error.URLError as e:
+    print(f"Langfuse unreachable at {host}: {e.reason}", file=sys.stderr); sys.exit(1)
 PY

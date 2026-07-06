@@ -31,10 +31,14 @@ VERSION="${3:-head}"
 : "${LANGFUSE_PUBLIC_KEY:?set LANGFUSE_PUBLIC_KEY}"
 : "${LANGFUSE_SECRET_KEY:?set LANGFUSE_SECRET_KEY}"
 
-python3 - "$RESULTS" "$VERSION" "$SKILL" "$LANGFUSE_HOST" "$LANGFUSE_PUBLIC_KEY" "$LANGFUSE_SECRET_KEY" <<'PY'
-import sys, json, base64, urllib.request, time
+# Keys are read from the environment inside python, NEVER passed as argv (argv is visible
+# via ps / /proc/<pid>/cmdline to any local user). The child inherits the required
+# LANGFUSE_* env vars checked above.
+python3 - "$RESULTS" "$VERSION" "$SKILL" "$LANGFUSE_HOST" <<'PY'
+import sys, os, json, base64, urllib.request, urllib.error, time
 
-results_path, version, skill, host, pk, sk = sys.argv[1:7]
+results_path, version, skill, host = sys.argv[1:5]
+pk, sk = os.environ["LANGFUSE_PUBLIC_KEY"], os.environ["LANGFUSE_SECRET_KEY"]
 data = json.load(open(results_path))
 # promptfoo result shape: results.results[] with .testCase, .success, .response.output, .score
 rows = (data.get("results") or {}).get("results") or data.get("results") or []
@@ -65,4 +69,6 @@ try:
         print(f"pushed {len(rows)} eval traces+scores (skill={skill} version={version}) -> {resp.status}")
 except urllib.error.HTTPError as e:
     print(f"HTTP {e.code}: {e.read().decode()[:300]}", file=sys.stderr); sys.exit(1)
+except urllib.error.URLError as e:
+    print(f"Langfuse unreachable at {host}: {e.reason}", file=sys.stderr); sys.exit(1)
 PY

@@ -361,10 +361,10 @@ traces = [
   {'id': 'e2', 'tags': ['devflow-eval'], 'metadata': {'skill_name': 'create-skill'}, 'timestamp': '2026-01-01T00:00:00Z'},
   {'id': 'p1', 'tags': [], 'timestamp': '2026-01-02T00:00:00Z'},  # prod trace, not eval
 ]
-scores_by_trace = {'e1': [0.9], 'e2': [0.8], 'p1': [0.5]}
+scores_by_trace = {'e1': [('tessl_review', 0.9)], 'e2': [('tessl_review', 0.8)], 'p1': [('x', 0.5)]}
 by_skill, eval_ids = m._build_eval_scores(traces, scores_by_trace)
 assert eval_ids == {'e1','e2'}, eval_ids                    # p1 excluded
-assert [v for _,v in by_skill['create-skill']] == [0.8, 0.9], by_skill  # sorted by ts
+assert [v for _,_,v in by_skill['create-skill']] == [0.8, 0.9], by_skill  # (ts,name,value) sorted by ts
 print('OK')
 "
   assert_success
@@ -381,8 +381,8 @@ lo = datetime(2026,1,1,tzinfo=timezone.utc); hi = datetime(2026,1,8,tzinfo=timez
 traces = [{'id': 't1', 'timestamp': '2026-01-02T00:00:00Z', 'totalCost': 1.0, 'latency': 2.0}]
 trace_skill = {'t1': 'create-skill'}
 eval_scores = {'create-skill': [
-  (m._parse_ts('2026-01-03T00:00:00Z'), 0.90),   # in window
-  (m._parse_ts('2025-12-20T00:00:00Z'), 0.10),   # out of window -> ignored
+  (m._parse_ts('2026-01-03T00:00:00Z'), 'tessl_review', 0.90),   # in window
+  (m._parse_ts('2025-12-20T00:00:00Z'), 'tessl_review', 0.10),   # out of window -> ignored
 ]}
 agg = m._aggregate(traces, {}, trace_skill, {}, lo, hi, eval_scores)
 assert agg['create-skill']['mean_score'] == 0.90, agg     # only the in-window eval score
@@ -409,8 +409,8 @@ traces = [
 ]
 trace_skill = {'tL': 'create-skill', 'tT': 'create-skill'}
 eval_scores = {'create-skill': [
-  (m._parse_ts('2026-01-04T00:00:00Z'), 0.95),   # last-week eval score
-  (m._parse_ts('2026-01-11T00:00:00Z'), 0.80),   # this-week eval score (dropped)
+  (m._parse_ts('2026-01-04T00:00:00Z'), 'tessl_review', 0.95),   # last-week eval score
+  (m._parse_ts('2026-01-11T00:00:00Z'), 'tessl_review', 0.80),   # this-week eval score (dropped)
 ]}
 this_m = m._aggregate(traces, {}, trace_skill, {}, this_lo, now,      eval_scores)
 last_m = m._aggregate(traces, {}, trace_skill, {}, last_lo, this_lo,  eval_scores)
@@ -419,6 +419,63 @@ assert last_m['create-skill']['mean_score'] == 0.95, last_m
 r = m._flag_regressions(this_m, last_m)[0]
 assert any('score -0.15' in f for f in r['flags']), r['flags']   # the drop the column exists to catch
 assert r['severity'] == 'HIGH', r['severity']
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_slash_skill skips built-in slash commands but keeps real skills" {
+  run python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+def up(v): return [{'metadata': {'attributes': {'user_prompt': v}}}]
+assert m._slash_skill(up('/compact')) is None, 'built-in /compact leaked as a skill'
+assert m._slash_skill(up('/clear')) is None
+assert m._slash_skill(up('/config set x')) is None
+assert m._slash_skill(up('/handle-cursorbot')) == 'handle-cursorbot'   # real bare skill kept
+assert m._slash_skill(up('/devflow:review run')) == 'devflow:review'   # namespaced skill kept
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_aggregate does NOT mix score types: prefers tessl_review, ignores promptfoo pass/fail dilution" {
+  run python3 -c "
+import importlib.util, os
+from datetime import datetime, timezone
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+lo = datetime(2026,1,1,tzinfo=timezone.utc); hi = datetime(2026,1,8,tzinfo=timezone.utc)
+traces = [{'id': 't1', 'timestamp': '2026-01-02T00:00:00Z', 'totalCost': 1.0, 'latency': 2.0}]
+trace_skill = {'t1': 'create-skill'}
+# same window: a graded tessl review 0.80 AND a binary promptfoo pass 1.0. Mixing -> 0.90
+# (meaningless). Correct: report the tessl trend only.
+eval_scores = {'create-skill': [
+  (m._parse_ts('2026-01-03T00:00:00Z'), 'tessl_review', 0.80),
+  (m._parse_ts('2026-01-03T00:00:00Z'), 'assert_pass', 1.0),
+]}
+agg = m._aggregate(traces, {}, trace_skill, {}, lo, hi, eval_scores)
+assert agg['create-skill']['mean_score'] == 0.80, agg          # tessl only, NOT (0.8+1.0)/2
+assert agg['create-skill']['score_kind'] == 'tessl_review', agg
+assert agg['create-skill']['n_scores'] == 1, agg
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "_parse_ts reads a naive timestamp as UTC (no host-local shift)" {
+  run env TZ=America/Los_Angeles python3 -c "
+import importlib.util, os
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+naive = m._parse_ts('2026-01-01T12:00:00')      # no Z/offset
+aware = m._parse_ts('2026-01-01T12:00:00Z')
+assert naive == aware, (naive, aware)            # naive treated as UTC, not shifted +8h
+assert naive.hour == 12, naive
 print('OK')
 "
   assert_success
