@@ -13,7 +13,11 @@ _resolve_source() {
   echo "$src"
 }
 DEVFLOW_BIN="$(cd "$(dirname "$(_resolve_source)")" && pwd)"
-DEVFLOW_ROOT="$(dirname "$DEVFLOW_BIN")"
+# Honor an already-exported DEVFLOW_ROOT (the `make install` wrapper sets it to LIBDIR,
+# where devflow-bin lives DIRECTLY under the root, not in a bin/ subdir - so deriving
+# root as dirname(bin) would climb one level too high and miss lib/). Fall back to the
+# dirname derivation for the run-from-repo case (bin/devflow -> root is its parent).
+DEVFLOW_ROOT="${DEVFLOW_ROOT:-$(dirname "$DEVFLOW_BIN")}"
 
 # ── Source libraries ──────────────────────────────────────────────────────────
 source "${DEVFLOW_ROOT}/lib/utils.sh"

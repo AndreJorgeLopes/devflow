@@ -273,6 +273,9 @@ with open(config_path, 'r+') as f:
   fi
 
   # ── 5. Install Claude Code plugins ────────────────────────────────────────
+  # Defined here (not in 5b) because the plugin-settings python block below references
+  # it; a later `local` definition would leave this use unbound under `set -u`.
+  local settings_file="${HOME}/.claude/settings.json"
   if has_cmd claude; then
     section "Installing Claude Code plugins"
     claude plugin marketplace add max-sixty/worktrunk 2>/dev/null
@@ -343,7 +346,6 @@ with open(settings_path, 'w') as f:
   # ── 5b. Claude Code hooks ────────────────────────────────────────────────
   section "Registering Claude Code hooks"
 
-  local settings_file="${HOME}/.claude/settings.json"
   if [[ -f "$settings_file" ]]; then
     python3 -c "
 import json, sys
@@ -408,6 +410,31 @@ if not any('skill-activation-log' in str(entry) for entry in pre_hooks):
 else:
     print('Skip: skill-activation-log hook already registered')
 
+# Claude Code OTel telemetry env — REQUIRED for trace-review to have ANY data.
+# Without these Claude Code emits no traces, so the whole trace-review feature is inert.
+# Points at the local devflow otel-collector (:4318); localhost-only, no external egress.
+# Set only if absent (never clobber a user's existing value).
+env = settings.setdefault('env', {})
+telemetry_defaults = {
+    'CLAUDE_CODE_ENABLE_TELEMETRY': '1',
+    'CLAUDE_CODE_ENHANCED_TELEMETRY_BETA': '1',
+    'OTEL_TRACES_EXPORTER': 'otlp',
+    'OTEL_EXPORTER_OTLP_PROTOCOL': 'http/protobuf',
+    'OTEL_EXPORTER_OTLP_ENDPOINT': 'http://localhost:4318',
+    'OTEL_LOG_TOOL_DETAILS': '1',
+}
+# track which keys we actually inserted (never clobber an existing value)
+inserted = []
+for k, v in telemetry_defaults.items():
+    if k not in env:
+        env[k] = v
+        inserted.append(k)
+if inserted:
+    changed = True
+    print('Added telemetry env: ' + ', '.join(inserted))
+else:
+    print('Skip: telemetry env already set')
+
 if changed:
     with open(settings_path, 'w') as f:
         json.dump(settings, f, indent=2)
@@ -421,6 +448,40 @@ if changed:
     done
   else
     warn "~/.claude/settings.json not found — run Claude Code once first, then re-run devflow init"
+  fi
+
+  # ── 5c. Seed Langfuse model prices (trace-review cost accuracy) ─────────────
+  # Without seeded prices, Claude Code model IDs (incl. the [1m] 1M-context suffix and
+  # newly-released models) resolve to no price and cost shows 0. Best-effort: needs the
+  # Langfuse keys + a reachable stack; skips cleanly otherwise (seed later once up).
+  section "Seeding Langfuse model prices"
+  local seed_script="${root}/docker/langfuse-seed-models.sh"
+  if [[ -f "$seed_script" ]]; then
+    (
+      # Contain the source: a user's secrets file may end in a non-zero-returning line
+      # (e.g. `command -v <absent-tool>`); under the inherited `set -euo pipefail` that
+      # would abort the whole subshell before any sentinel prints, silently killing
+      # `devflow init` before step 6. set +e around the source (|| true on `source`
+      # alone is NOT enough on bash 3.2 — set -e fires inside the sourced file first).
+      set -a; set +e
+      [[ -f "$HOME/.config/zsh/secrets" ]] && source "$HOME/.config/zsh/secrets" 2>/dev/null
+      set -e; set +a
+      : "${LANGFUSE_HOST:=http://localhost:3100}"
+      if [[ -n "${LANGFUSE_PUBLIC_KEY:-}" && -n "${LANGFUSE_SECRET_KEY:-}" ]] \
+         && curl -fsS -o /dev/null --connect-timeout 3 "${LANGFUSE_HOST}/api/public/health" 2>/dev/null; then
+        bash "$seed_script" >/dev/null 2>&1 && echo "SEEDED" || echo "SEEDFAIL"
+      else
+        echo "SKIP"
+      fi
+    ) | while IFS= read -r r; do
+      case "$r" in
+        SEEDED) ok "Seeded model prices (opus-4-8[1m], sonnet-5, haiku-4-5, fable-5)" ;;
+        SKIP)   skip "Langfuse unreachable or keys unset — run 'devflow up', then: bash docker/langfuse-seed-models.sh" ;;
+        *)      warn "Model-price seeding failed — seed later: bash docker/langfuse-seed-models.sh" ;;
+      esac
+    done
+  else
+    skip "langfuse-seed-models.sh not found (skipping price seed)"
   fi
 
   # ── 6. Install devflow commands & skills ──────────────────────────────────
