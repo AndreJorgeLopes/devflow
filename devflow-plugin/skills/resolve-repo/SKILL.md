@@ -97,8 +97,9 @@ If no local repos exist, ask the user for the platform and group.
 **Scoring stays model-driven (judgment — do NOT determinize: a fixed weight table is
 confidently worse here).** Weigh the signals and assign each repo a band, but emit ONLY the
 pinned labels **`HIGH` / `MEDIUM` / `LOW`** — never qualifiers ("probably", "likely",
-"confident"). A HIGH local match (clear winner) skips remote lookup and returns it; an
-ambiguous / no-confident match → step 3.
+"confident"). A HIGH local match (clear winner) skips the remote lookup in step 3 — but it
+does NOT skip the Repo Match Results block: you ALWAYS emit that block (step 4) before
+resolving, listing the local candidates only. An ambiguous / no-confident match → step 3.
 
 ### 3. Fetch SCOPED remote repo list (only if needed)
 
@@ -124,15 +125,21 @@ gh repo list "<org>" --limit 50 --json name,description --jq '.[] | "\(.name)|\(
 - **Only fetch name + description** — no cloning, no README reading, no file inspection
 - If the CLI tool is not available, inform the caller and fall back to local-only results
 
-### 4. Score ALL repos (local + remote)
+### 4. Score ALL repos (local + remote) — ALWAYS emit this block
 
-Merge local and remote lists. For repos that exist both locally and remotely, prefer the local entry.
+This block is **always emitted**, before the Resolved Repository block — including when step 2
+found a clear HIGH local winner and step 3 was skipped (in that case list only the local
+candidates). Merge local and remote lists; for repos that exist both locally and remotely, prefer the local entry.
 
 Score using the same signals from step 2. **Order deterministically (D7):** sort by band
 (HIGH → MEDIUM → LOW), then alphabetically by repo name within a band. Emit EXACTLY this
-block (D6) — output ONLY the block, no prose before/after, no markdown fences; each line
-`N. **<name>** — <BAND>: <reasons> [LOCAL|REMOTE]` with `<BAND>` ∈ {HIGH, MEDIUM, LOW} and
-the tag ∈ {[LOCAL], [REMOTE]}:
+block (D6). These rules are mandatory — the output is machine-checked:
+
+- Output ONLY the block. No prose before or after it (no "Looking at…", no "Highest match is…"), no markdown fences. The chosen repo goes in the separate Resolved Repository block in step 5, not here.
+- Each line is exactly `N. **<name>** — <BAND>: <reasons> [<TAG>]`.
+- `<BAND>` is one of `HIGH` / `MEDIUM` / `LOW`, written **bare and immediately followed by a colon** — `HIGH:` not `**HIGH**:`, never a synonym or qualifier.
+- Every line MUST end with the source tag `[LOCAL]` or `[REMOTE]`. Never omit it.
+- Keep the `### Local` / `### Remote` sub-headers.
 
 ```
 ## Repo Match Results
