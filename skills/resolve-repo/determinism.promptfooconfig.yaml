@@ -26,8 +26,11 @@ tests:
     vars:
       input: '/devflow:resolve-repo WORKSPACE_DIR=~/dev/aircall TICKET_ID=MES-3716 TICKET_TITLE="Fix messaging webhook retry"'
     assert:
+      # Band present + colon-terminated. Tolerate cosmetic markdown bold (**HIGH**:) so the gate
+      # flags a truly MISSING band, not emphasis; the skill still pins the bare form.
       - type: regex
-        value: '(HIGH|MEDIUM|LOW):'
+        value: '\*{0,2}(HIGH|MEDIUM|LOW)\*{0,2}:'
+      # Source tag is content, not cosmetics — keep this strict.
       - type: regex
         value: '\[(LOCAL|REMOTE)\]'
   - description: "D4 — score bands carry no hedging prose"

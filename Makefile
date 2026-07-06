@@ -64,7 +64,7 @@ skills-check: ## Fail if generated plugin skills/commands drift from repo-root s
 skills-guard: ## Detect skill edits made in the WRONG (generated) tree and fold them into the source
 	@bash scripts/skills-guard.sh
 
-determinism: ## Run the promptfoo determinism gate for skills with a config (needs API keys + Langfuse; not in CI). One skill: make determinism SKILL=<name>
+determinism: ## Run the promptfoo determinism gate (needs API keys + Langfuse; not in CI). One: make determinism SKILL=<name>. NOTE: tests the INSTALLED skill — reinstall/link a pending edit first (see CLAUDE.md).
 	@command -v npx >/dev/null 2>&1 || { echo "determinism: npx (Node) is required"; exit 1; }
 	@[ -f "$(HOME)/.config/zsh/secrets" ] && . "$(HOME)/.config/zsh/secrets" 2>/dev/null || true; \
 	fail=0; ran=0; \

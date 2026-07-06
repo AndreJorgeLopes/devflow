@@ -112,9 +112,26 @@ Each converted skill carries a `skills/<name>/determinism.promptfooconfig.yaml` 
 shipped in the plugin). Run the gate with **`make determinism`** (all skills) or
 **`make determinism SKILL=<name>`** (one). It needs API keys (the skill-spawning configs) and a
 reachable Langfuse (trace-review), so it is deliberately NOT part of `make test` / CI. promptfoo
-runs each config's `exec:` provider from that config's own directory, so provider paths are
-config-dir-relative (`../../eval/lib/run-skill.sh` for the claude-spawning skills, a local
-`eval-run.sh` for trace-review). This is the loop's pre-edit regression gate.
+runs each config's `exec:` provider from that config's own directory, and only accepts a provider
+file that resolves locally to that dir, so every skill has a local `eval-run.sh` wrapper
+(the claude-spawning ones exec `../../eval/lib/run-skill.sh`; trace-review runs its own engine).
+
+**Gate-fidelity caveat (two real limits, learned the hard way):**
+1. `eval/lib/run-skill.sh` runs `claude --print "/devflow:<name> …"`, which loads the
+   **INSTALLED** plugin skill, NOT your working-tree edit. So `make determinism` gates whatever
+   is installed — correct for CI on `main` (main == installed after release), but to gate a
+   PENDING edit you must reinstall/link the local build first (`make plugin-install` from the
+   branch, or `make plugin-dev`). Do NOT try to feed a local `SKILL.md` via
+   `--append-system-prompt`: it conflicts with the installed command and the model improvises
+   (verified — unreliable across models).
+2. On a weak model (default haiku) an AI-judgment skill will not adhere to a pinned output
+   shape reliably. For those skills, gate on a stronger model
+   (`SKILL_EVAL_MODEL=claude-sonnet-5 make determinism SKILL=<name>`). The deterministic-engine
+   skill (trace-review) has neither limit — it runs `bin/devflow`, not an LLM, so its gate is
+   fully reliable.
+
+This is the loop's pre-edit regression gate for the deterministic surfaces; treat AI-judgment
+asserts as guidance, engine asserts as hard gates.
 
 ## Hooks Architecture
 
