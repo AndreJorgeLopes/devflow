@@ -393,6 +393,38 @@ print('OK')
   assert_output --partial 'OK'
 }
 
+@test "score-DOWN flag fires end-to-end from two-window eval scores (stub data, no waiting)" {
+  run python3 -c "
+import importlib.util, os
+from datetime import datetime, timezone
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+# Two windows: last = [d1,d8), this = [d8,d15). Same skill has a prod trace in EACH
+# window (so count>0 both), plus an eval score in each: 0.95 last week, 0.80 this week.
+last_lo = datetime(2026,1,1,tzinfo=timezone.utc); this_lo = datetime(2026,1,8,tzinfo=timezone.utc)
+now     = datetime(2026,1,15,tzinfo=timezone.utc)
+traces = [
+  {'id': 'tL', 'timestamp': '2026-01-03T00:00:00Z', 'totalCost': 1.0, 'latency': 2.0},
+  {'id': 'tT', 'timestamp': '2026-01-10T00:00:00Z', 'totalCost': 1.0, 'latency': 2.0},
+]
+trace_skill = {'tL': 'create-skill', 'tT': 'create-skill'}
+eval_scores = {'create-skill': [
+  (m._parse_ts('2026-01-04T00:00:00Z'), 0.95),   # last-week eval score
+  (m._parse_ts('2026-01-11T00:00:00Z'), 0.80),   # this-week eval score (dropped)
+]}
+this_m = m._aggregate(traces, {}, trace_skill, {}, this_lo, now,      eval_scores)
+last_m = m._aggregate(traces, {}, trace_skill, {}, last_lo, this_lo,  eval_scores)
+assert this_m['create-skill']['mean_score'] == 0.80, this_m
+assert last_m['create-skill']['mean_score'] == 0.95, last_m
+r = m._flag_regressions(this_m, last_m)[0]
+assert any('score -0.15' in f for f in r['flags']), r['flags']   # the drop the column exists to catch
+assert r['severity'] == 'HIGH', r['severity']
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
 @test "_trace_exec_stats counts executions only and never counts a permission reject as an error" {
   run python3 -c "
 import importlib.util, os

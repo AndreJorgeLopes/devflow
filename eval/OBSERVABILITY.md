@@ -97,6 +97,12 @@ bash lib/tessl-push.sh <skill> "$score" [version]          # normalises 0..100 -
 Both stamp `devflow-eval` + `skill:<name>` + metadata.skill_name; trace-review excludes
 those eval traces from production cost/latency aggregation and only uses their scores.
 
+**One-command pump** — `eval/lib/eval-and-push.sh <skill> [skill-dir] [version]` runs BOTH
+evaluators and pushes BOTH scores (tessl review + promptfoo, each best-effort), so the
+score column fills in one call. Call it from wherever a skill is reviewed
+(create-skill / optimize-skill / a pre-PR gate) to keep the column fed automatically
+instead of by hand.
+
 **Recommendation:** promptfoo stays the primary deterministic eval gate; push the tessl
 review score for the trace-review quality trend (shape-only promptfoo asserts sit at 1.0
 and never flag). Langfuse gives passive run-history + the UI. Browse at http://localhost:3100.
