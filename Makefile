@@ -1,10 +1,10 @@
 PREFIX ?= $(HOME)/.local
 BINDIR := $(PREFIX)/bin
 LIBDIR := $(PREFIX)/share/devflow
-VERSION := 0.13.0
+VERSION := 0.15.0
 TARBALL := devflow-$(VERSION).tar.gz
 
-.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check skills-sync skills-check skills-guard
+.PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check skills-sync skills-check skills-guard determinism mirror
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -63,6 +63,24 @@ skills-check: ## Fail if generated plugin skills/commands drift from repo-root s
 
 skills-guard: ## Detect skill edits made in the WRONG (generated) tree and fold them into the source
 	@bash scripts/skills-guard.sh
+
+determinism: ## Run the promptfoo determinism gate for skills with a config (needs API keys + Langfuse; not in CI). One skill: make determinism SKILL=<name>
+	@command -v npx >/dev/null 2>&1 || { echo "determinism: npx (Node) is required"; exit 1; }
+	@[ -f "$(HOME)/.config/zsh/secrets" ] && . "$(HOME)/.config/zsh/secrets" 2>/dev/null || true; \
+	fail=0; ran=0; \
+	for cfg in skills/*/determinism.promptfooconfig.yaml; do \
+		[ -f "$$cfg" ] || continue; \
+		name="$$(basename "$$(dirname "$$cfg")")"; \
+		if [ -n "$(SKILL)" ] && [ "$(SKILL)" != "$$name" ]; then continue; fi; \
+		echo "=== determinism gate: $$name ==="; ran=1; \
+		npx -y promptfoo@latest eval -c "$$cfg" --no-cache || fail=1; \
+	done; \
+	[ "$$ran" = 1 ] || { echo "determinism: no config matched$(if $(SKILL), for SKILL=$(SKILL),)"; exit 1; }; \
+	[ "$$fail" = 0 ] || { echo "determinism gate FAILED"; exit 1; }; \
+	echo "determinism gate passed"
+
+mirror: ## Mirror skills/<name>/SKILL.md into Langfuse prompt-management (needs Langfuse + keys). One: make mirror SKILL=<name>
+	@bin/devflow skills mirror $(if $(SKILL),--name $(SKILL),)
 
 flows: ## Regenerate flow mini-plugins from canonical sources
 	@bash scripts/build-flows.sh

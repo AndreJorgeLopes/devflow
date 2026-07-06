@@ -11,7 +11,7 @@ prompts:
 providers:
   # run-skill.sh clears CLAUDECODE so the nested claude can launch (sdk#573).
   # Raw `exec: claude --print` refuses to start nested.
-  - id: 'exec: bash eval/lib/run-skill.sh'
+  - id: 'exec: bash eval-run.sh'
     label: review@head
 
 tests:

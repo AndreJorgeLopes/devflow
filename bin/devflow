@@ -34,6 +34,7 @@ source "${DEVFLOW_ROOT}/lib/release.sh"
 source "${DEVFLOW_ROOT}/lib/deps.sh"
 source "${DEVFLOW_ROOT}/lib/render-deps.sh"
 source "${DEVFLOW_ROOT}/lib/trace-review.sh"
+source "${DEVFLOW_ROOT}/lib/langfuse-mirror.sh"
 
 # Override devflow_root to use our resolved path
 devflow_root() { echo "$DEVFLOW_ROOT"; }

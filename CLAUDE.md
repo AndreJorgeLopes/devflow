@@ -108,6 +108,14 @@ computable work, on two axes: **offload** an AI decide/parse/score step to bash/
 (assert with promptfoo `is-json`/`regex`/no-fences on stdout). Leave genuinely-creative
 steps model-driven. The `determinize-skill` (proof-of-skill) automates this audit.
 
+Each converted skill carries a `skills/<name>/determinism.promptfooconfig.yaml` (dev-only, not
+shipped in the plugin). Run the gate with **`make determinism`** (all skills) or
+**`make determinism SKILL=<name>`** (one). It needs API keys (the skill-spawning configs) and a
+reachable Langfuse (trace-review), so it is deliberately NOT part of `make test` / CI. promptfoo
+runs each config's `exec:` provider from that config's own directory, so provider paths are
+config-dir-relative (`../../eval/lib/run-skill.sh` for the claude-spawning skills, a local
+`eval-run.sh` for trace-review). This is the loop's pre-edit regression gate.
+
 ## Hooks Architecture
 
 Hook scripts live in `lib/hooks/`, registered in `~/.claude/settings.json` via `devflow init` (step 5d).

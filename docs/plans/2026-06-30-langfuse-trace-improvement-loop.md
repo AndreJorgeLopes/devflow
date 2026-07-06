@@ -80,20 +80,23 @@ A command (and optional scheduled routine) that, per skill, compares **this week
 - Data source: Langfuse CLI / API (`/api/public/traces`, `/api/public/observations`, `/api/public/scores`) filtered by `skill.name` + time window.
 - Reuses devflow's report shape (cf. alert-report/daily-report agents).
 
-### (b) Auto-mirror skills → Langfuse prompt-management  ·  effort: M
+### (b) Auto-mirror skills → Langfuse prompt-management  ·  effort: M  ·  **STATUS: BUILT**
 A git hook / CI step: on commit to a `SKILL.md`, push its content as a new version of a Langfuse prompt named `skill/<name>` (label `production`).
 - Gives versioned history + diff in the Langfuse UI + a stable handle to link traces to a skill version.
 - **Caveat (from §2):** mirror only. CC does not fetch from here at runtime. Document loudly so nobody assumes editing the Langfuse prompt changes skill behavior.
 - Trace-linking: optionally stamp the skill version onto traces via a span attribute so the loop's "fetch the prompt linked to these traces" works.
+- **Built as `lib/langfuse-mirror.sh`** → `devflow skills mirror [--name <s>] [--dry-run]` / `make mirror [SKILL=<s>]`. Idempotent (a SKILL.md byte-identical to its latest Langfuse version is skipped, no version spam); loud mirror-only caveat in the header. The trace-linking span attribute (last bullet) + a CI/hook trigger on `main` are the remaining optional follow-ups; the command is safe to run manually today.
 
-### (c) Trace-derived datasets + eval regression gate  ·  effort: L
+### (c) Trace-derived datasets + eval regression gate  ·  effort: L  ·  **STATUS: DATA-BLOCKED, deferred**
 - Build Langfuse **datasets** from real failure traces (the annotated ones).
 - Run them through promptfoo (primary) and/or Langfuse evaluators; wire as a regression gate before a skill edit lands.
 - This is the langfuse blog's named "next step" — structured eval so prompt changes don't regress earlier cases.
+- **Deferred intentionally (verify-first / no-speculation):** the dataset source is *annotated failure traces*, and today there are **0 scores** and only 3/57 traces attributed. Building a dataset builder now would be untestable end-to-end (nothing to select). Unblocks once (a) has run for a week and failure runs have been score-annotated in the Langfuse UI. The promptfoo determinism gate (`make determinism`) already covers the deterministic-shape half of the regression gate in the meantime.
 
-### (d) Langfuse automations / webhooks — score-drop alerts  ·  effort: S
+### (d) Langfuse automations / webhooks — score-drop alerts  ·  effort: S  ·  **STATUS: DATA-BLOCKED, deferred**
 - Use the Langfuse **automations** page to trigger a webhook when a skill's score drops below threshold (→ Slack/notification).
 - Lowest priority; alerting layer on top of (a)-(c).
+- **Deferred intentionally:** a score-drop alert needs scores (0 today) AND a prior-week baseline (trace-review currently reports "no last-week baseline"). Nothing can fire yet. Revisit after a baseline week + first annotations exist; the trigger itself is a few lines of Langfuse-automation config at that point.
 
 ---
 
