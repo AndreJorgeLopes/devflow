@@ -1,10 +1,10 @@
 class Devflow < Formula
   desc "AI dev environment orchestrator — integrates Hindsight, Agent Deck, Worktrunk, Code Review, and Langfuse"
   homepage "https://github.com/AndreJorgeLopes/devflow"
-  url "https://github.com/AndreJorgeLopes/devflow/releases/download/v0.15.0/devflow-0.15.0.tar.gz"
-  version "0.15.0"
+  url "https://github.com/AndreJorgeLopes/devflow/releases/download/v0.15.1/devflow-0.15.1.tar.gz"
+  version "0.15.1"
   license "MIT"
-  sha256 "cc0d925300288bc9a0edacc622c80cb206c254c483cb4d9853f30408db3ba3ef" # Compute from release tarball: shasum -a 256 devflow-0.1.0.tar.gz
+  sha256 "677da08e7ffb5953b7dfe2dcf96fc3bf9b3960bc523f3ddc0be9bb7e6caa228a" # Compute from release tarball: shasum -a 256 devflow-0.1.0.tar.gz
 
   depends_on "git"
   depends_on "tmux"

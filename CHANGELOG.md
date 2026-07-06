@@ -1,3 +1,10 @@
+## v0.15.1 — 2026-07-06
+
+### Fixes
+- fix(resolve-repo): deterministic Repo Match Results block + gate-fidelity docs (#65)
+
+---
+
 ## v0.15.0 — 2026-07-05
 
 ### Features
