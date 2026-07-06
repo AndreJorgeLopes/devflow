@@ -96,13 +96,14 @@ You are speccing a new feature. This command enforces a structured planning proc
       ...
    ```
 
-   **Add an architecture diagram (optional but encouraged).** Unless the feature is trivial / non-architectural, generate a data-flow / architecture diagram for the feature via `/devflow:render-diagram`, saving the artefacts next to the spec in `docs/specs/` as `<feature-name>-architecture.excalidraw` + `.png` + `.svg`. Then:
-   - **Read the PNG with the Read tool** during the session so the user sees the diagram inline (a markdown embed only shows clickable text in the Claude app).
-   - **Embed it in the `## Architecture Impact` section** of the spec with a relative path:
+   **Add architecture diagrams (REQUIRED for any non-trivial feature — this is the devflow default).** Generate BOTH a technical and an ELI5 diagram via `/devflow:render-diagram` in its **ELI5 mode**, which emits two sources next to the spec in `docs/specs/`: `<feature-name>-architecture.excalidraw` (technical) and `<feature-name>-architecture-eli5.excalidraw` (plain-language, dual-labeled). Render both (`.png` + `.svg` alongside each). Then:
+   - **Read BOTH PNGs with the Read tool**, each in its OWN turn (one image per turn — batching an image Read with any other tool call suppresses the inline preview), so the user sees the technical view AND the plain-language view inline.
+   - **Embed both in the spec** with relative paths — the technical one in `## Architecture Impact`, the ELI5 one in a short `## Diagram (plain language)` section:
      ```markdown
      ![<feature> architecture](./<feature-name>-architecture.png "<Feature> architecture")
+     ![<feature> explained simply](./<feature-name>-architecture-eli5.png "<Feature> ELI5")
      ```
-   Skip gracefully (no diagram) if the feature is trivial or the render-diagram skill / its deps are unavailable.
+   Every non-trivial spec ships a rendered technical diagram AND an ELI5 diagram by default. Skip ONLY when the feature is genuinely trivial / non-architectural, or the render-diagram skill / its deps are unavailable — and when skipping, say so explicitly rather than silently omitting.
 
 5. **Break into tasks**. Convert the implementation plan into discrete, ordered tasks:
    - Each task should be completable in one session
