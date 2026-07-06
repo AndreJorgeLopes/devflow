@@ -1,3 +1,10 @@
+## v0.16.0 — 2026-07-06
+
+### Features
+- feat(trace-review): score column from both sources + init telemetry/price setup + adversarial-review fixes (#64)
+
+---
+
 ## v0.15.1 — 2026-07-06
 
 ### Fixes
