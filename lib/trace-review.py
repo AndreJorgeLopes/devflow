@@ -321,6 +321,8 @@ def _build_eval_scores(traces, scores_by_trace):
 # mix e.g. a binary promptfoo pass/fail with a graded tessl review, which yields a
 # meaningless mean). Prefer the varying quality signal; fall back deterministically.
 SCORE_PREFERENCE = ("tessl_review", "assert_pass")
+# Short column/flag labels per score type (the two split columns + any future type).
+SCORE_LABEL = {"tessl_review": "review", "assert_pass": "pass-rate"}
 
 
 def _preferred_mean(named_scores):
@@ -340,6 +342,18 @@ def _preferred_mean(named_scores):
     nm = sorted(by_name)[0]
     vals = by_name[nm]
     return sum(vals) / len(vals), len(vals), nm
+
+
+def _means_by_kind(named_scores):
+    """{name: {"mean": x, "n": k}} over [(name, value), ...], one entry per score type.
+
+    Unlike _preferred_mean (which collapses to a single type), this keeps every type so
+    the report can show tessl review and promptfoo pass-rate as SEPARATE columns, each
+    with its own trend."""
+    by_name = {}
+    for nm, v in named_scores:
+        by_name.setdefault(nm or "score", []).append(v)
+    return {nm: {"mean": sum(vals) / len(vals), "n": len(vals)} for nm, vals in by_name.items()}
 
 
 def _aggregate(traces, obs_by_trace, trace_skill, scores_by_trace, lo, hi, eval_scores_by_skill=None):
@@ -398,9 +412,10 @@ def _aggregate(traces, obs_by_trace, trace_skill, scores_by_trace, lo, hi, eval_
             "p95_latency": _pct(a["latencies"], 95),
             "cost": round(a["cost"], 6),
             "tokens": a["tokens"],
-            "mean_score": mean_score,
+            "mean_score": mean_score,       # primary (preferred type) - kept for compat
             "n_scores": n_scores,
             "score_kind": score_kind,
+            "scores_by_kind": _means_by_kind(named_scores),   # per-type, for the split columns
             "exemplar_trace": a["exemplar_error"] or a["exemplar_cost"],
         }
     return out
@@ -435,10 +450,15 @@ def _flag_regressions(this_m, last_m):
         er_now, er_prev = cur.get("error_rate", 0.0), prev.get("error_rate", 0.0)
         if cur.get("exec_total") and prev.get("exec_total") and (er_now - er_prev) >= ERR_RATE_UP_PP:
             flags.append(f"error rate +{(er_now - er_prev) * 100:.0f}pp ({er_prev * 100:.0f}%→{er_now * 100:.0f}%)")
-        # score down (absolute)
-        s_now, s_prev = cur.get("mean_score"), prev.get("mean_score")
-        if s_now is not None and s_prev is not None and (s_prev - s_now) >= SCORE_DOWN:
-            flags.append(f"score -{s_prev - s_now:.2f} ({s_prev:.2f}→{s_now:.2f})")
+        # score down (absolute), PER score type, so a graded tessl review drop and a
+        # promptfoo pass-rate drop are flagged separately (they are distinct columns)
+        cur_k, prev_k = cur.get("scores_by_kind") or {}, prev.get("scores_by_kind") or {}
+        for kind in sorted(set(cur_k) | set(prev_k)):
+            sn = (cur_k.get(kind) or {}).get("mean")
+            sp = (prev_k.get(kind) or {}).get("mean")
+            if sn is not None and sp is not None and (sp - sn) >= SCORE_DOWN:
+                lbl = SCORE_LABEL.get(kind, kind)
+                flags.append(f"{lbl} -{sp - sn:.2f} ({sp:.2f}→{sn:.2f})")
         # cost up (percent)
         c_now, c_prev = cur.get("cost", 0.0), prev.get("cost", 0.0)
         if c_prev > 0 and (c_now - c_prev) / c_prev >= COST_UP_PCT:
@@ -536,8 +556,19 @@ def render_markdown(doc):
         L.append("")
     L.append("## Per-skill")
     L.append("")
-    L.append("| Sev | Skill | Runs (last→this) | Error rate | p50/p95 latency | Cost | Mean score | Exemplar |")
-    L.append("|-----|-------|------------------|-----------|-----------------|------|-----------|----------|")
+    L.append("| Sev | Skill | Runs (last→this) | Error rate | p50/p95 latency | Cost | Review (tessl) | Pass-rate | Exemplar |")
+    L.append("|-----|-------|------------------|-----------|-----------------|------|---------------|-----------|----------|")
+
+    def _kind_cell(cur, prev, kind, pct=False):
+        # last→this for one score type, from each window's scores_by_kind
+        def f(m):
+            if m is None:
+                return "-"
+            return f"{m * 100:.0f}%" if pct else f"{m:.2f}"
+        cm = (cur.get("scores_by_kind") or {}).get(kind, {}).get("mean")
+        pm = (prev.get("scores_by_kind") or {}).get(kind, {}).get("mean")
+        return f"{f(pm)} → {f(cm)}"
+
     for r in rows:
         cur, prev = r["this"], r["last"]
         runs = f"{prev.get('count', 0)} → {cur.get('count', 0)}"
@@ -546,10 +577,11 @@ def render_markdown(doc):
             return f"{v:.1f}s" if isinstance(v, (int, float)) else "-"
         lat = f"{_lat(cur.get('p50_latency'))} / {_lat(cur.get('p95_latency'))}"
         cost = _fmt_metric(cur, prev, "cost", "cost")
-        sc = _fmt_metric(cur, prev, "mean_score", "score")
+        review = _kind_cell(cur, prev, "tessl_review")     # graded quality (0..1)
+        passrate = _kind_cell(cur, prev, "assert_pass", pct=True)  # promptfoo pass-rate
         ex = cur.get("exemplar_trace")
         ex_link = f"[trace]({doc['host']}/project/{doc['project_id']}/traces/{ex})" if ex else "-"
-        L.append(f"| {_sev_emoji(r['severity'])} {r['severity']} | `{r['skill']}` | {runs} | {er} | {lat} | {cost} | {sc} | {ex_link} |")
+        L.append(f"| {_sev_emoji(r['severity'])} {r['severity']} | `{r['skill']}` | {runs} | {er} | {lat} | {cost} | {review} | {passrate} | {ex_link} |")
     L.append("")
     if regressions:
         L.append("## TL;DR")

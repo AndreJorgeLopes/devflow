@@ -48,11 +48,11 @@ devflow trace-review run --output reports/trace-review-$(date -u +%F).md
 devflow trace-review run --window 14   # override rolling window (default 7 days)
 ```
 
-Window is **rolling**: this week = `now-7d..now`, last week = `now-14d..now-7d`. Balanced regression thresholds (overridable via `TRACE_REVIEW_*` env): error rate **+10pp**, mean score **-0.05**, cost **+25%**, p95 latency **+25%**. Error rate is counted **per tool execution** (failed `claude_code.tool.execution` spans over total), so one failed command in a long session is a small fraction, not 100%; permission rejects (`blocked_on_user`) are never errors. The engine excludes its own analysis-session noise by filtering `skill_name == devflow:trace-review` (set `TRACE_REVIEW_EXCLUDE_SESSION` to also drop a session id).
+Window is **rolling**: this week = `now-7d..now`, last week = `now-14d..now-7d`. Balanced regression thresholds (overridable via `TRACE_REVIEW_*` env): error rate **+10pp**, score **-0.05** (per type: tessl review and promptfoo pass-rate are separate columns, each flagged on its own drop), cost **+25%**, p95 latency **+25%**. Error rate is counted **per tool execution** (failed `claude_code.tool.execution` spans over total), so one failed command in a long session is a small fraction, not 100%; permission rejects (`blocked_on_user`) are never errors. The engine excludes its own analysis-session noise by filtering `skill_name == devflow:trace-review` (set `TRACE_REVIEW_EXCLUDE_SESSION` to also drop a session id).
 
 **Degraded data is normal, not a blocker.** Render the report anyway:
 - No prior week of traces → every skill shows `🆕 NEW`; the report says "baseline building". Do NOT declare the report impossible.
-- Zero scores → the score column shows `-`. Seed a varying quality signal with `eval/lib/tessl-push.sh <skill> <score-0-100>` (tessl review score) or `eval/lib/langfuse-push.sh <results.json> <skill>` (promptfoo). Do NOT omit the table.
+- Zero scores → the Review (tessl) and Pass-rate columns show `-`. Seed a varying quality signal with `eval/lib/tessl-push.sh <skill> <score-0-100>` (tessl review) or `eval/lib/langfuse-push.sh <results.json> <skill>` (promptfoo pass-rate); `eval/lib/eval-and-push.sh <skill>` does both. Do NOT omit the table.
 - Always present the severity-tagged per-skill table with exemplar trace links, even when nothing is flagged.
 
 ## Scheduling (provider-agnostic, extensible)
