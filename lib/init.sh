@@ -22,6 +22,173 @@ _inject_devflow_block() {
   fi
 }
 
+# _register_settings <mode> <settings_file> <root> [is_dev]
+# Idempotently register devflow config into ~/.claude/settings.json.
+#   mode=marketplace : add extraKnownMarketplaces.devflow-marketplace (always writes)
+#   mode=hooks       : add devflow hooks + telemetry env (writes only if something changed)
+#
+# Robust by construction — two guarantees that keep `devflow init` from ever corrupting or
+# aborting on the user's settings.json under `set -euo pipefail`:
+#   1. Atomic write: serialise to a temp file in the same directory, then os.replace() onto
+#      settings.json. A crash/interrupt mid-write can never leave a truncated live file.
+#   2. Malformed-input recovery: if the existing settings.json is not valid JSON, back it up
+#      (timestamped) and rebuild from an empty config with a loud WARN, instead of raising a
+#      traceback that would abort init at this section.
+#
+# Emits prefixed status lines (DEV:/USER:/Added/Skip/WARN:) for the caller's `case` to route.
+_register_settings() {
+  local mode="$1" settings_file="$2" root="$3" is_dev="${4:-false}"
+  python3 -c "
+import json, sys, os, shutil, tempfile, time
+
+mode = sys.argv[1]
+settings_path = sys.argv[2]
+root = sys.argv[3]
+is_dev = len(sys.argv) > 4 and sys.argv[4] == 'true'
+
+def load_settings(path):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except (json.JSONDecodeError, ValueError):
+        backup = path + '.corrupt-' + time.strftime('%Y%m%d%H%M%S') + '.bak'
+        try:
+            shutil.copy2(path, backup)
+            print('WARN: existing settings.json is not valid JSON; backed it up to '
+                  + backup + ' and rebuilt it from an empty config '
+                  + '(your previous settings are preserved in the backup)')
+        except OSError as e:
+            print('WARN: existing settings.json is not valid JSON and could not be '
+                  + 'backed up (' + str(e) + '); rebuilding from an empty config')
+        return {}
+
+def atomic_write(path, data):
+    directory = os.path.dirname(path) or '.'
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix='.settings-', suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(data, f, indent=2)
+            f.write('\n')
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+settings = load_settings(settings_path)
+
+if mode == 'marketplace':
+    extra = settings.setdefault('extraKnownMarketplaces', {})
+    if is_dev:
+        # Dev mode: local directory source — always prevails for contributors
+        extra['devflow-marketplace'] = {
+            'source': {'source': 'directory', 'path': root + '/devflow-plugin'},
+            'autoUpdate': True
+        }
+        print('DEV: devflow-marketplace configured with local directory source')
+    else:
+        # End user: GitHub source with auto-update
+        extra['devflow-marketplace'] = {
+            'source': {'source': 'github', 'repo': 'AndreJorgeLopes/devflow'},
+            'autoUpdate': True
+        }
+        print('USER: devflow-marketplace configured with GitHub source + auto-update')
+    atomic_write(settings_path, settings)
+
+elif mode == 'hooks':
+    hook_root = root
+    hooks = settings.setdefault('hooks', {})
+    changed = False
+
+    # Stop hook — finish-feature prompt
+    stop_hooks = hooks.setdefault('Stop', [])
+    stop_cmd = hook_root + '/lib/hooks/stop-finish-prompt.sh'
+    if not any('stop-finish-prompt' in str(entry) for entry in stop_hooks):
+        stop_hooks.append({'hooks': [{'type': 'command', 'command': stop_cmd}]})
+        changed = True
+        print('Added Stop hook: stop-finish-prompt')
+    else:
+        print('Skip: Stop hook already registered')
+
+    # UserPromptSubmit hook — fetch-rebase
+    ups_hooks = hooks.setdefault('UserPromptSubmit', [])
+    ups_cmd = hook_root + '/lib/hooks/prompt-fetch-rebase.sh'
+    if not any('prompt-fetch-rebase' in str(entry) for entry in ups_hooks):
+        ups_hooks.append({'hooks': [{'type': 'command', 'command': ups_cmd}]})
+        changed = True
+        print('Added UserPromptSubmit hook: prompt-fetch-rebase')
+    else:
+        print('Skip: UserPromptSubmit hook already registered')
+
+    # UserPromptSubmit hook — pending-reviews notification
+    ups_pending_cmd = hook_root + '/lib/hooks/pending-reviews-notify.sh'
+    if not any('pending-reviews-notify' in str(entry) for entry in ups_hooks):
+        ups_hooks.append({'hooks': [{'type': 'command', 'command': ups_pending_cmd}]})
+        changed = True
+        print('Added UserPromptSubmit hook: pending-reviews-notify')
+    else:
+        print('Skip: pending-reviews-notify hook already registered')
+
+    # PostToolUse hook — post-PR continuation prompt
+    ptu_hooks = hooks.setdefault('PostToolUse', [])
+    ptu_cmd = hook_root + '/lib/hooks/post-pr-continue.sh'
+    if not any('post-pr-continue' in str(entry) for entry in ptu_hooks):
+        ptu_hooks.append({'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': ptu_cmd}]})
+        changed = True
+        print('Added PostToolUse hook: post-pr-continue')
+    else:
+        print('Skip: PostToolUse hook already registered')
+
+    # PreToolUse hook (matcher: Skill) — trace-review attribution enrichment.
+    # Logs session_id+ts+skill to the sidecar so trace-review can attribute traces even
+    # when Claude Code emits no skill_name span. Forward-only (no effect on past traces).
+    pre_hooks = hooks.setdefault('PreToolUse', [])
+    pre_cmd = hook_root + '/lib/hooks/skill-activation-log.sh'
+    if not any('skill-activation-log' in str(entry) for entry in pre_hooks):
+        pre_hooks.append({'matcher': 'Skill', 'hooks': [{'type': 'command', 'command': pre_cmd}]})
+        changed = True
+        print('Added PreToolUse hook: skill-activation-log')
+    else:
+        print('Skip: skill-activation-log hook already registered')
+
+    # Claude Code OTel telemetry env — REQUIRED for trace-review to have ANY data.
+    # Without these Claude Code emits no traces, so the whole trace-review feature is inert.
+    # Points at the local devflow otel-collector (:4318); localhost-only, no external egress.
+    # Set only if absent (never clobber a user's existing value).
+    env = settings.setdefault('env', {})
+    telemetry_defaults = {
+        'CLAUDE_CODE_ENABLE_TELEMETRY': '1',
+        'CLAUDE_CODE_ENHANCED_TELEMETRY_BETA': '1',
+        'OTEL_TRACES_EXPORTER': 'otlp',
+        'OTEL_EXPORTER_OTLP_PROTOCOL': 'http/protobuf',
+        'OTEL_EXPORTER_OTLP_ENDPOINT': 'http://localhost:4318',
+        'OTEL_LOG_TOOL_DETAILS': '1',
+    }
+    # track which keys we actually inserted (never clobber an existing value)
+    inserted = []
+    for k, v in telemetry_defaults.items():
+        if k not in env:
+            env[k] = v
+            inserted.append(k)
+    if inserted:
+        changed = True
+        print('Added telemetry env: ' + ', '.join(inserted))
+    else:
+        print('Skip: telemetry env already set')
+
+    if changed:
+        atomic_write(settings_path, settings)
+
+else:
+    print('WARN: unknown settings mode: ' + mode)
+    sys.exit(1)
+" "$mode" "$settings_file" "$root" "$is_dev"
+}
+
 devflow_init() {
   local project_dir="${1:-$(pwd)}"
   project_dir="$(cd "$project_dir" && pwd)"
@@ -289,41 +456,11 @@ with open(config_path, 'r+') as f:
       devflow_is_dev=true
     fi
 
-    python3 -c "
-import json, sys
-
-settings_path = sys.argv[1]
-devflow_root = sys.argv[2]
-is_dev = sys.argv[3] == 'true'
-
-with open(settings_path) as f:
-    settings = json.load(f)
-
-extra = settings.setdefault('extraKnownMarketplaces', {})
-
-if is_dev:
-    # Dev mode: local directory source — always prevails for contributors
-    plugin_path = devflow_root + '/devflow-plugin'
-    extra['devflow-marketplace'] = {
-        'source': {'source': 'directory', 'path': plugin_path},
-        'autoUpdate': True
-    }
-    print('DEV: devflow-marketplace configured with local directory source')
-else:
-    # End user: GitHub source with auto-update
-    extra['devflow-marketplace'] = {
-        'source': {'source': 'github', 'repo': 'AndreJorgeLopes/devflow'},
-        'autoUpdate': True
-    }
-    print('USER: devflow-marketplace configured with GitHub source + auto-update')
-
-with open(settings_path, 'w') as f:
-    json.dump(settings, f, indent=2)
-    f.write('\n')
-" "$settings_file" "$root" "$devflow_is_dev" 2>&1 | while IFS= read -r line; do
+    _register_settings marketplace "$settings_file" "$root" "$devflow_is_dev" 2>&1 | while IFS= read -r line; do
       case "$line" in
         DEV:*)  ok "${line#DEV: }" ;;
         USER:*) ok "${line#USER: }" ;;
+        WARN:*) warn "${line#WARN: }" ;;
         *)      info "$line" ;;
       esac
     done
@@ -347,102 +484,11 @@ with open(settings_path, 'w') as f:
   section "Registering Claude Code hooks"
 
   if [[ -f "$settings_file" ]]; then
-    python3 -c "
-import json, sys
-
-settings_path = sys.argv[1]
-hook_root = sys.argv[2]
-
-with open(settings_path) as f:
-    settings = json.load(f)
-
-hooks = settings.setdefault('hooks', {})
-changed = False
-
-# Stop hook — finish-feature prompt
-stop_hooks = hooks.setdefault('Stop', [])
-stop_cmd = hook_root + '/lib/hooks/stop-finish-prompt.sh'
-if not any('stop-finish-prompt' in str(entry) for entry in stop_hooks):
-    stop_hooks.append({'hooks': [{'type': 'command', 'command': stop_cmd}]})
-    changed = True
-    print('Added Stop hook: stop-finish-prompt')
-else:
-    print('Skip: Stop hook already registered')
-
-# UserPromptSubmit hook — fetch-rebase
-ups_hooks = hooks.setdefault('UserPromptSubmit', [])
-ups_cmd = hook_root + '/lib/hooks/prompt-fetch-rebase.sh'
-if not any('prompt-fetch-rebase' in str(entry) for entry in ups_hooks):
-    ups_hooks.append({'hooks': [{'type': 'command', 'command': ups_cmd}]})
-    changed = True
-    print('Added UserPromptSubmit hook: prompt-fetch-rebase')
-else:
-    print('Skip: UserPromptSubmit hook already registered')
-
-# UserPromptSubmit hook — pending-reviews notification
-ups_pending_cmd = hook_root + '/lib/hooks/pending-reviews-notify.sh'
-if not any('pending-reviews-notify' in str(entry) for entry in ups_hooks):
-    ups_hooks.append({'hooks': [{'type': 'command', 'command': ups_pending_cmd}]})
-    changed = True
-    print('Added UserPromptSubmit hook: pending-reviews-notify')
-else:
-    print('Skip: pending-reviews-notify hook already registered')
-
-# PostToolUse hook — post-PR continuation prompt
-ptu_hooks = hooks.setdefault('PostToolUse', [])
-ptu_cmd = hook_root + '/lib/hooks/post-pr-continue.sh'
-if not any('post-pr-continue' in str(entry) for entry in ptu_hooks):
-    ptu_hooks.append({'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': ptu_cmd}]})
-    changed = True
-    print('Added PostToolUse hook: post-pr-continue')
-else:
-    print('Skip: PostToolUse hook already registered')
-
-# PreToolUse hook (matcher: Skill) — trace-review attribution enrichment.
-# Logs session_id+ts+skill to the sidecar so trace-review can attribute traces even
-# when Claude Code emits no skill_name span. Forward-only (no effect on past traces).
-pre_hooks = hooks.setdefault('PreToolUse', [])
-pre_cmd = hook_root + '/lib/hooks/skill-activation-log.sh'
-if not any('skill-activation-log' in str(entry) for entry in pre_hooks):
-    pre_hooks.append({'matcher': 'Skill', 'hooks': [{'type': 'command', 'command': pre_cmd}]})
-    changed = True
-    print('Added PreToolUse hook: skill-activation-log')
-else:
-    print('Skip: skill-activation-log hook already registered')
-
-# Claude Code OTel telemetry env — REQUIRED for trace-review to have ANY data.
-# Without these Claude Code emits no traces, so the whole trace-review feature is inert.
-# Points at the local devflow otel-collector (:4318); localhost-only, no external egress.
-# Set only if absent (never clobber a user's existing value).
-env = settings.setdefault('env', {})
-telemetry_defaults = {
-    'CLAUDE_CODE_ENABLE_TELEMETRY': '1',
-    'CLAUDE_CODE_ENHANCED_TELEMETRY_BETA': '1',
-    'OTEL_TRACES_EXPORTER': 'otlp',
-    'OTEL_EXPORTER_OTLP_PROTOCOL': 'http/protobuf',
-    'OTEL_EXPORTER_OTLP_ENDPOINT': 'http://localhost:4318',
-    'OTEL_LOG_TOOL_DETAILS': '1',
-}
-# track which keys we actually inserted (never clobber an existing value)
-inserted = []
-for k, v in telemetry_defaults.items():
-    if k not in env:
-        env[k] = v
-        inserted.append(k)
-if inserted:
-    changed = True
-    print('Added telemetry env: ' + ', '.join(inserted))
-else:
-    print('Skip: telemetry env already set')
-
-if changed:
-    with open(settings_path, 'w') as f:
-        json.dump(settings, f, indent=2)
-        f.write('\n')
-" "$settings_file" "$root" 2>&1 | while IFS= read -r line; do
+    _register_settings hooks "$settings_file" "$root" 2>&1 | while IFS= read -r line; do
       case "$line" in
         Added*) ok "$line" ;;
         Skip*)  skip "$line" ;;
+        WARN:*) warn "${line#WARN: }" ;;
         *)      info "$line" ;;
       esac
     done
