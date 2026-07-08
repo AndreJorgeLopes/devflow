@@ -276,13 +276,47 @@ EOF
   assert_output --partial "Homebrew"
 }
 
-@test "auto_reinstall_check respects dry-run" {
+@test "auto_reinstall_check respects dry-run (clean tree at origin/main -> would run)" {
   local proj="${BATS_TEST_TMPDIR}/reinstall-dryrun"
   mkdir -p "$proj/.devflow"
   echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
   echo '#!/bin/bash' > "${MOCK_DIR}/devflow"
   chmod +x "${MOCK_DIR}/devflow"
-  run _auto_reinstall_check "$proj" "new-sha-456" "" "1"
+  # clean git repo whose HEAD == the origin sha we pass, so the safety guard is satisfied
+  ( cd "$proj" && git init -q && git config user.email t@t && git config user.name t \
+    && git add -A && git commit -qm init )
+  local sha; sha="$(git -C "$proj" rev-parse HEAD)"
+  run _auto_reinstall_check "$proj" "$sha" "" "1"
   assert_success
   assert_output --partial "DRY RUN"
+  assert_output --partial "Would run make"
+}
+
+@test "auto_reinstall_check safety guard: skips (no stale install) when tree is dirty" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-dirty"
+  mkdir -p "$proj/.devflow"
+  echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
+  echo '#!/bin/bash' > "${MOCK_DIR}/devflow"
+  chmod +x "${MOCK_DIR}/devflow"
+  ( cd "$proj" && git init -q && git config user.email t@t && git config user.name t \
+    && git add -A && git commit -qm init )
+  local sha; sha="$(git -C "$proj" rev-parse HEAD)"
+  echo "uncommitted" > "$proj/dirty.txt"      # tree now dirty -> must NOT install
+  run _auto_reinstall_check "$proj" "$sha" "" "1"
+  assert_success
+  assert_output --partial "Would SKIP"
+  refute_output --partial "Would run make"
+}
+
+@test "auto_reinstall_check safety guard: skips when HEAD lags origin/main" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-lag"
+  mkdir -p "$proj/.devflow"
+  echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
+  echo '#!/bin/bash' > "${MOCK_DIR}/devflow"
+  chmod +x "${MOCK_DIR}/devflow"
+  ( cd "$proj" && git init -q && git config user.email t@t && git config user.name t \
+    && git add -A && git commit -qm init )
+  run _auto_reinstall_check "$proj" "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" "" "1"
+  assert_success
+  assert_output --partial "Would SKIP"
 }

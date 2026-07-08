@@ -287,6 +287,24 @@ _auto_reinstall_check() {
   local old_sha_short="${last_installed_sha:0:7}"
   local new_sha_short="${origin_sha:0:7}"
 
+  # Safety guard: only auto-reinstall from a working tree that is CLEAN and actually AT
+  # origin/main. `make install` copies the working tree (it does not pull), so installing
+  # from a dirty or lagging tree would ship stale content and then stamp origin_sha as
+  # "installed" - silent staleness. We never touch the user's tree (a reset could nuke real
+  # WIP); instead we skip + tell them to reconcile, so the next run installs cleanly.
+  local head_sha; head_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || echo "")"
+  local tree_dirty; tree_dirty="$(git -C "$project_dir" status --porcelain 2>/dev/null)"
+  if [[ "$head_sha" != "$origin_sha" || -n "$tree_dirty" ]]; then
+    local why="HEAD ${head_sha:0:7} != origin/main ${new_sha_short}"
+    [[ -n "$tree_dirty" ]] && why="working tree has uncommitted changes"
+    if [[ -n "$dry_run" ]]; then
+      echo "DRY RUN — Would SKIP make ${make_target} (${why}); reconcile ${project_dir} first"
+    else
+      _watch_notify "devflow auto-reinstall skipped: ${project_dir} not clean at origin/main (${why}). Reconcile it (git reset --hard origin/main if the changes are disposable), then: cd ${project_dir} && make ${make_target}" "$headless"
+    fi
+    return 0
+  fi
+
   if [[ -n "$dry_run" ]]; then
     echo "DRY RUN — Would run make ${make_target} (installed SHA: ${old_sha_short}, origin/main: ${new_sha_short})"
     return 0
