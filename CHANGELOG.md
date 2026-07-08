@@ -1,3 +1,10 @@
+## v0.17.2 — 2026-07-08
+
+### Fixes
+- fix(watch): hands-off, safe auto-reinstall (install from clean origin export) (#69)
+
+---
+
 ## v0.17.1 — 2026-07-08
 
 ### Fixes

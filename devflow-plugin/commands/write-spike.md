@@ -1,5 +1,5 @@
 ---
-description: [0.17.1] Use when starting a new initiative spike, investigating technical feasibility, assessing impact across services, or writing an engineering discovery document — produces a structured spike doc with diagrams and a private notes file.
+description: [0.17.2] Use when starting a new initiative spike, investigating technical feasibility, assessing impact across services, or writing an engineering discovery document — produces a structured spike doc with diagrams and a private notes file.
 ---
 
 # Write Spike

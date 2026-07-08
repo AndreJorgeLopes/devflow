@@ -1,7 +1,7 @@
 PREFIX ?= $(HOME)/.local
 BINDIR := $(PREFIX)/bin
 LIBDIR := $(PREFIX)/share/devflow
-VERSION := 0.17.1
+VERSION := 0.17.2
 TARBALL := devflow-$(VERSION).tar.gz
 
 .PHONY: install uninstall link test test-unit brew-local release help plugin-dev plugin-unlink plugin-install check-version check-formula version-bump flows flows-check skills-sync skills-check skills-guard determinism mirror
