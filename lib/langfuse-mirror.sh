@@ -37,6 +37,14 @@ langfuse_mirror() {
   fi
   command -v jq >/dev/null 2>&1 || { echo "langfuse-mirror: jq is required" >&2; return 1; }
 
+  # Reachability guard: skip cleanly (success) when Langfuse is down, so a post-merge hook or
+  # any automated caller is a safe no-op rather than a failure. Langfuse is local-only, so this
+  # is expected to be a no-op off the dev machine (it can never run in GitHub CI).
+  if ! curl -sf -o /dev/null --max-time 3 "${host}/api/public/health" 2>/dev/null; then
+    echo "langfuse-mirror: ${host} unreachable — skipping (start Langfuse to mirror)."
+    return 0
+  fi
+
   local root; root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   local src_dir="${root}/skills"
   local sha; sha="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo unknown)"

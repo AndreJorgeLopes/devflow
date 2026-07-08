@@ -132,6 +132,13 @@ not an LLM), so its gate is a hard gate; the AI-judgment gates are as reliable a
 adherence — assert robustly-present surfaces (final answer block, required tokens, forbidden
 patterns), not compressible intermediate prose.
 
+**Langfuse skill mirror (`make mirror` / `bin/devflow skills mirror`):** pushes each
+`skills/<name>/SKILL.md` to Langfuse prompt-management as `skill/<name>` for versioned history
++ diff (a MIRROR only — Claude Code never reads skills back from Langfuse). It is **local-only**
+(targets `localhost:3100`) so it can never run in GitHub CI; instead `devflow watch setup` wires
+it into the local `.git/hooks/post-merge` for the devflow repo, so it refreshes on pull to main.
+`make mirror` is reachability-guarded: a clean no-op when Langfuse is down.
+
 ## Hooks Architecture
 
 Hook scripts live in `lib/hooks/`, registered in `~/.claude/settings.json` via `devflow init` (step 5d).
