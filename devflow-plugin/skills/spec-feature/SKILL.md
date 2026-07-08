@@ -123,7 +123,7 @@ You are speccing a new feature. This command enforces a structured planning proc
    - `--phase spec`
    - `--next-phase plan`
 
-   The handoff skill writes a frozen-state file at `.devflow/state/<branch>/spec.md`, gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Plan` (visible in the sidebar). The spawned session's initial prompt points it at the frozen-state file + spec absolute path and instructs it to invoke `/devflow:writing-plans` (the devflow plugin exposes that as a slash command).
+   The handoff skill commits the spec doc to the branch (durable across worktree removal; the local `.devflow/state/<branch>/spec.md` frozen-state file is NOT committed), gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Plan` (visible in the sidebar). That spawned session starts cold in a fresh throwaway worktree (NOT on the feature branch — `spawn_task` always forks off the default branch); its initial prompt leads with `/devflow:writing-plans` and embeds the self-contained `devflow handoff context` block (feature branch/worktree + relative spec path + recovery commands) that the wrapper's Step 0 consumes to re-establish the feature worktree before reading the spec.
 
    Do NOT auto-invoke `writing-plans` from this skill — context cleanup is the explicit boundary.
 
