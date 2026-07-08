@@ -1,5 +1,5 @@
 ---
-description: [0.16.1] Mark a devflow task as done — update status, move to done/ folder, and retain learnings.
+description: [0.17.0] Mark a devflow task as done — update status, move to done/ folder, and retain learnings.
 ---
 
 You are completing a task from the devflow task backlog. This skill handles the lifecycle transition from in-progress/open to done.

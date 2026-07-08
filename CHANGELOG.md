@@ -1,3 +1,10 @@
+## v0.17.0 — 2026-07-08
+
+### Features
+- feat(trace-review): split score into two columns - tessl review + promptfoo pass-rate (#67)
+
+---
+
 ## v0.16.1 — 2026-07-08
 
 ### Fixes
