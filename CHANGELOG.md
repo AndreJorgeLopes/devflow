@@ -1,3 +1,10 @@
+## v0.17.3 — 2026-07-08
+
+### Fixes
+- fix(eval): determinism gate tests the working tree + local mirror auto-refresh (#70)
+
+---
+
 ## v0.17.2 — 2026-07-08
 
 ### Fixes
