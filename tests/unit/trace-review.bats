@@ -118,15 +118,16 @@ print('OK')
   assert_output --partial 'OK'
 }
 
-@test "engine flags score down beyond -0.05" {
+@test "engine flags score down beyond -0.05 (labeled per score type)" {
   run python3 -c "
 import importlib.util, os
 spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-this = {'s': {'count': 10, 'exec_total': 10, 'error_rate': 0.0, 'cost': 1.0, 'p95_latency': 1.0, 'mean_score': 0.70}}
-last = {'s': {'count': 10, 'exec_total': 10, 'error_rate': 0.0, 'cost': 1.0, 'p95_latency': 1.0, 'mean_score': 0.90}}
+# _flag_regressions now reads scores_by_kind (per type), and labels the flag (tessl_review -> 'review')
+this = {'s': {'count': 10, 'exec_total': 10, 'error_rate': 0.0, 'cost': 1.0, 'p95_latency': 1.0, 'scores_by_kind': {'tessl_review': {'mean': 0.70, 'n': 1}}}}
+last = {'s': {'count': 10, 'exec_total': 10, 'error_rate': 0.0, 'cost': 1.0, 'p95_latency': 1.0, 'scores_by_kind': {'tessl_review': {'mean': 0.90, 'n': 1}}}}
 r = m._flag_regressions(this, last)[0]
-assert any('score -0.20' in f for f in r['flags']), r['flags']
+assert any('review -0.20' in f for f in r['flags']), r['flags']
 print('OK')
 "
   assert_success
@@ -417,7 +418,7 @@ last_m = m._aggregate(traces, {}, trace_skill, {}, last_lo, this_lo,  eval_score
 assert this_m['create-skill']['mean_score'] == 0.80, this_m
 assert last_m['create-skill']['mean_score'] == 0.95, last_m
 r = m._flag_regressions(this_m, last_m)[0]
-assert any('score -0.15' in f for f in r['flags']), r['flags']   # the drop the column exists to catch
+assert any('review -0.15' in f for f in r['flags']), r['flags']   # tessl_review drop, labeled 'review'
 assert r['severity'] == 'HIGH', r['severity']
 print('OK')
 "
@@ -461,6 +462,40 @@ agg = m._aggregate(traces, {}, trace_skill, {}, lo, hi, eval_scores)
 assert agg['create-skill']['mean_score'] == 0.80, agg          # tessl only, NOT (0.8+1.0)/2
 assert agg['create-skill']['score_kind'] == 'tessl_review', agg
 assert agg['create-skill']['n_scores'] == 1, agg
+print('OK')
+"
+  assert_success
+  assert_output --partial 'OK'
+}
+
+@test "two columns: tessl and pass-rate tracked separately, each flags its own drop" {
+  run python3 -c "
+import importlib.util, os
+from datetime import datetime, timezone
+spec = importlib.util.spec_from_file_location('tr', os.environ['ENGINE'])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+last_lo = datetime(2026,1,1,tzinfo=timezone.utc); this_lo = datetime(2026,1,8,tzinfo=timezone.utc)
+now = datetime(2026,1,15,tzinfo=timezone.utc)
+traces = [
+  {'id': 'tL', 'timestamp': '2026-01-03T00:00:00Z', 'totalCost': 1.0, 'latency': 2.0},
+  {'id': 'tT', 'timestamp': '2026-01-10T00:00:00Z', 'totalCost': 1.0, 'latency': 2.0},
+]
+trace_skill = {'tL': 'create-skill', 'tT': 'create-skill'}
+# both score types present in both windows; tessl drops 0.90->0.80, pass-rate drops 1.0->0.60
+eval_scores = {'create-skill': [
+  (m._parse_ts('2026-01-04T00:00:00Z'), 'tessl_review', 0.90),
+  (m._parse_ts('2026-01-04T00:00:00Z'), 'assert_pass', 1.00),
+  (m._parse_ts('2026-01-11T00:00:00Z'), 'tessl_review', 0.80),
+  (m._parse_ts('2026-01-11T00:00:00Z'), 'assert_pass', 0.60),
+]}
+this_m = m._aggregate(traces, {}, trace_skill, {}, this_lo, now,     eval_scores)
+last_m = m._aggregate(traces, {}, trace_skill, {}, last_lo, this_lo, eval_scores)
+# both kinds kept separately, not merged
+sk = this_m['create-skill']['scores_by_kind']
+assert round(sk['tessl_review']['mean'],2) == 0.80 and round(sk['assert_pass']['mean'],2) == 0.60, sk
+r = m._flag_regressions(this_m, last_m)[0]
+assert any('review -0.10' in f for f in r['flags']), r['flags']
+assert any('pass-rate -0.40' in f for f in r['flags']), r['flags']
 print('OK')
 "
   assert_success

@@ -21,7 +21,7 @@ future maintainers can reason about the contract without reading the engine.
 - 🔴 **<skill>** - <flag>; <flag>
 
 ## Per-skill
-| Sev | Skill | Runs (last→this) | Error rate | p95 latency | Cost | Mean score | Exemplar |
+| Sev | Skill | Runs (last→this) | Error rate | p95 latency | Cost | Review (tessl) | Pass-rate | Exemplar |
 ...one row per skill, ordered CRITICAL→HIGH→NEW→OK→GONE, then cost desc...
 
 ## TL;DR
@@ -43,7 +43,7 @@ future maintainers can reason about the contract without reading the engine.
 | Metric | Flags when | Env override |
 |---|---|---|
 | error rate | up ≥ 10 percentage points (per tool execution) | `TRACE_REVIEW_ERR_RATE_UP_PP` |
-| mean score | down ≥ 0.05 absolute | `TRACE_REVIEW_SCORE_DOWN` |
+| score (per type: review / pass-rate) | down ≥ 0.05 absolute, flagged separately per type | `TRACE_REVIEW_SCORE_DOWN` |
 | cost | up ≥ 25% | `TRACE_REVIEW_COST_UP_PCT` |
 | p95 latency | up ≥ 25% | `TRACE_REVIEW_LAT_UP_PCT` |
 | window | rolling 7 days | `TRACE_REVIEW_WINDOW_DAYS` |
