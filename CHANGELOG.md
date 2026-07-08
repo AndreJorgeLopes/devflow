@@ -1,3 +1,10 @@
+## v0.17.1 — 2026-07-08
+
+### Fixes
+- fix(phase-handoff): make cross-session handoff durable + self-recovering (#68)
+
+---
+
 ## v0.17.0 — 2026-07-08
 
 ### Features
