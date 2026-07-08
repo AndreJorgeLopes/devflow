@@ -88,3 +88,23 @@ teardown() {
   assert_output --partial "Skip"
   refute_output --partial "Added"
 }
+
+# ── make install: symlink-safe (regression for the write-through-symlink bug) ──
+
+@test "make install replaces a leftover 'make link' symlink instead of writing through it" {
+  local prefix="${BATS_TEST_TMPDIR}/prefix"
+  mkdir -p "$prefix/bin"
+  # sentinel standing in for the source bin/devflow a leftover symlink would point at
+  local sentinel="${BATS_TEST_TMPDIR}/source-bin-devflow"
+  printf 'FULL SOURCE SCRIPT — must not be overwritten\n' > "$sentinel"
+  ln -sf "$sentinel" "$prefix/bin/devflow"        # leftover `make link` symlink
+
+  run make -C "$DEVFLOW_ROOT" install PREFIX="$prefix"
+  assert_success
+
+  # BINDIR/devflow must be a REAL launcher now, not the symlink...
+  [ ! -L "$prefix/bin/devflow" ] || fail "BINDIR/devflow is still a symlink (wrote through it)"
+  # ...and the symlink target (stand-in for the source checkout) must be UNTOUCHED
+  run cat "$sentinel"
+  assert_output --partial "FULL SOURCE SCRIPT"
+}
