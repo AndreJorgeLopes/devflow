@@ -276,13 +276,44 @@ EOF
   assert_output --partial "Homebrew"
 }
 
-@test "auto_reinstall_check respects dry-run" {
-  local proj="${BATS_TEST_TMPDIR}/reinstall-dryrun"
+@test "auto_reinstall_check install mode: dry-run installs from a clean origin export" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-install"
+  mkdir -p "$proj/.devflow"
+  echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
+  echo '#!/bin/bash' > "${MOCK_DIR}/devflow"      # regular file -> install (copy) mode
+  chmod +x "${MOCK_DIR}/devflow"
+  run _auto_reinstall_check "$proj" "new-sha-789" "" "1"
+  assert_success
+  assert_output --partial "clean export of origin/main"
+}
+
+@test "auto_reinstall_check install mode: a DIRTY source tree still installs (export ignores it, no staleness)" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-install-dirty"
   mkdir -p "$proj/.devflow"
   echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
   echo '#!/bin/bash' > "${MOCK_DIR}/devflow"
   chmod +x "${MOCK_DIR}/devflow"
-  run _auto_reinstall_check "$proj" "new-sha-456" "" "1"
+  ( cd "$proj" && git init -q && git config user.email t@t && git config user.name t \
+    && git add -A && git commit -qm init )
+  echo "uncommitted junk" > "$proj/dirty.txt"     # dirty tree must NOT block or taint install
+  run _auto_reinstall_check "$proj" "new-sha-789" "" "1"
   assert_success
-  assert_output --partial "DRY RUN"
+  assert_output --partial "clean export of origin/main"   # installs from origin, not the dirty tree
+  refute_output --partial "SKIP"
+}
+
+@test "auto_reinstall_check link mode: skips when tree is dirty (symlink can't be decoupled)" {
+  local proj="${BATS_TEST_TMPDIR}/reinstall-link-dirty"
+  mkdir -p "$proj/.devflow"
+  echo "auto_reinstall=true" > "$proj/.devflow/.dev-setup"
+  # symlink -> link (dev) mode; target is a plain file (not a brew path)
+  echo '#!/bin/bash' > "${proj}/devflow-real"; chmod +x "${proj}/devflow-real"
+  ln -sf "${proj}/devflow-real" "${MOCK_DIR}/devflow"
+  ( cd "$proj" && git init -q && git config user.email t@t && git config user.name t \
+    && git add -A && git commit -qm init )
+  local sha; sha="$(git -C "$proj" rev-parse HEAD)"
+  echo "uncommitted" > "$proj/dirty.txt"          # dirty -> link mode skips + notifies
+  run _auto_reinstall_check "$proj" "$sha" "" "1"
+  assert_success
+  assert_output --partial "Would SKIP make link"
 }
