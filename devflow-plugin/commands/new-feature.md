@@ -73,7 +73,7 @@ You have been launched inside a feature worktree. Your job is to orient yourself
    ```
    brainstorming → spec-feature → writing-plans → lock-tests → executing-plans → finish-feature
    ```
-   Each phase ends with `devflow:phase-handoff` (writes a frozen-state file, gates via one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] <Phase>`). The spawned session starts cold; its initial prompt hands it absolute paths to the frozen-state file + spec + plan + test inventory as the only authoritative inputs.
+   The spec → plan → lock-tests → impl boundaries each end with `devflow:phase-handoff` (commits the artefact docs to the branch, gates via one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] <Phase>`). The spawned session starts cold in a fresh throwaway worktree; its initial prompt embeds a self-contained `devflow handoff context` block (feature branch/worktree + relative artefact paths + recovery commands) that the next-phase wrapper's Step 0 consumes to re-establish the feature worktree, then reads spec + plan + test inventory as the only authoritative inputs. (Brainstorming → spec-feature is the exception: it stays in the same session, no spawn.)
 
 ## Important
 

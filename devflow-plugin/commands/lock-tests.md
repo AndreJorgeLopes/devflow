@@ -6,6 +6,38 @@ description: [0.17.0] Lock the full test inventory before any implementation cod
 
 You are at the test-locking phase of devflow's new-feature pipeline. Your job is to write the full failing-test inventory from the locked spec + plan + AC, then gate on user approval before any production code is written.
 
+## Step 0 — Re-establish the feature worktree (do this before Phase 0)
+
+This phase is normally reached via `devflow:phase-handoff`, which forks a FRESH throwaway worktree that is NOT on the feature branch (`spawn_task` always forks off the default branch; there is no way to pin it). Move to the real feature worktree first, using the `devflow handoff context` block in the message that invoked this skill.
+
+1. Parse from that block: `Feature worktree`, `Feature branch`, `Main repo (shared .git)`. If no such block is present (skill invoked manually, not via a handoff), skip Step 0 — you are already in the right place.
+
+2. Ensure the feature worktree exists on the feature branch, then make it your working directory:
+   ```bash
+   feature_wt="<Feature worktree>"
+   feature_branch="<Feature branch>"
+   main_repo="<Main repo>"
+
+   git -C "$main_repo" worktree prune   # clear stale registrations (a worktree dir deleted with rm -rf)
+   # Validity check, not mere existence: recreate unless we can cd in AND are already on the feature branch.
+   # (`[ -d ]` alone would skip recovery for a stale non-worktree dir or a detached/wrong-branch checkout.)
+   if ! ( cd "$feature_wt" 2>/dev/null && [ "$(git branch --show-current 2>/dev/null)" = "$feature_branch" ] ); then
+     git -C "$main_repo" worktree add "$feature_wt" "$feature_branch" 2>/dev/null || {
+       # path occupied, or branch already checked out elsewhere — reuse that existing checkout.
+       # Strip the leading `worktree ` token (not awk $2) so worktree paths containing spaces survive.
+       existing="$(git -C "$main_repo" worktree list --porcelain | awk -v b="refs/heads/$feature_branch" '
+         /^worktree /{ $1=""; sub(/^ /,""); w=$0 } /^branch /{ if ($2==b) print w }')"
+       [ -n "$existing" ] && feature_wt="$existing"
+     }
+   fi
+   cd "$feature_wt"
+
+   on="$(git branch --show-current)"
+   [ "$on" = "$feature_branch" ] || { echo "WORKTREE RECOVERY FAILED: in '$on', expected '$feature_branch' at $feature_wt"; exit 1; }
+   ```
+
+3. Every later step — Phase 0's artefact reads, writing the test files + Test Inventory, `git` commits, the terminal `phase-handoff` — runs in `$feature_wt`. The Read/Edit tools need an ABSOLUTE path: open each artefact as `$feature_wt/<relative-path-from-the-block>`. If the worktree could not be recreated, read any committed artefact with `git -C "$main_repo" show "$feature_branch:<rel-path>"`. Never write into the throwaway spawn worktree — it is an orphan the user prunes separately.
+
 ## Phase 0 — Read artefacts
 
 1. **Detect ticket + branch:**
@@ -30,7 +62,7 @@ You are at the test-locking phase of devflow's new-feature pipeline. Your job is
 
 4. **Read the frozen-state file** from the previous phase:
    `.devflow/state/${branch_slug}/plan.md`
-   Treat its "Source-of-truth artefacts" list as the only authoritative inputs.
+   Treat its "Source-of-truth artefacts" list as the only authoritative inputs. (phase-handoff commits this file to the branch, so it is present after Step 0. If it is somehow missing, fall back to the `devflow handoff context` block from the invoking message — that block carries the same artefact paths + locked decisions — or `git -C "$main_repo" show "$feature_branch:.devflow/state/${branch_slug}/plan.md"`.)
 
 5. **Locate inputs from the frozen-state file.** The frozen-state file's "Source-of-truth artefacts" section lists the exact paths to:
    - Spec (e.g. `docs/specs/my-feature.md`)
@@ -155,7 +187,7 @@ Use `AskUserQuestion` with:
 
 ## Phase 2 — GREEN (delegated)
 
-After approval, invoke `devflow:phase-handoff --phase lock-tests --next-phase impl`. The handoff skill writes the frozen-state file, gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Implementation` (visible in the sidebar). The spawned session starts cold; its initial prompt leads with the slash-command invocation `/devflow:executing-plans` (devflow's wrapper around the upstream executing-plans skill — guarantees the post-implementation handoff goes to `/devflow:finish-feature`) and hands it absolute paths to the frozen-state file plus the locked test inventory, which drives per-task red/green against the tests already locked in this phase.
+After approval, invoke `devflow:phase-handoff --phase lock-tests --next-phase impl`. The handoff skill commits the artefact docs to the branch, gates on a one-click `AskUserQuestion`, then spawns a new Claude Desktop session via `mcp__ccd_session__spawn_task` titled `[<TICKET>] [MR#<N>] Implementation` (visible in the sidebar). The spawned session starts cold in a fresh throwaway worktree; its initial prompt leads with the slash-command invocation `/devflow:executing-plans` (devflow's wrapper around the upstream executing-plans skill — guarantees the post-implementation handoff goes to `/devflow:finish-feature`) and embeds the self-contained `devflow handoff context` block (feature branch/worktree + relative artefact paths + worktree-recovery commands) that the wrapper's Step 0 consumes to re-establish the feature worktree before driving per-task red/green against the tests locked in this phase.
 
 ## Phase 3 — REFACTOR (delegated)
 

@@ -7,6 +7,38 @@ You are the devflow wrapper for the upstream executing-plans workflow. The wrapp
 1. **Forced finish-feature handoff.** Upstream `executing-plans` natively chains to `superpowers:finishing-a-development-branch` after the last task. Devflow has its own `/devflow:finish-feature` flow that runs verification, creates a PR/MR via devflow's VCS-coherent logic, and retains learnings to Hindsight. This wrapper intercepts the terminal handoff so the devflow finish flow runs instead.
 2. **Single canonical entry point.** All devflow callers (`lock-tests.md` Phase 2, `phase-handoff.md`'s impl-phase invocation, the resume prompt in a spawned implementation session) invoke `/devflow:executing-plans` instead of `/executing-plans` or `superpowers:executing-plans`. If the upstream skill is renamed/moved/replaced, only this wrapper updates.
 
+## Step 0 — Re-establish the feature worktree (do this before Phase 0)
+
+This phase is normally reached via `devflow:phase-handoff`, which forks a FRESH throwaway worktree that is NOT on the feature branch (`spawn_task` always forks off the default branch; there is no way to pin it). The implementation phase WRITES production code and commits it, so landing on the wrong branch is especially damaging. Move to the real feature worktree before delegating upstream, using the `devflow handoff context` block in the message that invoked this skill.
+
+1. Parse from that block: `Feature worktree`, `Feature branch`, `Main repo (shared .git)`. If no such block is present (skill invoked manually, not via a handoff), skip Step 0 — you are already in the right place.
+
+2. Ensure the feature worktree exists on the feature branch, then make it your working directory:
+   ```bash
+   feature_wt="<Feature worktree>"
+   feature_branch="<Feature branch>"
+   main_repo="<Main repo>"
+
+   git -C "$main_repo" worktree prune   # clear stale registrations (a worktree dir deleted with rm -rf)
+   # Validity check, not mere existence: recreate unless we can cd in AND are already on the feature branch.
+   # (`[ -d ]` alone would skip recovery for a stale non-worktree dir or a detached/wrong-branch checkout.)
+   if ! ( cd "$feature_wt" 2>/dev/null && [ "$(git branch --show-current 2>/dev/null)" = "$feature_branch" ] ); then
+     git -C "$main_repo" worktree add "$feature_wt" "$feature_branch" 2>/dev/null || {
+       # path occupied, or branch already checked out elsewhere — reuse that existing checkout.
+       # Strip the leading `worktree ` token (not awk $2) so worktree paths containing spaces survive.
+       existing="$(git -C "$main_repo" worktree list --porcelain | awk -v b="refs/heads/$feature_branch" '
+         /^worktree /{ $1=""; sub(/^ /,""); w=$0 } /^branch /{ if ($2==b) print w }')"
+       [ -n "$existing" ] && feature_wt="$existing"
+     }
+   fi
+   cd "$feature_wt"
+
+   on="$(git branch --show-current)"
+   [ "$on" = "$feature_branch" ] || { echo "WORKTREE RECOVERY FAILED: in '$on', expected '$feature_branch' at $feature_wt"; exit 1; }
+   ```
+
+3. The upstream skill (Phase 1) and every commit it makes run in `$feature_wt`. Pass the handoff context through to it. The Read/Edit tools need an ABSOLUTE path: open each artefact as `$feature_wt/<relative-path-from-the-block>` (fallback if the worktree could not be recreated: `git -C "$main_repo" show "$feature_branch:<rel-path>"`). Never write into the throwaway spawn worktree — it is an orphan the user prunes separately.
+
 ## Phase 0 — Locate the upstream skill
 
 1. Try invoking `superpowers:executing-plans` via the Skill tool. If it loads, proceed to Phase 1.
