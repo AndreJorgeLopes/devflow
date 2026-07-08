@@ -49,18 +49,31 @@ if [[ ! -f "$src_cmd" ]]; then
   exit 2
 fi
 
-work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
-mkdir -p "$work/.claude/commands" "$work/.claude/skills"
-cp "$src_cmd" "$work/.claude/commands/${name}.md"
+# Stage the LOCAL skill as a PROJECT command in the repo root and run claude FROM the repo root,
+# so context-dependent skills (review needs a working-tree diff, create-pr needs commits,
+# lock-tests needs the plan) still see real repo context — while `/<name>` resolves to the
+# working-tree copy, not an installed `/devflow:<name>`. A temp/empty dir would strip that
+# context and the skill would report "nothing to do". We back up any colliding project file and
+# restore it on exit, so the working tree is left exactly as found.
+cmd_dst="${ROOT}/.claude/commands/${name}.md"
+skl_dst="${ROOT}/.claude/skills/${name}"
+bk="$(mktemp -d)"
+_restore() {
+  [[ -e "${bk}/cmd" ]] && mv "${bk}/cmd" "$cmd_dst" || rm -f "$cmd_dst"
+  [[ -e "${bk}/skl" ]] && { rm -rf "$skl_dst"; mv "${bk}/skl" "$skl_dst"; } || rm -rf "$skl_dst"
+  rmdir "${ROOT}/.claude/commands" "${ROOT}/.claude/skills" "${ROOT}/.claude" 2>/dev/null || true
+  rm -rf "$bk"
+}
+trap _restore EXIT
+mkdir -p "${ROOT}/.claude/commands" "${ROOT}/.claude/skills"
+[[ -e "$cmd_dst" ]] && cp -R "$cmd_dst" "${bk}/cmd"
+[[ -e "$skl_dst" ]] && cp -R "$skl_dst" "${bk}/skl"
+cp "$src_cmd" "$cmd_dst"
 if [[ -d "${ROOT}/skills/${name}" ]]; then
-  cp -R "${ROOT}/skills/${name}" "$work/.claude/skills/${name}"
-  # Drop dev-only files that must not ship / are irrelevant to execution.
-  rm -f "$work/.claude/skills/${name}/determinism.promptfooconfig.yaml" \
-        "$work/.claude/skills/${name}/eval-run.sh"
+  rm -rf "$skl_dst"; cp -R "${ROOT}/skills/${name}" "$skl_dst"
+  rm -f "${skl_dst}/determinism.promptfooconfig.yaml" "${skl_dst}/eval-run.sh"
 fi
 
-# Invoke the LOCAL skill as a project command from the staged dir.
-cd "$work"
+cd "$ROOT"
 env CLAUDECODE="" timeout "$TIMEOUT" \
   claude --model "$MODEL" --print "/${name}${args:+ $args}"

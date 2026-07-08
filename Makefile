@@ -73,7 +73,7 @@ determinism: ## Run the promptfoo determinism gate on the WORKING-TREE skills (n
 		name="$$(basename "$$(dirname "$$cfg")")"; \
 		if [ -n "$(SKILL)" ] && [ "$(SKILL)" != "$$name" ]; then continue; fi; \
 		echo "=== determinism gate: $$name ==="; ran=1; \
-		npx -y promptfoo@latest eval -c "$$cfg" --no-cache || fail=1; \
+		npx -y promptfoo@latest eval -c "$$cfg" --no-cache -j 1 || fail=1; \
 	done; \
 	[ "$$ran" = 1 ] || { echo "determinism: no config matched$(if $(SKILL), for SKILL=$(SKILL),)"; exit 1; }; \
 	[ "$$fail" = 0 ] || { echo "determinism gate FAILED"; exit 1; }; \
