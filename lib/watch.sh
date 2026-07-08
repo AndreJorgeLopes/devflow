@@ -283,47 +283,69 @@ _auto_reinstall_check() {
     none)    return 0 ;;
   esac
 
-  # Dry-run support
   local old_sha_short="${last_installed_sha:0:7}"
   local new_sha_short="${origin_sha:0:7}"
 
-  # Safety guard: only auto-reinstall from a working tree that is CLEAN and actually AT
-  # origin/main. `make install` copies the working tree (it does not pull), so installing
-  # from a dirty or lagging tree would ship stale content and then stamp origin_sha as
-  # "installed" - silent staleness. We never touch the user's tree (a reset could nuke real
-  # WIP); instead we skip + tell them to reconcile, so the next run installs cleanly.
+  # ── install (copy) mode: install from a CLEAN EXPORT of origin_sha ──────────────
+  # `git archive` extracts the exact origin/main tree into a temp dir and we `make install`
+  # from THERE. This never reads the source working tree and never pulls it, so a dirty or
+  # stale checkout can neither corrupt the install (the old silent-staleness bug) nor have
+  # its local WIP clobbered by a reset. This is what makes auto-update genuinely hands-off:
+  # a fresh origin/main lands on the machine with no manual reconcile. origin_sha is already
+  # a fetched object (the watch flow fetches origin before computing it).
+  if [[ "$make_target" == "install" ]]; then
+    if [[ -n "$dry_run" ]]; then
+      echo "DRY RUN — Would install from a clean export of origin/main ${new_sha_short} (installed: ${old_sha_short})"
+      return 0
+    fi
+    local export_dir make_output make_rc
+    export_dir="$(mktemp -d)"
+    if git -C "$project_dir" archive "$origin_sha" 2>/dev/null | tar -x -C "$export_dir" 2>/dev/null \
+       && make_output="$(cd "$export_dir" && make install 2>&1)"; then
+      rm -rf "$export_dir"
+      mkdir -p "${HOME}/.devflow"; echo "$origin_sha" > "$sha_file"
+      _watch_notify "devflow auto-updated ${old_sha_short}..${new_sha_short} (clean export of origin/main)" "$headless"
+    else
+      make_rc=$?
+      rm -rf "$export_dir"
+      mkdir -p "${HOME}/.devflow"
+      echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] auto-reinstall (export install) FAILED rc=${make_rc}:" >> "${HOME}/.devflow/watch.log"
+      echo "$make_output" >> "${HOME}/.devflow/watch.log"
+      _watch_notify "devflow auto-update FAILED (export install, rc ${make_rc}); see ~/.devflow/watch.log" "$headless"
+      # Do NOT stamp the SHA — next run retries.
+    fi
+    return 0
+  fi
+
+  # ── link (dev) mode: the symlink tracks the working tree, so it cannot be decoupled from
+  # it. Only relink when the tree is CLEAN and AT origin/main; otherwise notify (never reset
+  # - could nuke WIP). For hands-off updates the user should switch to a copy install. ──
   local head_sha; head_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || echo "")"
   local tree_dirty; tree_dirty="$(git -C "$project_dir" status --porcelain 2>/dev/null)"
   if [[ "$head_sha" != "$origin_sha" || -n "$tree_dirty" ]]; then
     local why="HEAD ${head_sha:0:7} != origin/main ${new_sha_short}"
     [[ -n "$tree_dirty" ]] && why="working tree has uncommitted changes"
     if [[ -n "$dry_run" ]]; then
-      echo "DRY RUN — Would SKIP make ${make_target} (${why}); reconcile ${project_dir} first"
+      echo "DRY RUN — Would SKIP make link (${why}); reconcile ${project_dir} or switch to a copy install"
     else
-      _watch_notify "devflow auto-reinstall skipped: ${project_dir} not clean at origin/main (${why}). Reconcile it (git reset --hard origin/main if the changes are disposable), then: cd ${project_dir} && make ${make_target}" "$headless"
+      _watch_notify "devflow auto-reinstall skipped: ${project_dir} not clean at origin/main (${why}). For hands-off updates switch to a copy install (make install); or reconcile then: cd ${project_dir} && make link" "$headless"
     fi
     return 0
   fi
-
   if [[ -n "$dry_run" ]]; then
-    echo "DRY RUN — Would run make ${make_target} (installed SHA: ${old_sha_short}, origin/main: ${new_sha_short})"
+    echo "DRY RUN — Would run make link (installed SHA: ${old_sha_short}, origin/main: ${new_sha_short})"
     return 0
   fi
-
-  # Run make target, capture output for error logging
-  local make_output
-  if make_output="$(cd "$project_dir" && make "$make_target" 2>&1)"; then
-    mkdir -p "${HOME}/.devflow"
-    echo "$origin_sha" > "$sha_file"
-    _watch_notify "devflow auto-updated ${old_sha_short}..${new_sha_short} (via make ${make_target})" "$headless"
+  local make_output make_rc
+  if make_output="$(cd "$project_dir" && make link 2>&1)"; then
+    mkdir -p "${HOME}/.devflow"; echo "$origin_sha" > "$sha_file"
+    _watch_notify "devflow auto-updated ${old_sha_short}..${new_sha_short} (via make link)" "$headless"
   else
-    local make_rc=$?
-    # Log full make output for debugging
+    make_rc=$?
     mkdir -p "${HOME}/.devflow"
-    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] make ${make_target} FAILED output:" >> "${HOME}/.devflow/watch.log"
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] make link FAILED output:" >> "${HOME}/.devflow/watch.log"
     echo "$make_output" >> "${HOME}/.devflow/watch.log"
-    _watch_notify "devflow auto-update FAILED: make ${make_target} exited with code ${make_rc}" "$headless"
-    # Do NOT update SHA — next cron run will retry
+    _watch_notify "devflow auto-update FAILED: make link exited with code ${make_rc}" "$headless"
   fi
 }
 
