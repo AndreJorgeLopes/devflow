@@ -116,22 +116,28 @@ runs each config's `exec:` provider from that config's own directory, and only a
 file that resolves locally to that dir, so every skill has a local `eval-run.sh` wrapper
 (the claude-spawning ones exec `../../eval/lib/run-skill.sh`; trace-review runs its own engine).
 
-**Gate-fidelity caveat (two real limits, learned the hard way):**
-1. `eval/lib/run-skill.sh` runs `claude --print "/devflow:<name> …"`, which loads the
-   **INSTALLED** plugin skill, NOT your working-tree edit. So `make determinism` gates whatever
-   is installed — correct for CI on `main` (main == installed after release), but to gate a
-   PENDING edit you must reinstall/link the local build first (`make plugin-install` from the
-   branch, or `make plugin-dev`). Do NOT try to feed a local `SKILL.md` via
-   `--append-system-prompt`: it conflicts with the installed command and the model improvises
-   (verified — unreliable across models).
-2. On a weak model (default haiku) an AI-judgment skill will not adhere to a pinned output
-   shape reliably. For those skills, gate on a stronger model
-   (`SKILL_EVAL_MODEL=claude-sonnet-5 make determinism SKILL=<name>`). The deterministic-engine
-   skill (trace-review) has neither limit — it runs `bin/devflow`, not an LLM, so its gate is
-   fully reliable.
+**Gate fidelity — it tests your WORKING TREE (not the installed plugin):**
+`eval/lib/run-skill.sh` stages the local skill into a throwaway project dir
+(`.claude/commands/<name>.md` + `.claude/skills/<name>/`) and invokes it there as a PROJECT
+command `/<name>` (no `devflow:` prefix, so it can't collide with an installed
+`/devflow:<name>`). So editing `skills/<name>/SKILL.md` + `make skills-sync` is enough to gate a
+pending change — no reinstall/link. (Two dead ends, both verified: `claude --print
+/devflow:<name>` loads the INSTALLED skill, and `--append-system-prompt` conflicts with any
+installed command so the model improvises. The staged-project-command path avoids both.)
 
-This is the loop's pre-edit regression gate for the deterministic surfaces; treat AI-judgment
-asserts as guidance, engine asserts as hard gates.
+**Model:** the claude-spawning gate defaults to **sonnet** — haiku is too weak to adhere to a
+pinned output shape and flaps the asserts (verified). Override per run with `SKILL_EVAL_MODEL`.
+The deterministic-engine skill (trace-review) ignores the model entirely (it runs `bin/devflow`,
+not an LLM), so its gate is a hard gate; the AI-judgment gates are as reliable as sonnet's format
+adherence — assert robustly-present surfaces (final answer block, required tokens, forbidden
+patterns), not compressible intermediate prose.
+
+**Langfuse skill mirror (`make mirror` / `bin/devflow skills mirror`):** pushes each
+`skills/<name>/SKILL.md` to Langfuse prompt-management as `skill/<name>` for versioned history
++ diff (a MIRROR only — Claude Code never reads skills back from Langfuse). It is **local-only**
+(targets `localhost:3100`) so it can never run in GitHub CI; instead `devflow watch setup` wires
+it into the local `.git/hooks/post-merge` for the devflow repo, so it refreshes on pull to main.
+`make mirror` is reachability-guarded: a clean no-op when Langfuse is down.
 
 ## Hooks Architecture
 

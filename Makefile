@@ -64,7 +64,7 @@ skills-check: ## Fail if generated plugin skills/commands drift from repo-root s
 skills-guard: ## Detect skill edits made in the WRONG (generated) tree and fold them into the source
 	@bash scripts/skills-guard.sh
 
-determinism: ## Run the promptfoo determinism gate (needs API keys + Langfuse; not in CI). One: make determinism SKILL=<name>. NOTE: tests the INSTALLED skill — reinstall/link a pending edit first (see CLAUDE.md).
+determinism: ## Run the promptfoo determinism gate on the WORKING-TREE skills (needs API keys + Langfuse; not in CI). One: make determinism SKILL=<name>. Claude-spawning gate defaults to sonnet.
 	@command -v npx >/dev/null 2>&1 || { echo "determinism: npx (Node) is required"; exit 1; }
 	@[ -f "$(HOME)/.config/zsh/secrets" ] && . "$(HOME)/.config/zsh/secrets" 2>/dev/null || true; \
 	fail=0; ran=0; \
@@ -73,7 +73,7 @@ determinism: ## Run the promptfoo determinism gate (needs API keys + Langfuse; n
 		name="$$(basename "$$(dirname "$$cfg")")"; \
 		if [ -n "$(SKILL)" ] && [ "$(SKILL)" != "$$name" ]; then continue; fi; \
 		echo "=== determinism gate: $$name ==="; ran=1; \
-		npx -y promptfoo@latest eval -c "$$cfg" --no-cache || fail=1; \
+		npx -y promptfoo@latest eval -c "$$cfg" --no-cache -j 1 || fail=1; \
 	done; \
 	[ "$$ran" = 1 ] || { echo "determinism: no config matched$(if $(SKILL), for SKILL=$(SKILL),)"; exit 1; }; \
 	[ "$$fail" = 0 ] || { echo "determinism gate FAILED"; exit 1; }; \

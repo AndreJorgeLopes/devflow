@@ -578,10 +578,17 @@ _watch_setup() {
     if [[ ! -f "$hook_file" ]]; then
       echo "#!/usr/bin/env bash" > "$hook_file"
     fi
+    # In the devflow source repo, also refresh the Langfuse skill mirror on pull to main.
+    # It is local-only + reachability-guarded, so it is a clean no-op when Langfuse is down.
+    local mirror_line=""
+    if [[ -f "${project_dir}/lib/langfuse-mirror.sh" ]]; then
+      mirror_line="(cd ${project_dir} && make mirror) 2>/dev/null || true"
+    fi
     cat >> "$hook_file" <<HOOK
 
 ${marker_start}
 ${devflow_bin} watch --immediate --project ${project_dir} 2>/dev/null || true
+${mirror_line}
 ${marker_end}
 HOOK
     chmod +x "$hook_file"
