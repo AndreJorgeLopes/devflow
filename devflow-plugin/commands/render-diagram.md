@@ -1,5 +1,5 @@
 ---
-description: [0.16.0] Create and render an Excalidraw diagram from a description or codebase analysis — exports to PNG via a pure-node pipeline (no browser/MCP), shows it inline via the Read tool, and embeds it in docs. Use when asked to diagram, visualize, or draw an architecture/flow, or when another skill needs a rendered diagram.
+description: [0.16.1] Create and render an Excalidraw diagram from a description or codebase analysis — exports to PNG via a pure-node pipeline (no browser/MCP), shows it inline via the Read tool, and embeds it in docs. Use when asked to diagram, visualize, or draw an architecture/flow, or when another skill needs a rendered diagram.
 ---
 
 # Render Diagram

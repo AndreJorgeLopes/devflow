@@ -1,3 +1,10 @@
+## v0.16.1 — 2026-07-08
+
+### Fixes
+- fix(init): atomic settings.json write + malformed-JSON recovery (#66)
+
+---
+
 ## v0.16.0 — 2026-07-06
 
 ### Features
