@@ -1,5 +1,5 @@
 ---
-description: [0.17.3] Reflect on the current session, extract learnings, and consolidate them into Hindsight for future recall.
+description: [0.18.0] Reflect on the current session, extract learnings, and consolidate them into Hindsight for future recall.
 ---
 
 You are wrapping up a session. Reflect on what happened and consolidate the valuable learnings.

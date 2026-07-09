@@ -1,3 +1,10 @@
+## v0.18.0 — 2026-07-09
+
+### Features
+- feat(spec-feature): always render technical + ELI5 diagrams by default (#72)
+
+---
+
 ## v0.17.3 — 2026-07-08
 
 ### Fixes
