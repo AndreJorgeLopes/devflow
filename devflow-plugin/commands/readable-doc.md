@@ -17,6 +17,17 @@ description: [0.19.2] Use when writing or reformatting a plan, spike, design, or
 - Reformatting a doc a reviewer called "a wall of text", "hard to scan", or "not readable".
 - Any time you were about to reach for `<u>`, coloured text, or a dense multi-column table in a reviewed markdown doc.
 
+## Running as a command: `/devflow:readable-doc [path]`
+
+Turnkey reformat of one document, end to end. `$ARGUMENTS` is the target path.
+
+1. ① **Resolve the target.** If `$ARGUMENTS` names a file, use it. If empty, use the document most recently produced or discussed in this session. State the resolved path in one line before touching it (so a wrong target is caught).
+2. ② **Read the whole doc** and identify its type (spike / design / plan) so the mandated diagrams and the considered-but-rejected section apply.
+3. ③ **Render the two mandated diagrams** via the `render-diagram` skill (base how-it-works + colour-coded current-vs-options). Reuse existing PNGs if already present and current; otherwise (re)render. Save them next to the doc.
+4. ④ **Rewrite the file IN PLACE**, applying the verified matrix + structure rules below: plain-language TLDR at the top, status circles, GFM alerts top-level (emoji blockquote + small-caps label inside `<details>`), ꜱᴍᴀʟʟ ᴄᴀᴘꜱ tags via `textstyle.py`, compact emoji-column tables, a considered-but-rejected section, and the two diagrams embedded as plain top-level `![alt](/abs/path)` with **no title attribute**. Preserve the doc's real content and the author's voice; change structure and formatting, not the facts.
+5. ⑤ **Self-check before handing back:** no `<u>` / no em-dashes / no image `"title"` attr / no GFM alert inside `<details>`; if the doc has YAML frontmatter, confirm it still parses (no unquoted `: ` in a value).
+6. ⑥ **Hand back the link.** Open it in plannotator in remote mode so the user gets a link to open in Claude's own browser (does not auto-open a native browser): `PLANNOTATOR_REMOTE=1 PLANNOTATOR_PORT=<port> plannotator annotate <path>` in the background, then print the `http://localhost:<port>` URL. Apply any annotations the user returns and repeat step 6.
+
 ## Verified plannotator matrix (probed 2026-07-14, do not re-guess)
 
 plannotator allows a small tag allowlist and strips the rest.
