@@ -1,3 +1,10 @@
+## v0.19.2 — 2026-07-14
+
+### Fixes
+- fix(build-skills): fail the skills gate on invalid YAML frontmatter
+
+---
+
 ## v0.19.1 — 2026-07-14
 
 ### Fixes

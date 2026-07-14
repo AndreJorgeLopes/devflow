@@ -1,5 +1,5 @@
 ---
-description: [0.19.1] Ground-truth every technical claim — and every requirement-coverage claim — in a plan or design against the source of truth (run the code, hit the API with curl, probe the live browser DOM/store, build a proof-of-concept; for requirements, diff the plan section-by-section against the original design doc + ticket) before it can be relied on. Reading docs, blogs, training knowledge, or trusting that the plan captured the requirements is NOT verification. Use when stress-testing assumptions, before locking an architectural decision, or when the user says "verify first", "verify with practical tests", "prove it", or "test, don't assume".
+description: [0.19.2] Ground-truth every technical claim — and every requirement-coverage claim — in a plan or design against the source of truth (run the code, hit the API with curl, probe the live browser DOM/store, build a proof-of-concept; for requirements, diff the plan section-by-section against the original design doc + ticket) before it can be relied on. Reading docs, blogs, training knowledge, or trusting that the plan captured the requirements is NOT verification. Use when stress-testing assumptions, before locking an architectural decision, or when the user says "verify first", "verify with practical tests", "prove it", or "test, don't assume".
 ---
 
 # Verify First

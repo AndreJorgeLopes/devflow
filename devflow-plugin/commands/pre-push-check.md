@@ -1,5 +1,5 @@
 ---
-description: [0.19.1] Run the full pre-push review pipeline — code review checks, self-review against CLAUDE.md, and a final report.
+description: [0.19.2] Run the full pre-push review pipeline — code review checks, self-review against CLAUDE.md, and a final report.
 ---
 
 You are about to push code. Run the full pre-push quality pipeline before pushing.
