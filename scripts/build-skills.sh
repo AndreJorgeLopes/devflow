@@ -60,6 +60,18 @@ for skdir in "$SRC"/*/; do
   src_skill="${skdir}SKILL.md"
   [[ -f "$src_skill" ]] || { echo "build-skills: ${n}/ has no SKILL.md — skipping" >&2; continue; }
 
+  # Fail loud if the frontmatter is not valid YAML. A single unquoted ': ' in the
+  # description (e.g. "...diagrams: base...") silently breaks the whole block, so the
+  # skill's description will not load and tessl review reports frontmatter_valid FAILED.
+  # Validate with a real YAML parser (UTF-8-safe for emoji/small-caps). Skip if no ruby.
+  if command -v ruby >/dev/null 2>&1; then
+    if ! fm_err="$(ruby -ryaml -e 'YAML.safe_load(File.read(ARGV[0], encoding: "UTF-8").split(/^---\s*$/)[1])' "$src_skill" 2>&1)"; then
+      echo "build-skills: ${n}/SKILL.md has INVALID YAML frontmatter (usual cause: an unquoted ': ' in the description). Fix it:" >&2
+      echo "$fm_err" | sed 's/^/    /' >&2
+      exit 1
+    fi
+  fi
+
   # Fail loud if the frontmatter carries keys beyond name/description: the command
   # transform (2b) only preserves the description, so any extra key (e.g. allowed-tools)
   # would be silently dropped. Force a conscious update of this generator instead.
