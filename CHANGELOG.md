@@ -1,3 +1,10 @@
+## v0.19.1 — 2026-07-14
+
+### Fixes
+- fix(readable-doc): repair unparseable SKILL.md frontmatter
+
+---
+
 ## v0.19.0 — 2026-07-14
 
 ### Features
