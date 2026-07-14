@@ -1,3 +1,10 @@
+## v0.20.0 — 2026-07-14
+
+### Features
+- feat(readable-doc): turnkey /devflow:readable-doc [path] reformat workflow
+
+---
+
 ## v0.19.2 — 2026-07-14
 
 ### Fixes
