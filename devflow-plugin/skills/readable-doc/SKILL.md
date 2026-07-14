@@ -1,6 +1,6 @@
 ---
 name: readable-doc
-description: Use when writing or reformatting a plan, spike, design, or implementation doc that will be reviewed in plannotator (or any markdown reviewer) for a reader who wants fast, scannable, ADHD-friendly structure. Produces plain-language TLDR-first docs with a verified plannotator-safe formatting toolkit (status circles, GFM-alert callouts, Unicode underline/small-caps for emphasis, compact emoji-column tables, collapsible text detail, a considered-but-rejected section, and two mandated diagrams: base how-it-works + colour-coded current-vs-options).
+description: Use when writing or reformatting a plan, spike, design, or implementation doc that will be reviewed in plannotator (or any markdown reviewer) for a reader who wants fast, scannable, ADHD-friendly structure. Produces plain-language TLDR-first docs with a verified plannotator-safe formatting toolkit (status circles, GFM-alert callouts, Unicode underline and small-caps for emphasis, compact emoji-column tables, collapsible text detail, a considered-but-rejected section, and two mandated diagrams, namely a base how-it-works diagram plus a colour-coded current-vs-options diagram).
 ---
 
 # Readable Doc
