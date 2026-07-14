@@ -24,13 +24,15 @@ plannotator allows a small tag allowlist and strips the rest.
 
 | Want | ✅ Use this | 🔴 Never (silently fails) |
 |---|---|---|
-| Callout / warning / tip | GFM alerts `> [!NOTE]` `> [!WARNING]` `> [!TIP]` `> [!IMPORTANT]` (real styled boxes) | coloured `<div>` / HTML boxes |
+| Callout (top-level) | GFM alerts `> [!NOTE]` `> [!WARNING]` `> [!TIP]` `> [!IMPORTANT]` (real styled boxes) | the same GFM alert inside `<details>` (BREAKS, renders as raw text); coloured `<div>` / HTML boxes |
+| Callout inside `<details>` | emoji blockquote + small-caps label: `> 🔴 ʀɪꜱᴋ — ...` (best-rated in-accordion callout) | a GFM alert (breaks in a collapsible) |
 | Light aside | emoji blockquote `> 🔴 **Risk:** ...` | — |
 | Colour | status emoji 🟢🟠🔴❓ in text and as a table column | text colour via `style` (not applied; a hex shows only a swatch bubble) |
-| Diagram / image | plain top-level `![alt](/ABSOLUTE/path.png)` (reliable + zoomable on click) | relative `./path` in a long doc (flaky), `<img>` (smaller, no zoom), self-link `[![]()]()` (breaks), image inside `<details>` (renders but loses zoom) |
-| Collapse minor TEXT | `<details><summary>...</summary> ... </details>` | wrapping images/diagrams in `<details>` (kills zoom) |
-| Table | markdown table, compact, emoji status column | wide walls of text; heavy tables inside `<details>` |
+| Diagram / image | plain `![alt](path)` with **NO title attribute** (renders + zooms; absolute or relative, consecutive, in-list all fine) | a **title attribute** `![alt](path "title")` (BREAKS the image, the #1 gotcha), `<img>` (smaller, no zoom), self-link `[![]()]()` (breaks), image inside `<details>` (renders but loses zoom) |
+| Collapse minor content | `<details><summary>...</summary> ... </details>` (tables, big tables, and bullet lists all render fine inside) | wrapping images/diagrams in `<details>` (kills zoom); a GFM alert inside (breaks, use an emoji blockquote + small-caps label instead) |
+| Table | markdown table, compact, emoji status column (renders fine top-level AND inside `<details>`, even large) | wide walls of text with no status column |
 | Bullets | normal markdown `-` lists (leading status emoji ok) | geometric bullets `▸ ◦ ● ◆` on bare lines (collapse to one line) |
+| Code / file refs | fenced code block with a language (```` ```ts ````), syntax highlighted | bare inline paths where a highlighted block reads better |
 
 **No em-dashes anywhere** (hard rule): use commas, periods, parentheses, "since"/"so".
 
@@ -60,6 +62,7 @@ Markdown has no underline or small-caps and plannotator strips styling HTML, so 
 6. ⑥ **Considered-but-rejected section** (mandatory for spikes/plans): options evaluated and dropped, and *why* they were killed (verification ledger, a requirement, a latency probe). Compact fragments, arrows for cause, in the author's voice. This is where a reader checks their idea was not missed.
 7. ⑦ **Emphasis:** `**bold**` for key terms; `textstyle.py` (underline / small-caps) for the handful that must pop; `` `code` `` for identifiers/paths.
 8. ⑧ **Voice:** compact and scannable, the author's own register (recall from Hindsight / their transcripts). No filler, no em-dashes, warm and direct.
+9. ⑨ **Tags + legends:** use ꜱᴍᴀʟʟ ᴄᴀᴘꜱ (via `textstyle.py --smallcaps`) for status tags, verdicts, and section labels (the distinctive tag look the reader wants). Define any abbreviation with a one-line legend the first time it appears; never leave bare `[V]`/`[R]`-style jargon.
 
 ## Two mandated diagrams (delegate rendering to `render-diagram`)
 
@@ -72,7 +75,7 @@ Every plan/spike doc gets **both**, rendered as PNGs and embedded as plain top-l
    - red = **rejected** options, each with a one-line kill reason.
 
 > [!TIP]
-> Embed as `![alt](/absolute/path/to/x.png)`. Do not use a relative path in a long doc, do not wrap in a link, do not use `<img>`, do not put it inside `<details>`. plannotator zoom is built in for plain top-level images.
+> Embed as plain `![alt](path)` with **no title attribute** (a `"title"` breaks the image, verified). Absolute or relative both work, consecutive images are fine. Do not wrap in a link, do not use `<img>`, do not put it inside `<details>` (loses zoom). plannotator zoom is built in for plain top-level images.
 
 ## plannotator review mechanics
 
@@ -117,8 +120,10 @@ long table and the ledger at the end for the trade-offs.
 | TLDR at the end / full of jargon | Move to top; plain language; expand acronyms. |
 | `<u>` / coloured text / `<span style>` | Stripped. Use `textstyle.py` (U+0332 / small-caps) + bold + emoji. |
 | Underlining an identifier (`unread_message_count`) | Underscores fuse into a blur. Use `` `backticks` `` for identifiers. |
-| Relative image path / `<img>` / self-link / image in `<details>` | Broken or no zoom. Plain top-level `![](/absolute/path)`. |
+| Image with a `"title"` attribute / `<img>` / self-link / image in `<details>` | Title BREAKS it; the rest break or lose zoom. Plain `![alt](path)`, no title. |
 | Geometric bullets on bare lines | Collapse to one line. Use normal `-` bullets. |
+| Bare jargon (`[V]`, `[R]`, acronyms) left unexplained | Add a one-line legend, or use ꜱᴍᴀʟʟ-ᴄᴀᴘꜱ plain labels (ᴠᴇʀɪꜰɪᴇᴅ / ɴᴇᴇᴅꜱ ᴅᴀᴛᴀ). |
+| Small-caps used nowhere | Use it for tags/labels/verdicts (ʀᴇᴄᴏᴍᴍᴇɴᴅᴇᴅ / ʀᴇᴊᴇᴄᴛᴇᴅ / ᴡʜᴀᴛ / ʜᴏᴡ / ʀɪꜱᴋ). It is the distinctive tag look. |
 | One big table left inline | Trim to ≤4 cols with an emoji status column, or collapse it. |
 | No considered-but-rejected section | Add it. Reviewers check their idea was not missed. |
 | Only one diagram | Add the colour-coded current-vs-options decision diagram too. |
@@ -127,7 +132,8 @@ long table and the ledger at the end for the trade-offs.
 ## Red Flags (STOP)
 
 - "I'll use `<u>` / a coloured span for emphasis" → renders as literal text.
-- "A relative `./diagrams/x.png` is fine" → flaky in long docs; use absolute.
+- "A `"title"` on the image is harmless" → it BREAKS the image in plannotator. Drop it.
 - "I'll tuck the diagram in `<details>`" → it loses zoom.
+- "`[V]`/`[R]` is obvious" → it is not to the reader. Add a legend or use ꜱᴍᴀʟʟ-ᴄᴀᴘꜱ words.
 - "The TLDR reads better as a conclusion" → the reader skims top-down; put it first, in plain words.
 - "One big table is fine" → walls of text are what gets bounced.
