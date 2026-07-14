@@ -1,5 +1,5 @@
 ---
-description: [0.18.0] Check if Brewfile, Formula, or install script need updating when project dependencies change.
+description: [0.19.0] Check if Brewfile, Formula, or install script need updating when project dependencies change.
 ---
 
 You are checking whether devflow's dependency manifests are in sync with code changes.

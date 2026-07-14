@@ -1,3 +1,10 @@
+## v0.19.0 — 2026-07-14
+
+### Features
+- feat(readable-doc): plannotator-safe readable-doc writing skill (#73)
+
+---
+
 ## v0.18.0 — 2026-07-09
 
 ### Features
