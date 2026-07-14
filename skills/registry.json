@@ -224,6 +224,13 @@
       "description": "Ground-truth every technical AND requirement-coverage claim against the source of truth before relying on it. Run the probe; for requirements, diff the plan against the original design doc + ticket \u2014 neither docs nor the plan are verification.",
       "category": "process-discipline",
       "layer": 4
+    },
+    {
+      "name": "readable-doc",
+      "description": "Format a plan/spike/design doc for fast scannable plannotator review (TLDR-first, status circles, GFM-alert callouts, compact emoji tables, collapsibles, considered-but-rejected, two mandated diagrams)",
+      "category": "workflow",
+      "layer": 2,
+      "auto_invoke": false
     }
   ]
 }
