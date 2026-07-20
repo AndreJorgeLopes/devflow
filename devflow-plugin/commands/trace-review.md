@@ -1,5 +1,5 @@
 ---
-description: [0.20.0] Use when asked to review skill telemetry, find week-over-week skill regressions, run a weekly Langfuse trace report, or check whether a skill got slower / more expensive / more error-prone - produces a per-skill regression report from the local Langfuse trace store and can schedule itself.
+description: [0.21.0] Use when asked to review skill telemetry, find week-over-week skill regressions, run a weekly Langfuse trace report, or check whether a skill got slower / more expensive / more error-prone - produces a per-skill regression report from the local Langfuse trace store and can schedule itself.
 ---
 
 # /devflow:trace-review - per-skill week-over-week regression report
