@@ -231,6 +231,13 @@
       "category": "workflow",
       "layer": 2,
       "auto_invoke": false
+    },
+    {
+      "name": "readable-doc-spike",
+      "description": "Format a full engineering spike/PRD/design-of-record into the team-standard shape (metadata header, TLDR, goals, architecture diagrams, per-goal investigation, options+recommendation, considered-but-rejected, DB/GraphQL/query changes, migration, deps, testing, effort, phasing, feature-flag, risks, open questions, verification appendix)",
+      "category": "workflow",
+      "layer": 2,
+      "auto_invoke": false
     }
   ]
 }
