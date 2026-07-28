@@ -1,3 +1,10 @@
+## v0.24.0 — 2026-07-28
+
+### Features
+- feat(services): skip bundled Docker Hindsight when a native daemon owns :8888 (#80)
+
+---
+
 ## v0.23.0 — 2026-07-28
 
 ### Features

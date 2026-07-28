@@ -1,5 +1,5 @@
 ---
-description: [0.23.0] Use when formatting a full engineering spike, PRD, or design-of-record doc for review, when the reader wants the complete team-standard shape (metadata header, TLDR, background, spike goals, architecture diagrams, per-goal investigation, options with a recommendation, considered-but-rejected, database and GraphQL and query changes, migration, cross-project dependencies, testing, effort, phasing, feature-flag strategy, risks, open questions, and a verification appendix). Clean team style, no emoji or tag overload. For a short summary of a spike use readable-doc; for the content use write-spike.
+description: [0.24.0] Use when formatting a full engineering spike, PRD, or design-of-record doc for review, when the reader wants the complete team-standard shape (metadata header, TLDR, background, spike goals, architecture diagrams, per-goal investigation, options with a recommendation, considered-but-rejected, database and GraphQL and query changes, migration, cross-project dependencies, testing, effort, phasing, feature-flag strategy, risks, open questions, and a verification appendix). Clean team style, no emoji or tag overload. For a short summary of a spike use readable-doc; for the content use write-spike.
 ---
 
 # Readable Doc (spike / big)
