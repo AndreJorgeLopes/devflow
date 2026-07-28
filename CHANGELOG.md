@@ -1,3 +1,10 @@
+## v0.24.2 — 2026-07-28
+
+### Fixes
+- fix(plugin): emit skills[] as directory paths so the plugin loads (#82)
+
+---
+
 ## v0.24.1 — 2026-07-28
 
 ### Fixes
