@@ -1,3 +1,10 @@
+## v0.24.1 — 2026-07-28
+
+### Fixes
+- fix(release): strip stale sha256 comment from Homebrew formula (#81)
+
+---
+
 ## v0.24.0 — 2026-07-28
 
 ### Features
