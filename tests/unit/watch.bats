@@ -317,3 +317,49 @@ EOF
   assert_success
   assert_output --partial "Would SKIP make link"
 }
+
+# ── macOS launchd scheduler backend ────────────────────────────
+
+@test "launchd label is stable per project and distinct across projects" {
+  local a b c
+  a="$(_watch_launchd_label /tmp/projA)"
+  b="$(_watch_launchd_label /tmp/projA)"
+  c="$(_watch_launchd_label /tmp/projB)"
+  [ "$a" = "$b" ] || fail "label not stable for same project ($a != $b)"
+  [ "$a" != "$c" ] || fail "labels not distinct across projects"
+  case "$a" in dev.devflow.watch.*) : ;; *) fail "unexpected label prefix: $a" ;; esac
+}
+
+@test "launchd install writes a LaunchAgent plist with a 5-min StartCalendarInterval" {
+  export HOME="${BATS_TEST_TMPDIR}/lahome"; mkdir -p "$HOME"
+  printf '#!/bin/bash\nexit 0\n' > "${MOCK_DIR}/launchctl"; chmod +x "${MOCK_DIR}/launchctl"
+  run _watch_install_launchd "/tmp/myproj" "/Users/x/.local/bin/devflow"
+  assert_success
+  assert_output --partial "LaunchAgent installed"
+  local plist; plist="$(_watch_launchd_plist /tmp/myproj)"
+  [ -f "$plist" ] || fail "plist not written at $plist"
+  run cat "$plist"
+  assert_output --partial "<key>Label</key><string>dev.devflow.watch."
+  assert_output --partial "<string>/Users/x/.local/bin/devflow</string>"
+  assert_output --partial "<string>--headless</string>"
+  assert_output --partial "<string>/tmp/myproj</string>"
+  assert_output --partial "<key>StartCalendarInterval</key>"
+  assert_output --partial "<key>RunAtLoad</key><true/>"
+  # exactly 12 Minute entries = every 5 minutes; and NOT StartInterval (the sleep-miss bug)
+  run bash -c "grep -c '<key>Minute</key>' '$plist'"
+  assert_output "12"
+  run bash -c "grep -c 'StartInterval</key>' '$plist' || true"
+  assert_output "0"
+}
+
+@test "launchd remove unloads and deletes the plist" {
+  export HOME="${BATS_TEST_TMPDIR}/lahome2"; mkdir -p "$HOME"
+  printf '#!/bin/bash\nexit 0\n' > "${MOCK_DIR}/launchctl"; chmod +x "${MOCK_DIR}/launchctl"
+  _watch_install_launchd "/tmp/proj2" "/bin/devflow"
+  local plist; plist="$(_watch_launchd_plist /tmp/proj2)"
+  [ -f "$plist" ] || fail "precondition: plist not written"
+  run _watch_remove_launchd "/tmp/proj2"
+  assert_success
+  assert_output --partial "LaunchAgent removed"
+  [ ! -f "$plist" ] || fail "plist not removed"
+}

@@ -532,7 +532,92 @@ _watch_run() {
 
 # ── Setup / Remove ───────────────────────────────────────────────────────────
 
-# _watch_setup [project_dir] — install cron job + post-merge hook
+# ── native scheduler backend: macOS launchd ──────────────────────────────────
+# A per-project LaunchAgent, not cron: macOS user-cron is unreliable (does not fire
+# after sleep). StartCalendarInterval (not StartInterval) is used deliberately -
+# StartInterval silently misses a tick across a sleep window (kqueue limitation),
+# StartCalendarInterval coalesces and fires on wake.
+
+# Deterministic per-project label (mirrors cron's per-project marker).
+_watch_launchd_label() {
+  local h
+  h="$(printf '%s' "$1" | { shasum 2>/dev/null || sha1sum 2>/dev/null; } | cut -c1-8)"
+  echo "dev.devflow.watch.${h}"
+}
+
+_watch_launchd_plist() { echo "${HOME}/Library/LaunchAgents/$(_watch_launchd_label "$1").plist"; }
+
+# _watch_install_launchd <project_dir> <devflow_bin> — write + (re)load the LaunchAgent.
+_watch_install_launchd() {
+  local project_dir="$1" devflow_bin="$2"
+  local label plist uid cal m
+  label="$(_watch_launchd_label "$project_dir")"
+  plist="$(_watch_launchd_plist "$project_dir")"
+  mkdir -p "${HOME}/Library/LaunchAgents" "${HOME}/.devflow"
+
+  cal=""
+  for m in 0 5 10 15 20 25 30 35 40 45 50 55; do
+    cal="${cal}    <dict><key>Minute</key><integer>${m}</integer></dict>"$'\n'
+  done
+
+  cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>${label}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${devflow_bin}</string>
+    <string>watch</string>
+    <string>--headless</string>
+    <string>--project</string>
+    <string>${project_dir}</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+${cal}  </array>
+  <key>RunAtLoad</key><true/>
+  <key>WorkingDirectory</key><string>${project_dir}</string>
+  <key>StandardOutPath</key><string>${HOME}/.devflow/watch.log</string>
+  <key>StandardErrorPath</key><string>${HOME}/.devflow/watch.log</string>
+</dict>
+</plist>
+PLIST
+
+  if command -v launchctl >/dev/null 2>&1; then
+    uid="$(id -u)"
+    launchctl bootout "gui/${uid}/${label}" 2>/dev/null || true   # idempotent unload
+    if launchctl bootstrap "gui/${uid}" "$plist" 2>/dev/null; then
+      ok "LaunchAgent installed (every 5 min): ${label}"
+    elif { launchctl unload "$plist" 2>/dev/null; launchctl load -w "$plist" 2>/dev/null; }; then
+      ok "LaunchAgent installed (legacy load): ${label}"
+    else
+      warn "Wrote ${plist} but launchctl load failed. Load manually: launchctl load -w ${plist}"
+    fi
+  else
+    warn "launchctl not found; wrote ${plist} (loads at next login)"
+  fi
+}
+
+# _watch_remove_launchd <project_dir> — unload + delete the LaunchAgent.
+_watch_remove_launchd() {
+  local project_dir="$1" label plist uid
+  label="$(_watch_launchd_label "$project_dir")"
+  plist="$(_watch_launchd_plist "$project_dir")"
+  if command -v launchctl >/dev/null 2>&1; then
+    uid="$(id -u)"
+    launchctl bootout "gui/${uid}/${label}" 2>/dev/null \
+      || launchctl unload "$plist" 2>/dev/null || true
+  fi
+  if [[ -f "$plist" ]]; then
+    rm -f "$plist"; ok "LaunchAgent removed: ${label}"
+  else
+    skip "No LaunchAgent found for this project"
+  fi
+}
+
+# _watch_setup [project_dir] — install native schedule (launchd/cron) + post-merge hook
 _watch_setup() {
   local project_dir="${1:-$(pwd)}"
   project_dir="$(cd "$project_dir" && pwd)"  # resolve to absolute
@@ -543,7 +628,7 @@ _watch_setup() {
   section "Sensitive File Watchdog Setup"
   echo ""
   info "This will:"
-  echo "  - Add a cron job (every 5 min) to fetch origin and check for stale files"
+  echo "  - Add a scheduled job every 5 min (launchd on macOS, cron on Linux) to fetch origin and check for stale files"
   echo "  - Install a git post-merge hook for immediate checks when you pull"
   echo "  - Only affects this project ($project_dir)"
   echo "  - To remove: devflow watch remove"
@@ -555,16 +640,24 @@ _watch_setup() {
     return 0
   fi
 
-  # 1. Install cron job
-  local cron_entry="*/5 * * * * cd ${project_dir} && ${devflow_bin} watch --headless --project ${project_dir} 2>&1 >> \${HOME}/.devflow/watch.log"
-  local cron_marker="# devflow-watch:${project_dir}"
-
-  if crontab -l 2>/dev/null | grep -qF "devflow-watch:${project_dir}"; then
-    skip "Cron entry already exists"
-  else
-    (crontab -l 2>/dev/null || true; echo "${cron_marker}"; echo "${cron_entry}") | crontab -
-    ok "Cron job installed (every 5 minutes)"
-  fi
+  # 1. Install the recurring schedule using the native scheduler for this OS.
+  case "$(uname -s)" in
+    Darwin)
+      # launchd LaunchAgent - reliable across sleep, unlike macOS user-cron.
+      _watch_install_launchd "$project_dir" "$devflow_bin"
+      ;;
+    *)
+      # cron (Linux + any other POSIX)
+      local cron_entry="*/5 * * * * cd ${project_dir} && ${devflow_bin} watch --headless --project ${project_dir} 2>&1 >> \${HOME}/.devflow/watch.log"
+      local cron_marker="# devflow-watch:${project_dir}"
+      if crontab -l 2>/dev/null | grep -qF "devflow-watch:${project_dir}"; then
+        skip "Cron entry already exists"
+      else
+        (crontab -l 2>/dev/null || true; echo "${cron_marker}"; echo "${cron_entry}") | crontab -
+        ok "Cron job installed (every 5 minutes)"
+      fi
+      ;;
+  esac
 
   # 2. Install post-merge hook
   local hook_file="${project_dir}/.git/hooks/post-merge"
@@ -650,17 +743,24 @@ _watch_remove() {
 
   section "Removing Sensitive File Watchdog"
 
-  # 1. Remove cron entry
-  if crontab -l 2>/dev/null | grep -qF "devflow-watch:${project_dir}"; then
-    # Remove both marker and command lines in a single pass
-    crontab -l 2>/dev/null \
-      | grep -vF "devflow-watch:${project_dir}" \
-      | grep -vF "${project_dir}" \
-      | crontab -
-    ok "Cron entry removed"
-  else
-    skip "No cron entry found for this project"
-  fi
+  # 1. Remove the native schedule (matches whatever _watch_setup installed for this OS).
+  case "$(uname -s)" in
+    Darwin)
+      _watch_remove_launchd "$project_dir"
+      ;;
+    *)
+      if crontab -l 2>/dev/null | grep -qF "devflow-watch:${project_dir}"; then
+        # Remove both marker and command lines in a single pass
+        crontab -l 2>/dev/null \
+          | grep -vF "devflow-watch:${project_dir}" \
+          | grep -vF "${project_dir}" \
+          | crontab -
+        ok "Cron entry removed"
+      else
+        skip "No cron entry found for this project"
+      fi
+      ;;
+  esac
 
   # 2. Remove post-merge hook section
   local hook_file="${project_dir}/.git/hooks/post-merge"
