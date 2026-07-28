@@ -1,5 +1,5 @@
 ---
-description: [0.24.2] Devflow wrapper for the upstream brainstorming skill. Use when starting any creative work — creating features, building components, adding functionality, or modifying behavior — to explore user intent, requirements, and design before implementation. Always invoke `/devflow:brainstorming` rather than the upstream skill directly so devflow can layer in project-specific behavior (recall hooks, phase-handoff entry points) without callers ever needing to know about the upstream.
+description: [0.24.3] Devflow wrapper for the upstream brainstorming skill. Use when starting any creative work — creating features, building components, adding functionality, or modifying behavior — to explore user intent, requirements, and design before implementation. Always invoke `/devflow:brainstorming` rather than the upstream skill directly so devflow can layer in project-specific behavior (recall hooks, phase-handoff entry points) without callers ever needing to know about the upstream.
 ---
 
 You are the devflow wrapper for the upstream brainstorming workflow. The wrapper exists so the rest of the devflow pipeline (new-feature, spec-feature, etc.) has a single canonical entry point (`/devflow:brainstorming`) and never reaches past it to the upstream skill directly.

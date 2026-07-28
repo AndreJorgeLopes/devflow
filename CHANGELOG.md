@@ -1,3 +1,10 @@
+## v0.24.3 — 2026-07-28
+
+### Fixes
+- fix(plugin): use record-keyed hooks schema so the plugin loads (#83)
+
+---
+
 ## v0.24.2 — 2026-07-28
 
 ### Fixes

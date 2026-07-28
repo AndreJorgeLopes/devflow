@@ -1,5 +1,5 @@
 ---
-description: [0.24.2] Generate a session summary for Langfuse tracing — capture what happened, decisions made, and metrics for observability.
+description: [0.24.3] Generate a session summary for Langfuse tracing — capture what happened, decisions made, and metrics for observability.
 ---
 
 You are generating a session summary for observability via Langfuse.
