@@ -1,0 +1,25 @@
+# review-document determinism assertions (Axis B — pin the findings output shape).
+# READ-ONLY skill: no DEVFLOW_EVAL. The shared runner runs it from the repo root, so it reviews
+# a committed fixture doc (eval/fixtures/review-document-sample.md, a runbook with planted
+# review-worthy claims). It reads a local path, so no fetch/network is needed.
+# Run: make determinism SKILL=review-document
+description: review-document determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval-run.sh'
+    label: review-document@head
+
+# One test case, all asserts (each test case re-runs the whole skill).
+tests:
+  - description: "Findings shape: severity marker, TL;DR/summary, markdown headings"
+    vars: { input: '/devflow:review-document eval/fixtures/review-document-sample.md' }
+    assert:
+      - type: regex
+        value: '(🔴|🟠|🟡|🟢|🔵|Critical|Important|Suggestion|Minor)'
+      - type: regex
+        value: '(TL;DR|Summary|Verdict)'
+      - type: regex
+        value: '(^|\n)#{1,3} '

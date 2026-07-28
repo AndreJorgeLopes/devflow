@@ -6,6 +6,8 @@ You have been launched inside a feature worktree. Your job is to orient yourself
 
 **IMPORTANT:** Do NOT create worktrees or branches — that was already handled by `devflow worktree` before this session started.
 
+> **Eval mode (`$DEVFLOW_EVAL`).** If the env var `DEVFLOW_EVAL` is set you are running under the determinism gate against a throwaway fixture, not a real launch. Produce your normal orientation output to stdout, but perform NO irreversible action: do NOT write `.devflow/` state files, do NOT spawn a session / phase-handoff, do NOT transition into brainstorming. Stop after printing the orientation output.
+
 ## Preamble (first action)
 
 1. Detect ticket ID from `git branch --show-current` (regex `[A-Z]+-[0-9]+`); if none, use `none`.

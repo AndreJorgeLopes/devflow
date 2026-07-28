@@ -4,6 +4,8 @@ description: [0.24.3] Full PR/MR creation pipeline. VCS-aware (GitHub `gh` / Git
 
 You are creating a pull request (GitHub) or merge request (GitLab). This runs the full pipeline: review, build a structured description, adapt the project template if there is one, and open it with the right tool.
 
+> **Eval mode (`$DEVFLOW_EVAL`).** If the env var `DEVFLOW_EVAL` is set you are running under the determinism gate against a throwaway fixture, not a real task. Build the title + full description exactly as normal and print them to stdout, but perform NO irreversible action: do NOT `git push`, do NOT `gh pr create` / `glab mr create`, do NOT create commits. Stop after printing the assembled PR body.
+
 ## Steps
 
 0. **Skills source-of-truth guard (only when working inside the devflow repo).** If the repo root has `scripts/skills-guard.sh` (i.e. this IS the devflow repo), a skill may have been edited in a generated tree (`devflow-plugin/{skills,commands}`) instead of the single source (`skills/<name>/SKILL.md`). Those edits would be lost on the next `make skills-sync`, so rescue them before the PR:

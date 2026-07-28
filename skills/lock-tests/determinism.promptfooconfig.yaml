@@ -1,0 +1,23 @@
+# lock-tests determinism assertions (Axis B — pin the Test Inventory output shape).
+# SIDE-EFFECT skill: eval-run.sh sets DEVFLOW_EVAL=1, so the shared runner isolates it in a
+# throwaway git fixture (with a sample plan.md/spec.md) and the skill prints the Test Inventory
+# WITHOUT writing test files or opening the approval gate.
+# Run: make determinism SKILL=lock-tests
+description: lock-tests determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval-run.sh'
+    label: lock-tests@head
+
+# One test case, all asserts (each test case re-runs the whole skill).
+tests:
+  - description: "Test Inventory shape: heading + markdown table"
+    vars: { input: '/devflow:lock-tests' }
+    assert:
+      - type: icontains
+        value: 'Test Inventory'
+      - type: regex
+        value: '(^|\n)\|.*\|.*\|'

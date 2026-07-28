@@ -1,0 +1,25 @@
+# verify-first determinism assertions (Axis B — pin the verification-ledger shape).
+# SIDE-EFFECT skill: eval-run.sh sets DEVFLOW_EVAL=1, so the shared runner isolates it in a
+# throwaway fixture (with a sample plan.md carrying claims) and the skill prints the ledger
+# WITHOUT writing it into any spec/plan file or running state-mutating probes.
+# Run: make determinism SKILL=verify-first
+description: verify-first determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval-run.sh'
+    label: verify-first@head
+
+# One test case, all asserts (each test case re-runs the whole skill).
+tests:
+  - description: "Ledger shape: pinned [V]/[B]/[R] buckets in a markdown table"
+    vars: { input: '/devflow:verify-first plan.md' }
+    assert:
+      # The pinned bucket codes ARE the determinism contract (the skill uses the short codes in
+      # the ledger; the spelled-out names live only in its reference table).
+      - type: regex
+        value: '\[(V|B|R)\]'
+      - type: regex
+        value: '(^|\n)\|.*\|.*\|'

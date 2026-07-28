@@ -67,6 +67,7 @@ skills-guard: ## Detect skill edits made in the WRONG (generated) tree and fold 
 determinism: ## Run the promptfoo determinism gate on the WORKING-TREE skills (needs API keys + Langfuse; not in CI). One: make determinism SKILL=<name>. Claude-spawning gate defaults to sonnet.
 	@command -v npx >/dev/null 2>&1 || { echo "determinism: npx (Node) is required"; exit 1; }
 	@[ -f "$(HOME)/.config/zsh/secrets" ] && . "$(HOME)/.config/zsh/secrets" 2>/dev/null || true; \
+	export PROMPTFOO_DISABLE_DB=true; \
 	fail=0; ran=0; \
 	for cfg in skills/*/determinism.promptfooconfig.yaml; do \
 		[ -f "$$cfg" ] || continue; \
