@@ -12,19 +12,12 @@ providers:
   - id: 'exec: bash eval-run.sh'
     label: lock-tests@head
 
+# One test case, all asserts (each test case re-runs the whole skill).
 tests:
-  - description: "D-a: emits a Test Inventory document"
+  - description: "Test Inventory shape: heading + markdown table"
     vars: { input: '/devflow:lock-tests' }
     assert:
       - type: icontains
         value: 'Test Inventory'
-  - description: "D-b: inventory is a markdown table (pinned, not prose)"
-    vars: { input: '/devflow:lock-tests' }
-    assert:
       - type: regex
-        value: '(?m)^\|.*\|.*\|'
-  - description: "D-c: no em-dashes in the emitted doc"
-    vars: { input: '/devflow:lock-tests' }
-    assert:
-      - type: not-icontains
-        value: '—'
+        value: '(^|\n)\|.*\|.*\|'

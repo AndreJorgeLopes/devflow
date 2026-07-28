@@ -12,24 +12,17 @@ providers:
   - id: 'exec: bash eval-run.sh'
     label: create-pr@head
 
+# One test case, all asserts — each test case re-runs the whole (expensive) skill, so keep it to
+# a single invocation.
 tests:
-  - description: "D-a: PR body leads with a TL;DR block"
+  - description: "PR body shape: TL;DR, headings, no em-dashes, not fence-wrapped"
     vars: { input: '/devflow:create-pr' }
     assert:
       - type: icontains
         value: 'TL;DR'
-  - description: "D-b: no em-dashes anywhere (hard rule)"
-    vars: { input: '/devflow:create-pr' }
-    assert:
       - type: not-icontains
         value: '—'
-  - description: "D-c: markdown section headings present"
-    vars: { input: '/devflow:create-pr' }
-    assert:
       - type: regex
-        value: '(?m)^#{1,3} '
-  - description: "D-d: body is not wrapped in a single code fence"
-    vars: { input: '/devflow:create-pr' }
-    assert:
+        value: '(^|\n)#{1,3} '
       - type: not-icontains
         value: "```\n## TL;DR"

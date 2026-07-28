@@ -132,6 +132,20 @@ not an LLM), so its gate is a hard gate; the AI-judgment gates are as reliable a
 adherence — assert robustly-present surfaces (final answer block, required tokens, forbidden
 patterns), not compressible intermediate prose.
 
+**Side-effect skills — `DEVFLOW_EVAL` test-mode + throwaway-fixture isolation.** A gate *executes*
+the skill, so skills with irreversible side effects (create-pr opens a PR; finish-feature /
+new-feature push/commit/spawn; lock-tests / write-spike / verify-first write files) can't be run
+against the real repo. Their `eval-run.sh` sets `DEVFLOW_EVAL=1`; `run-skill.sh` then (a) REFUSES
+to run a listed side-effect skill without it (footgun guard — a stray `make determinism` can never
+push/write), and (b) runs it inside a THROWAWAY git fixture (feature branch 1 commit ahead of a
+local `main`, sample `plan.md`/`spec.md`/`doc.md`, **no remote, no gh auth**, deleted after) so it
+has real context but any push / PR-create / file write is contained. Each side-effect skill also
+honors `DEVFLOW_EVAL` itself (emit the final artifact to stdout, skip the irreversible step) — the
+fixture is the belt to that suspenders. Add a new side-effect skill → add it to
+`SIDE_EFFECT_SKILLS` in `run-skill.sh` and give its SKILL.md an eval-mode guard. Read-only skills
+(resolve-repo, review, review-document) need none and run from the repo root. The gate sets
+`PROMPTFOO_DISABLE_DB=true` so a running `promptfoo view` server can't lock the results DB.
+
 **Langfuse skill mirror (`make mirror` / `bin/devflow skills mirror`):** pushes each
 `skills/<name>/SKILL.md` to Langfuse prompt-management as `skill/<name>` for versioned history
 + diff (a MIRROR only — Claude Code never reads skills back from Langfuse). It is **local-only**

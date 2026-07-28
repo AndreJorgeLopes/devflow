@@ -12,19 +12,14 @@ providers:
   - id: 'exec: bash eval-run.sh'
     label: verify-first@head
 
+# One test case, all asserts (each test case re-runs the whole skill).
 tests:
-  - description: "D-a: classifies claims with the pinned [V]/[B]/[R] buckets"
+  - description: "Ledger shape: pinned [V]/[B]/[R] buckets in a markdown table"
     vars: { input: '/devflow:verify-first plan.md' }
     assert:
+      # The pinned bucket codes ARE the determinism contract (the skill uses the short codes in
+      # the ledger; the spelled-out names live only in its reference table).
       - type: regex
         value: '\[(V|B|R)\]'
-  - description: "D-b: uses a pinned bucket name, not free-form hedging"
-    vars: { input: '/devflow:verify-first plan.md' }
-    assert:
       - type: regex
-        value: '(VERIFIED|NEEDS-TEST-NOW|NEEDS-RUNTIME-DATA)'
-  - description: "D-c: ledger is a markdown table"
-    vars: { input: '/devflow:verify-first plan.md' }
-    assert:
-      - type: regex
-        value: '(?m)^\|.*\|.*\|'
+        value: '(^|\n)\|.*\|.*\|'

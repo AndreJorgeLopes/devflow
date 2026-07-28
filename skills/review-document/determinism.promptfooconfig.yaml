@@ -12,19 +12,14 @@ providers:
   - id: 'exec: bash eval-run.sh'
     label: review-document@head
 
+# One test case, all asserts (each test case re-runs the whole skill).
 tests:
-  - description: "D-a: findings carry a pinned severity marker (emoji or word)"
+  - description: "Findings shape: severity marker, TL;DR/summary, markdown headings"
     vars: { input: '/devflow:review-document eval/fixtures/review-document-sample.md' }
     assert:
       - type: regex
         value: '(🔴|🟠|🟡|🟢|🔵|Critical|Important|Suggestion|Minor)'
-  - description: "D-b: produces a scannable TL;DR / summary block"
-    vars: { input: '/devflow:review-document eval/fixtures/review-document-sample.md' }
-    assert:
       - type: regex
         value: '(TL;DR|Summary|Verdict)'
-  - description: "D-c: output is structured markdown, not one fenced blob"
-    vars: { input: '/devflow:review-document eval/fixtures/review-document-sample.md' }
-    assert:
       - type: regex
-        value: '(?m)^#{1,3} '
+        value: '(^|\n)#{1,3} '

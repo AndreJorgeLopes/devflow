@@ -11,19 +11,14 @@ providers:
   - id: 'exec: bash eval-run.sh'
     label: write-spike@head
 
+# One test case, all asserts (each test case re-runs the whole skill).
 tests:
-  - description: "D-a: has the pinned Spike Goals section"
+  - description: "Spike doc shape: Spike Goals, Recommendation, headings"
     vars: { input: '/devflow:write-spike add rate limiting to the widget API' }
     assert:
       - type: icontains
         value: 'Spike Goals'
-  - description: "D-b: carries an explicit Recommendation"
-    vars: { input: '/devflow:write-spike add rate limiting to the widget API' }
-    assert:
       - type: icontains
         value: 'Recommendation'
-  - description: "D-c: structured with markdown headings"
-    vars: { input: '/devflow:write-spike add rate limiting to the widget API' }
-    assert:
       - type: regex
-        value: '(?m)^#{1,3} '
+        value: '(^|\n)#{1,3} '
