@@ -1,3 +1,10 @@
+## v0.26.0 — 2026-07-28
+
+### Features
+- feat(watch): native macOS launchd scheduler (fixes unreliable user-cron) (#84)
+
+---
+
 ## v0.25.1 — 2026-07-28
 
 ### Fixes
