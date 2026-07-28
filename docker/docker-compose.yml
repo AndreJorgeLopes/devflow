@@ -37,6 +37,12 @@ x-langfuse-env: &langfuse-env
 services:
   # ── Hindsight (Memory) ──────────────────────────────────────────────
   hindsight:
+    # Gated behind a profile so `docker compose up` does NOT start it by
+    # default. `devflow up` activates this profile ONLY when no native
+    # hindsight daemon is already serving :8888 (see lib/services.sh). This
+    # prevents the bundled container from crash-looping on a port conflict
+    # with a native `hindsight-embed` daemon.
+    profiles: ["bundled-hindsight"]
     image: ghcr.io/vectorize-io/hindsight:latest
     ports:
       - "8888:8888" # API
