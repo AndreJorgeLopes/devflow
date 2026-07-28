@@ -1,3 +1,10 @@
+## v0.25.0 — 2026-07-28
+
+### Features
+- feat(eval): DEVFLOW_EVAL test-mode + fixture isolation — determinism gates for 5 more skills (#85)
+
+---
+
 ## v0.24.3 — 2026-07-28
 
 ### Fixes
