@@ -404,3 +404,22 @@ EOF
   assert_output --partial "<key>EnvironmentVariables</key>"
   assert_output --partial "<key>PATH</key><string>/Users/x/.local/bin:"
 }
+
+# ── _devflow_launcher: absolute + stable scheduler target ──────
+
+@test "devflow_launcher derives the copy-install BINDIR launcher from DEVFLOW_ROOT" {
+  local pfx="${BATS_TEST_TMPDIR}/pref"; mkdir -p "$pfx/bin" "$pfx/share/devflow"
+  printf '#!/bin/bash\n' > "$pfx/bin/devflow"; chmod +x "$pfx/bin/devflow"
+  DEVFLOW_ROOT="$pfx/share/devflow" run _devflow_launcher
+  assert_success
+  assert_output "$pfx/bin/devflow"
+}
+
+@test "devflow_launcher always returns an absolute path" {
+  # copy-install derivation (the common path) must be absolute
+  local pfx="${BATS_TEST_TMPDIR}/pref2"; mkdir -p "$pfx/bin" "$pfx/share/devflow"
+  printf '#!/bin/bash\n' > "$pfx/bin/devflow"; chmod +x "$pfx/bin/devflow"
+  DEVFLOW_ROOT="$pfx/share/devflow" run _devflow_launcher
+  assert_success
+  [[ "$output" == /* ]] || fail "not absolute: $output"
+}
