@@ -12,8 +12,14 @@ help: ## Show this help
 install: ## Install devflow to PREFIX (~/.local by default)
 	@mkdir -p $(BINDIR) $(LIBDIR)
 	@cp -R lib templates skills config docker $(LIBDIR)/
+	@rm -f $(LIBDIR)/devflow-bin
 	@cp bin/devflow $(LIBDIR)/devflow-bin
 	@chmod 755 $(LIBDIR)/devflow-bin
+	@# rm -f BEFORE the redirect: if $(BINDIR)/devflow is a leftover `make link` SYMLINK,
+	@# `printf > symlink` follows it and overwrites the TARGET (the source bin/devflow),
+	@# gutting the checkout while leaving the symlink in place. Removing it first makes
+	@# install REPLACE the symlink with a real launcher (idempotent + symlink-safe).
+	@rm -f $(BINDIR)/devflow
 	@printf '#!/usr/bin/env bash\nexport DEVFLOW_ROOT="%s"\nexec "%s/devflow-bin" "$$@"\n' \
 		"$(LIBDIR)" "$(LIBDIR)" > $(BINDIR)/devflow
 	@chmod 755 $(BINDIR)/devflow
