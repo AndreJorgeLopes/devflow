@@ -155,6 +155,18 @@ elif mode == 'hooks':
     else:
         print('Skip: skill-activation-log hook already registered')
 
+    # SessionStart hook — version-drift check. Warns (once/day, fail-silent) when the
+    # installed devflow is behind the latest origin release, so a stale local install is
+    # visible at session start instead of silently serving old skills/commands.
+    ss_hooks = hooks.setdefault('SessionStart', [])
+    ss_cmd = hook_root + '/lib/hooks/version-check.sh'
+    if not any('version-check' in str(entry) for entry in ss_hooks):
+        ss_hooks.append({'hooks': [{'type': 'command', 'command': ss_cmd}]})
+        changed = True
+        print('Added SessionStart hook: version-check')
+    else:
+        print('Skip: SessionStart hook already registered')
+
     # Claude Code OTel telemetry env — REQUIRED for trace-review to have ANY data.
     # Without these Claude Code emits no traces, so the whole trace-review feature is inert.
     # Points at the local devflow otel-collector (:4318); localhost-only, no external egress.
@@ -190,7 +202,20 @@ else:
 }
 
 devflow_init() {
-  local project_dir="${1:-$(pwd)}"
+  # Parse flags out of the positional args. `--dev` (or env DEVFLOW_DEV=1) opts INTO local
+  # dev mode (directory source + symlinks, no remote auto-update); the default is the GitHub
+  # source with auto-update, even inside the devflow repo.
+  local _devflow_dev_flag=false
+  local _init_args=()
+  local _a
+  for _a in "$@"; do
+    case "$_a" in
+      --dev) _devflow_dev_flag=true ;;
+      *) _init_args+=("$_a") ;;
+    esac
+  done
+  local project_dir
+  if [[ ${#_init_args[@]} -gt 0 ]]; then project_dir="${_init_args[0]}"; else project_dir="$(pwd)"; fi
   project_dir="$(cd "$project_dir" && pwd)"
 
   section "Initializing devflow"
@@ -450,9 +475,13 @@ with open(config_path, 'r+') as f:
       && ok "worktrunk plugin installed" \
       || skip "worktrunk plugin already installed or not available"
 
-    # Devflow plugin — dev mode uses local directory, end users get GitHub with auto-update
+    # Devflow plugin source. GitHub + auto-update is the DEFAULT so a merge to main reaches
+    # every install (maintainers included). Local dev mode (directory source + symlinks, no
+    # remote auto-update) is an EXPLICIT opt-in via `devflow init --dev` / `DEVFLOW_DEV=1`
+    # (or `make plugin-dev`). It is NEVER auto-selected just because you are inside the repo —
+    # that used to strand a maintainer on a stale local copy that never saw merged releases.
     local devflow_is_dev=false
-    if [[ -d "${root}/.git" ]] && git -C "${root}" remote get-url origin 2>/dev/null | grep -qi "devflow"; then
+    if [[ "$_devflow_dev_flag" == "true" ]] || [[ "${DEVFLOW_DEV:-}" == "1" ]]; then
       devflow_is_dev=true
     fi
 

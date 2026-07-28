@@ -100,6 +100,9 @@ plugin-dev: ## Symlink plugin commands/skills for live dev iteration
 	@echo "Dev symlinks created:"
 	@echo "  ~/.claude/commands/devflow -> $(CURDIR)/devflow-plugin/commands"
 	@echo "  ~/.claude/skills/devflow-recall -> $(CURDIR)/devflow-plugin/skills/recall-before-task"
+	@echo "NOTE: LOCAL dev override — Claude now reads this working tree and does NOT"
+	@echo "      auto-update from origin. 'git pull' here to advance it; run"
+	@echo "      'make plugin-unlink && devflow init' to return to the auto-updating install."
 	@echo "Restart Claude Code to pick up changes."
 
 plugin-unlink: ## Remove dev symlinks

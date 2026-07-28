@@ -294,7 +294,7 @@ devflow is distributed as a **Claude Code plugin** via its own marketplace.
 
 ### For End Users
 
-`devflow init` automatically configures the GitHub marketplace with **auto-update enabled**. On every Claude Code session start, the plugin checks for updates and pulls the latest version.
+`devflow init` configures the GitHub-source marketplace with **auto-update enabled** — this is the default for **everyone, including maintainers**. On every Claude Code session start the plugin checks GitHub and pulls the latest published version, so a merge to `main` (which auto-releases) reaches your install with no manual step. A `SessionStart` hook also warns if your install is behind the latest release.
 
 ```bash
 # Manual install (if not using devflow init)
@@ -302,25 +302,25 @@ claude plugin marketplace add AndreJorgeLopes/devflow
 claude plugin install devflow@devflow-marketplace
 ```
 
-### For Contributors
+### For Contributors (local dev mode — explicit opt-in)
 
-When running from a git clone of the devflow repo, `devflow init` detects developer mode and uses **local directory source** instead of GitHub. This means:
+Local dev mode uses a **local directory source + symlinks** so your uncommitted edits are reflected immediately. It is an **explicit opt-in** — `devflow init` no longer auto-selects it just because you are inside the repo (that used to strand maintainers on a stale local copy that never saw merged releases).
 
-- Your local edits are reflected immediately (no cache delay)
-- The plugin is uninstalled to avoid duplicates — symlinks handle discovery
-- Auto-update still works (tracks filesystem changes)
+Opt in with any of: `devflow init --dev`, `DEVFLOW_DEV=1 devflow init`, or `make plugin-dev`.
+
+> **Local dev mode does NOT auto-update from origin.** The plugin mirrors your working tree, not the remote. To pick up merged releases you must `git pull` the clone (and `make install` for the CLI). When you are done iterating, run `make plugin-unlink && devflow init` to return to the auto-updating GitHub-source install.
 
 ```bash
 git clone https://github.com/AndreJorgeLopes/devflow.git ~/dev/devflow
 cd ~/dev/devflow
-make link         # CLI binary
-devflow init      # Detects dev mode automatically
+make link              # CLI binary
+devflow init --dev     # explicit opt-in to local dev mode (symlinks)
 ```
 
-| Mode | Source | Discovery | Auto-Update |
-|------|--------|-----------|:-----------:|
-| End user | GitHub (`AndreJorgeLopes/devflow`) | Plugin cache | Yes (GitHub pull) |
-| Contributor | Local directory | Symlinks | Yes (filesystem) |
+| Mode | How to get it | Source | Discovery | Auto-Update from origin |
+|------|---------------|--------|-----------|:-----------------------:|
+| Default (all users + maintainers) | `devflow init` | GitHub (`AndreJorgeLopes/devflow`) | Plugin cache | Yes (session-start pull) |
+| Local dev (opt-in) | `devflow init --dev` / `make plugin-dev` | Local directory | Symlinks | No (mirrors working tree; `git pull` to update) |
 
 ---
 
