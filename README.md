@@ -322,6 +322,30 @@ devflow init --dev     # explicit opt-in to local dev mode (symlinks)
 | Default (all users + maintainers) | `devflow init` | GitHub (`AndreJorgeLopes/devflow`) | Plugin cache | Yes (session-start pull) |
 | Local dev (opt-in) | `devflow init --dev` / `make plugin-dev` | Local directory | Symlinks | No (mirrors working tree; `git pull` to update) |
 
+### Branch guard (keep the primary clone on a base branch)
+
+`devflow init` registers a `PreToolUse` (Bash) hook, `branch-guard`, that **blocks a `git checkout` / `git switch` which would move a repo's PRIMARY clone onto a non-base (feature) branch**, and steers you to `devflow worktree` instead. Feature work belongs in an isolated worktree, so the primary clone — and anything symlinked to it (e.g. a local-dev plugin install) — never silently serves in-progress branch code.
+
+It only governs the agent's git commands (a Claude Code hook cannot intercept your own terminal git; git has no blocking pre-checkout hook). It is **fail-open** and never blocks: base branches, any checkout inside a linked worktree, path restores (`git checkout -- file`), and repos not using the worktree flow are always allowed.
+
+A repo counts as "worktree-flow" (and is therefore guarded) when it has a `.worktrunk.toml`, OR already has ≥1 linked worktree, OR lives under a configured enforce-root.
+
+**Configuration** is optional and personal — put it in `~/.config/devflow/branch-guard.json` (keep it in your own dotfiles / yadm, not in the repo):
+
+```json
+{
+  "off": false,
+  "base_branches": ["release/*-lts"],
+  "enforce_roots": ["~/dev"]
+}
+```
+
+- `base_branches` — extra branch names to treat as base (added to the built-in set: `main`, `master`, `develop`, `dev`, `development`, `stage`, `staging`, `sandbox`, `release`, `trunk`, `prod`, `production`, `next`, `canary`, `hotfix`).
+- `enforce_roots` — extra roots under which EVERY repo is guarded, even before it has a worktree.
+- `off` — set `true` to disable entirely.
+
+Env overrides (per-session): `DEVFLOW_BRANCH_GUARD_OFF=1`, `DEVFLOW_BRANCH_GUARD_BASE_BRANCHES=a,b`, `DEVFLOW_BRANCH_GUARD_ROOTS=/p1:/p2`.
+
 ---
 
 ## Hindsight (Memory)
