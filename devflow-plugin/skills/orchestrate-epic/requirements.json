@@ -1,0 +1,13 @@
+{
+  "skill": "orchestrate-epic",
+  "required": [
+    { "name": "python3", "check": "python3", "why": "run lib/schedule.py — the deterministic wave scheduler / cycle detector", "install": "install Python 3 (stdlib only, no packages)" }
+  ],
+  "optional": [
+    { "name": "atlassian", "check": "atlassian", "why": "read the epic + every child ticket (status, assignee, dependencies)", "install": "connect the Atlassian MCP or use the acli CLI", "degrade": "ask the user to paste the epic's tickets, statuses, and dependencies" },
+    { "name": "defuddle", "check": "defuddle", "why": "read linked PRD / design / cross-repo Confluence pages for un-provided dimensions", "install": "install the defuddle skill", "degrade": "use acli confluence page view, or ask the user to paste the docs" },
+    { "name": "glab", "check": "glab", "why": "verify a ticket is actually merged (not just marked Done) before advancing a wave", "install": "brew install glab", "degrade": "rely on Jira status + the user's explicit done signal" },
+    { "name": "gh", "check": "gh", "why": "verify GitHub PR merge state before advancing a wave", "install": "brew install gh", "degrade": "rely on Jira status + the user's explicit done signal" },
+    { "name": "hindsight", "check": "hindsight", "why": "recall prior decisions about this epic / domain", "install": "docker compose up -d hindsight", "degrade": "proceed without recall" }
+  ]
+}

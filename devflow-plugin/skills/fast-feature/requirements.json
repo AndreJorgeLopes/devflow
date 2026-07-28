@@ -1,0 +1,12 @@
+{
+  "skill": "fast-feature",
+  "required": [
+    { "name": "git", "check": "git", "why": "create and switch the feature worktree for the ticket", "install": "install git" }
+  ],
+  "optional": [
+    { "name": "atlassian", "check": "atlassian", "why": "read the ticket's acceptance criteria when no context brief is supplied", "install": "connect the Atlassian MCP or use the acli CLI", "degrade": "ask the user to paste the ticket's ACs" },
+    { "name": "hindsight", "check": "hindsight", "why": "recall prior decisions and gotchas for the ticket's area", "install": "docker compose up -d hindsight", "degrade": "proceed without recall" },
+    { "name": "gh", "check": "gh", "why": "detect the MR/PR number for the branch on GitHub", "install": "brew install gh", "degrade": "omit the MR number from the spawned session title" },
+    { "name": "glab", "check": "glab", "why": "detect the MR number for the branch on GitLab", "install": "brew install glab", "degrade": "omit the MR number from the spawned session title" }
+  ]
+}
