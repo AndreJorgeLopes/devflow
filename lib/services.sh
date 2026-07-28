@@ -15,7 +15,17 @@ devflow_up() {
 
   # 2. Start Docker services
   section "Starting Docker services"
-  docker_compose -f "$compose_file" up -d
+  # The bundled Hindsight container is gated behind the "bundled-hindsight"
+  # compose profile. Only activate it when NO native hindsight daemon is
+  # already serving :8888 — otherwise the container just crash-loops on the
+  # port conflict (native daemon is canonical when present).
+  local hs_profile=()
+  if curl -sf -m3 "http://127.0.0.1:8888/health" >/dev/null 2>&1; then
+    ok "Native Hindsight daemon detected on :8888 — skipping bundled Docker Hindsight"
+  else
+    hs_profile=(--profile bundled-hindsight)
+  fi
+  docker_compose -f "$compose_file" "${hs_profile[@]}" up -d
   ok "Docker compose services started"
 
   # 3. Wait for health checks (Hindsight /health endpoint)
