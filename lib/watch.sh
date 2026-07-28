@@ -219,6 +219,23 @@ with open(sys.argv[1], 'w') as f:
 _detect_install_mode() {
   local devflow_path
   devflow_path="$(command -v devflow 2>/dev/null || echo "")"
+
+  # PATH-independent fallback. cron and launchd fire with a minimal PATH that usually
+  # lacks ~/.local/bin, so `command -v devflow` is empty and mode wrongly resolves to
+  # "none" - and _auto_reinstall_check then silently no-ops (the exact reason the launchd
+  # agent could not auto-update). Resolve the installed launcher directly instead.
+  # Inspect the BINDIR launcher (not the repo source): a copy install has a real file
+  # there, a `make link` install has a symlink there - that distinction IS the mode.
+  if [[ -z "$devflow_path" ]]; then
+    local cand
+    for cand in \
+      "$([[ "${DEVFLOW_ROOT:-}" == */share/devflow ]] && echo "${DEVFLOW_ROOT%/share/devflow}/bin/devflow")" \
+      "${HOME}/.local/bin/devflow" \
+      "/usr/local/bin/devflow" \
+      "/opt/homebrew/bin/devflow"; do
+      [[ -n "$cand" && -e "$cand" ]] && { devflow_path="$cand"; break; }
+    done
+  fi
   [[ -z "$devflow_path" ]] && echo "none" && return
 
   # Resolve the real path for Homebrew detection
@@ -550,9 +567,10 @@ _watch_launchd_plist() { echo "${HOME}/Library/LaunchAgents/$(_watch_launchd_lab
 # _watch_install_launchd <project_dir> <devflow_bin> — write + (re)load the LaunchAgent.
 _watch_install_launchd() {
   local project_dir="$1" devflow_bin="$2"
-  local label plist uid cal m
+  local label plist uid cal m bindir
   label="$(_watch_launchd_label "$project_dir")"
   plist="$(_watch_launchd_plist "$project_dir")"
+  bindir="$(dirname "$devflow_bin")"   # so the agent's minimal PATH still finds devflow
   mkdir -p "${HOME}/Library/LaunchAgents" "${HOME}/.devflow"
 
   cal=""
@@ -577,6 +595,10 @@ _watch_install_launchd() {
   <key>StartCalendarInterval</key>
   <array>
 ${cal}  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>${bindir}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
   <key>RunAtLoad</key><true/>
   <key>WorkingDirectory</key><string>${project_dir}</string>
   <key>StandardOutPath</key><string>${HOME}/.devflow/watch.log</string>
