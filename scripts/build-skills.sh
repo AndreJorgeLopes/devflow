@@ -124,7 +124,9 @@ while IFS= read -r sn; do
   printf '%s\n' "$ordered" | grep -qx "$sn" || ordered="${ordered}${sn}"$'\n'
 done <<< "$skill_names"
 
-skills_array="$(printf '%s\n' "$ordered" | sed '/^$/d' | sed 's#^#./skills/#; s#$#/SKILL.md#' | jq -R . | jq -s .)"
+# The plugin loader requires each skills[] entry to be the DIRECTORY containing
+# SKILL.md (e.g. ./skills/foo), not the SKILL.md file path itself.
+skills_array="$(printf '%s\n' "$ordered" | sed '/^$/d' | sed 's#^#./skills/#' | jq -R . | jq -s .)"
 out_pj="${OUT}/.claude-plugin/plugin.json"
 mkdir -p "${OUT}/.claude-plugin"
 jq --argjson skills "$skills_array" '.skills = $skills' "$REAL_PJ" > "${out_pj}.tmp" && mv "${out_pj}.tmp" "$out_pj"
