@@ -1,5 +1,5 @@
 ---
-description: [0.22.0] Document an architectural decision — record the decision and rationale, retain into Hindsight, and update CLAUDE.md if needed.
+description: [0.23.0] Document an architectural decision — record the decision and rationale, retain into Hindsight, and update CLAUDE.md if needed.
 ---
 
 You are documenting an architectural decision. This command ensures decisions are properly recorded and available for future recall.

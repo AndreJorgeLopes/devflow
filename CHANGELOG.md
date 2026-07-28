@@ -1,3 +1,10 @@
+## v0.23.0 — 2026-07-28
+
+### Features
+- feat: default to GitHub-source auto-update; add version-drift session check (#79)
+
+---
+
 ## v0.22.0 — 2026-07-28
 
 ### Features
