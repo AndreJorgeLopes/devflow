@@ -1,5 +1,5 @@
 ---
-description: [0.21.0] Analyze recent changes and update affected architecture visualizations
+description: [0.22.0] Analyze recent changes and update affected architecture visualizations
 ---
 
 # Update Visualizations

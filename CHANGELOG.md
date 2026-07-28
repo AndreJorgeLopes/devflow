@@ -1,3 +1,10 @@
+## v0.22.0 — 2026-07-28
+
+### Features
+- feat(skills): add orchestrate-epic + fast-feature devflow skills (#78)
+
+---
+
 ## v0.21.0 — 2026-07-20
 
 ### Features
