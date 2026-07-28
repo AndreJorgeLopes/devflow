@@ -1,3 +1,10 @@
+## v0.27.0 — 2026-07-28
+
+### Features
+- feat(hooks): branch-guard — keep worktree-flow primary clones on a base branch (#86)
+
+---
+
 ## v0.26.0 — 2026-07-28
 
 ### Features

@@ -1,5 +1,5 @@
 ---
-description: [0.26.0] Use when you have a full spike, PRD, or long design doc and want a tight, scannable SUMMARY of it for a busy reviewer. Condenses the source into a super-short TLDR, one all-in-one diagram, the recommendation, spike goals, still-open options, open questions, open risks, the technical deltas (GraphQL / DB / query), additive migration, external dependencies, and feature-flag strategy, with a link back to the full doc. Clean team style, no emoji or tag overload. For the full spike itself use readable-doc-spike; for the content use write-spike.
+description: [0.27.0] Use when you have a full spike, PRD, or long design doc and want a tight, scannable SUMMARY of it for a busy reviewer. Condenses the source into a super-short TLDR, one all-in-one diagram, the recommendation, spike goals, still-open options, open questions, open risks, the technical deltas (GraphQL / DB / query), additive migration, external dependencies, and feature-flag strategy, with a link back to the full doc. Clean team style, no emoji or tag overload. For the full spike itself use readable-doc-spike; for the content use write-spike.
 ---
 
 # Readable Doc (small summary)

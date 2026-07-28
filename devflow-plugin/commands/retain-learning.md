@@ -1,5 +1,5 @@
 ---
-description: [0.26.0] Retain a new learning, discovery, or hard-won insight into Hindsight so it's available in future sessions.
+description: [0.27.0] Retain a new learning, discovery, or hard-won insight into Hindsight so it's available in future sessions.
 ---
 
 You need to retain a new learning into long-term memory via Hindsight.
