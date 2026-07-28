@@ -1,5 +1,5 @@
 ---
-description: [0.25.0] Devflow wrapper for the upstream executing-plans skill. Use when you have a written implementation plan to execute task-by-task. ALWAYS invoke `/devflow:executing-plans` rather than the upstream skill directly — this wrapper guarantees that the post-implementation handoff goes to `/devflow:finish-feature` (devflow's verification + PR/MR creation flow) instead of `superpowers:finishing-a-development-branch` (the upstream default, which doesn't integrate with devflow's VCS-coherent finish flow).
+description: [0.25.1] Devflow wrapper for the upstream executing-plans skill. Use when you have a written implementation plan to execute task-by-task. ALWAYS invoke `/devflow:executing-plans` rather than the upstream skill directly — this wrapper guarantees that the post-implementation handoff goes to `/devflow:finish-feature` (devflow's verification + PR/MR creation flow) instead of `superpowers:finishing-a-development-branch` (the upstream default, which doesn't integrate with devflow's VCS-coherent finish flow).
 ---
 
 You are the devflow wrapper for the upstream executing-plans workflow. The wrapper exists for TWO reasons:

@@ -1,3 +1,10 @@
+## v0.25.1 — 2026-07-28
+
+### Fixes
+- fix(install): make install must replace a leftover symlink, not write through it (#71)
+
+---
+
 ## v0.25.0 — 2026-07-28
 
 ### Features
