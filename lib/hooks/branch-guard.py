@@ -243,5 +243,39 @@ def _guard_one(d, branch, is_create, roots):
         block(build_message(branch, top))
 
 
+def cli_mode(argv):
+    """Decision entry point for the `git` PATH shim (terminal + non-Claude agents).
+
+    Usage: branch-guard.py --cli <cwd> <git-args...>
+    The shim passes the working directory and the raw git argv. We run the same
+    guard as the hook: exit 2 + a stderr message if the checkout/switch should be
+    blocked, else exit 0 (the shim then exec's the real git). Fail-open on anything
+    unparseable — a shim must never wedge git.
+    """
+    if not argv:
+        sys.exit(0)
+    cwd = argv[0]
+    gitargs = list(argv[1:])
+    if gitargs and gitargs[0] == "git":
+        gitargs = gitargs[1:]
+    try:
+        base, roots = load_config()
+        base_lower = {b.lower() for b in base}
+        sub, rest = find_subcommand(gitargs)
+        if sub in ("checkout", "switch"):
+            d = resolve_dir(cwd, gitargs)
+            branch, is_create = parse_target(sub, rest)
+            if branch and branch.lower() not in base_lower:
+                _guard_one(d, branch, is_create, roots)  # exits 2 + message if blocked
+    except SystemExit:
+        raise
+    except Exception:
+        pass  # never wedge git
+    sys.exit(0)
+
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "--cli":
+        cli_mode(sys.argv[2:])
+    else:
+        main()
