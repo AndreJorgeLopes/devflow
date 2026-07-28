@@ -233,9 +233,12 @@ EOF
   assert_output "brew"
 }
 
-@test "detect_install_mode returns none when devflow not found" {
+@test "detect_install_mode returns none when devflow not found anywhere" {
+  # none now requires BOTH: not on PATH AND no launcher at any known location
+  # (the pathless fallback resolves ~/.local/bin etc.), so use a clean empty HOME.
+  export HOME="${BATS_TEST_TMPDIR}/empty-home"; mkdir -p "$HOME"
   rm -f "${MOCK_DIR}/devflow"
-  PATH="${MOCK_DIR}" run _detect_install_mode
+  DEVFLOW_ROOT="" PATH="${MOCK_DIR}" run _detect_install_mode
   assert_success
   assert_output "none"
 }
@@ -362,4 +365,42 @@ EOF
   assert_success
   assert_output --partial "LaunchAgent removed"
   [ ! -f "$plist" ] || fail "plist not removed"
+}
+
+# ── _detect_install_mode under a minimal PATH (launchd/cron) ────
+
+@test "detect_install_mode resolves WITHOUT PATH: copy install (regular file at BINDIR)" {
+  export HOME="${BATS_TEST_TMPDIR}/dh-copy"; mkdir -p "$HOME/.local/bin"
+  printf '#!/bin/bash\n' > "$HOME/.local/bin/devflow"; chmod +x "$HOME/.local/bin/devflow"
+  PATH="/usr/bin:/bin" run _detect_install_mode
+  assert_success
+  assert_output "install"
+}
+
+@test "detect_install_mode resolves WITHOUT PATH: link (symlink at BINDIR)" {
+  export HOME="${BATS_TEST_TMPDIR}/dh-link"; mkdir -p "$HOME/.local/bin"
+  printf '#!/bin/bash\n' > "$HOME/real-df"; chmod +x "$HOME/real-df"
+  ln -sf "$HOME/real-df" "$HOME/.local/bin/devflow"
+  PATH="/usr/bin:/bin" run _detect_install_mode
+  assert_success
+  assert_output "link"
+}
+
+@test "detect_install_mode resolves WITHOUT PATH via DEVFLOW_ROOT for a custom prefix" {
+  export HOME="${BATS_TEST_TMPDIR}/dh-none"; mkdir -p "$HOME"   # no ~/.local/bin/devflow
+  local pfx="${BATS_TEST_TMPDIR}/opt/df"; mkdir -p "$pfx/bin" "$pfx/share/devflow"
+  printf '#!/bin/bash\n' > "$pfx/bin/devflow"; chmod +x "$pfx/bin/devflow"
+  DEVFLOW_ROOT="$pfx/share/devflow" PATH="/usr/bin:/bin" run _detect_install_mode
+  assert_success
+  assert_output "install"
+}
+
+@test "launchd plist injects PATH so the agent's minimal env can find devflow" {
+  export HOME="${BATS_TEST_TMPDIR}/lah-path"; mkdir -p "$HOME"
+  printf '#!/bin/bash\nexit 0\n' > "${MOCK_DIR}/launchctl"; chmod +x "${MOCK_DIR}/launchctl"
+  _watch_install_launchd "/tmp/pp" "/Users/x/.local/bin/devflow"
+  local plist; plist="$(_watch_launchd_plist /tmp/pp)"
+  run cat "$plist"
+  assert_output --partial "<key>EnvironmentVariables</key>"
+  assert_output --partial "<key>PATH</key><string>/Users/x/.local/bin:"
 }
