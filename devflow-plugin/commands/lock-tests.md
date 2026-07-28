@@ -6,6 +6,8 @@ description: [0.24.1] Lock the full test inventory before any implementation cod
 
 You are at the test-locking phase of devflow's new-feature pipeline. Your job is to write the full failing-test inventory from the locked spec + plan + AC, then gate on user approval before any production code is written.
 
+> **Eval mode (`$DEVFLOW_EVAL`).** If the env var `DEVFLOW_EVAL` is set you are running under the determinism gate against a throwaway fixture, not a real task. Produce the full Test Inventory document to stdout exactly as normal, but perform NO irreversible action: do NOT write any test files to disk, do NOT open the user-approval gate. Stop after printing the Test Inventory.
+
 ## Step 0 — Re-establish the feature worktree (do this before Phase 0)
 
 This phase is normally reached via `devflow:phase-handoff`, which forks a FRESH throwaway worktree that is NOT on the feature branch (`spawn_task` always forks off the default branch; there is no way to pin it). Move to the real feature worktree first, using the `devflow handoff context` block in the message that invoked this skill.

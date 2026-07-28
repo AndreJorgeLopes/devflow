@@ -1,0 +1,29 @@
+# write-spike determinism assertions (Axis B — pin the spike-doc section shape).
+# SIDE-EFFECT skill: eval-run.sh sets DEVFLOW_EVAL=1, so the shared runner isolates it in a
+# throwaway fixture and the skill prints the spike document WITHOUT writing the doc / notes files.
+# Run: make determinism SKILL=write-spike
+description: write-spike determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval-run.sh'
+    label: write-spike@head
+
+tests:
+  - description: "D-a: has the pinned Spike Goals section"
+    vars: { input: '/devflow:write-spike add rate limiting to the widget API' }
+    assert:
+      - type: icontains
+        value: 'Spike Goals'
+  - description: "D-b: carries an explicit Recommendation"
+    vars: { input: '/devflow:write-spike add rate limiting to the widget API' }
+    assert:
+      - type: icontains
+        value: 'Recommendation'
+  - description: "D-c: structured with markdown headings"
+    vars: { input: '/devflow:write-spike add rate limiting to the widget API' }
+    assert:
+      - type: regex
+        value: '(?m)^#{1,3} '

@@ -7,6 +7,8 @@ You are finishing a feature. Run the full completion pipeline before handing off
 
 **IMPORTANT:** Do NOT clean up the worktree or switch branches from inside this session — that is a terminal action performed by the developer after the session ends.
 
+> **Eval mode (`$DEVFLOW_EVAL`).** If the env var `DEVFLOW_EVAL` is set you are running under the determinism gate against a throwaway fixture, not a real feature. Run the review gate and build the PR body exactly as normal and print the review-gate findings + the assembled PR body to stdout, but perform NO irreversible action: do NOT commit, do NOT `git push`, do NOT `gh pr create` / `glab mr create`, do NOT retain to Hindsight. Stop after printing.
+
 ## Preamble (first action)
 
 1. Detect ticket ID deterministically (D1): `TICKET=$(extract_ticket_id "$(git branch --show-current)") || TICKET=none` (lib abstains → `none`).

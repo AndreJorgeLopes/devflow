@@ -1,0 +1,35 @@
+# create-pr determinism assertions (Axis B — pin the PR-body output shape).
+# SIDE-EFFECT skill: eval-run.sh sets DEVFLOW_EVAL=1, so the shared runner isolates it in a
+# throwaway git fixture (a feature branch 1 commit ahead of main, no remote) and the skill prints
+# the assembled PR title + body WITHOUT pushing or opening a PR.
+# Run: make determinism SKILL=create-pr
+description: create-pr determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval-run.sh'
+    label: create-pr@head
+
+tests:
+  - description: "D-a: PR body leads with a TL;DR block"
+    vars: { input: '/devflow:create-pr' }
+    assert:
+      - type: icontains
+        value: 'TL;DR'
+  - description: "D-b: no em-dashes anywhere (hard rule)"
+    vars: { input: '/devflow:create-pr' }
+    assert:
+      - type: not-icontains
+        value: '—'
+  - description: "D-c: markdown section headings present"
+    vars: { input: '/devflow:create-pr' }
+    assert:
+      - type: regex
+        value: '(?m)^#{1,3} '
+  - description: "D-d: body is not wrapped in a single code fence"
+    vars: { input: '/devflow:create-pr' }
+    assert:
+      - type: not-icontains
+        value: "```\n## TL;DR"
