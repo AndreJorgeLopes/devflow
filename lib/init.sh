@@ -155,6 +155,17 @@ elif mode == 'hooks':
     else:
         print('Skip: skill-activation-log hook already registered')
 
+    # PreToolUse hook (matcher: Bash) — branch-guard. Blocks a git checkout/switch that
+    # would move a worktree-flow repo's PRIMARY clone onto a non-base feature branch,
+    # steering to `devflow worktree`. Fail-open; base branches + worktrees always allowed.
+    bg_cmd = hook_root + '/lib/hooks/branch-guard.sh'
+    if not any('branch-guard' in str(entry) for entry in pre_hooks):
+        pre_hooks.append({'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': bg_cmd}]})
+        changed = True
+        print('Added PreToolUse hook: branch-guard')
+    else:
+        print('Skip: branch-guard hook already registered')
+
     # SessionStart hook — version-drift check. Warns (once/day, fail-silent) when the
     # installed devflow is behind the latest origin release, so a stale local install is
     # visible at session start instead of silently serving old skills/commands.
