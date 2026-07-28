@@ -4,7 +4,7 @@ class Devflow < Formula
   url "https://github.com/AndreJorgeLopes/devflow/releases/download/v0.24.0/devflow-0.24.0.tar.gz"
   version "0.24.0"
   license "MIT"
-  sha256 "9bc383254f46aa287d46c928db15e5e5c88be4340ce0ec6343a02ef8e9d1ee09" # Compute from release tarball: shasum -a 256 devflow-0.1.0.tar.gz
+  sha256 "9bc383254f46aa287d46c928db15e5e5c88be4340ce0ec6343a02ef8e9d1ee09"
 
   depends_on "git"
   depends_on "tmux"

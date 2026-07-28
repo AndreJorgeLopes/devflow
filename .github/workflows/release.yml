@@ -150,8 +150,12 @@ jobs:
 
           if [[ -f Formula/devflow.rb ]]; then
             RELEASE_URL="https://github.com/AndreJorgeLopes/devflow/releases/download/v${NEW_VERSION}/devflow-${NEW_VERSION}.tar.gz"
+            # Replace the WHOLE sha256 line (not just the quoted value) so any
+            # trailing comment can never survive a release. The greedy `.*` in a
+            # value-only sed stopped at the closing quote and left a stale
+            # `# ...devflow-0.1.0.tar.gz` hint behind on every release.
             sed -i "s|url \".*\"|url \"${RELEASE_URL}\"|" Formula/devflow.rb
-            sed -i "s|sha256 \".*\"|sha256 \"${SHA}\"|" Formula/devflow.rb
+            sed -i -E "s|^([[:space:]]*)sha256 .*|\1sha256 \"${SHA}\"|" Formula/devflow.rb
             sed -i "s|version \".*\"|version \"${NEW_VERSION}\"|" Formula/devflow.rb
           fi
 
