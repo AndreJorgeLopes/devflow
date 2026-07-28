@@ -39,6 +39,8 @@
     "./skills/task-prioritize/SKILL.md",
     "./skills/verify-first/SKILL.md",
     "./skills/readable-doc/SKILL.md",
-    "./skills/readable-doc-spike/SKILL.md"
+    "./skills/readable-doc-spike/SKILL.md",
+    "./skills/orchestrate-epic/SKILL.md",
+    "./skills/fast-feature/SKILL.md"
   ]
 }

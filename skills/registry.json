@@ -238,6 +238,35 @@
       "category": "workflow",
       "layer": 2,
       "auto_invoke": false
+    },
+    {
+      "name": "orchestrate-epic",
+      "description": "Coordinate a whole cross-repo epic — build the dependency graph from formal links AND free-text dependencies, compute a parallel wave schedule (deterministic), and act as a persistent coordinator that spawns a session per workable ticket and re-verifies unblocks as tickets complete.",
+      "category": "workflow",
+      "layer": 4,
+      "requires": [],
+      "optional": [
+        "atlassian",
+        "defuddle",
+        "glab",
+        "gh",
+        "hindsight"
+      ]
+    },
+    {
+      "name": "fast-feature",
+      "description": "Drive a single already-specced ticket through devflow in ONE session — ambiguity-only brainstorm, then spec, plan, and lock-tests back-to-back, spawning a new session only for the execute phase. The per-ticket driver orchestrate-epic invokes.",
+      "category": "worktree-flow",
+      "layer": 2,
+      "requires": [
+        "git"
+      ],
+      "optional": [
+        "atlassian",
+        "hindsight",
+        "gh",
+        "glab"
+      ]
     }
   ]
 }
