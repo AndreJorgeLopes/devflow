@@ -1,3 +1,10 @@
+## v0.27.1 — 2026-07-28
+
+### Fixes
+- fix(watch): resolve install mode without PATH so launchd/cron auto-reinstall fires (#87)
+
+---
+
 ## v0.27.0 — 2026-07-28
 
 ### Features

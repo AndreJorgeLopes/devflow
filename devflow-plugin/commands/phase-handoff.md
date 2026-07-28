@@ -1,5 +1,5 @@
 ---
-description: [0.27.0] Hand off between phases of the devflow new-feature pipeline. Writes a frozen-state file, marks a chapter, sets the terminal title, gates on a one-click AskUserQuestion, then spawns a new session for the next phase via `mcp__ccd_session__spawn_task` so it shows up in the Claude Desktop sidebar with a deterministic title.
+description: [0.27.1] Hand off between phases of the devflow new-feature pipeline. Writes a frozen-state file, marks a chapter, sets the terminal title, gates on a one-click AskUserQuestion, then spawns a new session for the next phase via `mcp__ccd_session__spawn_task` so it shows up in the Claude Desktop sidebar with a deterministic title.
 ---
 
 You are at a phase boundary in devflow's new-feature pipeline. Capture the current state to disk, **commit the phase artefacts to the feature branch so they survive worktree removal**, mark the transition in the CURRENT session, then spawn a NEW session (`mcp__ccd_session__spawn_task`) for the next phase.
