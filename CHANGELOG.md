@@ -1,3 +1,10 @@
+## v0.27.2 — 2026-07-30
+
+### Fixes
+- fix(watch): pin scheduled entry to an absolute, stable devflow launcher (#88)
+
+---
+
 ## v0.27.1 — 2026-07-28
 
 ### Fixes

@@ -1,5 +1,5 @@
 ---
-description: [0.27.1] Reprioritize a devflow task — move between priority folders (P0-P4) and update frontmatter.
+description: [0.27.2] Reprioritize a devflow task — move between priority folders (P0-P4) and update frontmatter.
 ---
 
 You are reprioritizing a task in the devflow task backlog.

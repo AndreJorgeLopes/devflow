@@ -1,7 +1,7 @@
 {
   "name": "devflow",
   "description": "Devflow AI development workflow skills — memory, worktrees, code review, process discipline, observability",
-  "version": "0.27.1",
+  "version": "0.27.2",
   "author": {
     "name": "Andre Jorge Lopes"
   },

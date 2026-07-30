@@ -1,5 +1,5 @@
 ---
-description: [0.27.1] Full PR/MR creation pipeline. VCS-aware (GitHub `gh` / GitLab `glab`), runs self-review + checks, and writes a structured description (TL;DR, change table, mermaid flow, honest verification status, no em-dashes). On GitLab it adapts the project's `.gitlab/merge_request_templates` template, filling its sections and appending only the extras it lacks. Opens as a draft when verification is incomplete.
+description: [0.27.2] Full PR/MR creation pipeline. VCS-aware (GitHub `gh` / GitLab `glab`), runs self-review + checks, and writes a structured description (TL;DR, change table, mermaid flow, honest verification status, no em-dashes). On GitLab it adapts the project's `.gitlab/merge_request_templates` template, filling its sections and appending only the extras it lacks. Opens as a draft when verification is incomplete.
 ---
 
 You are creating a pull request (GitHub) or merge request (GitLab). This runs the full pipeline: review, build a structured description, adapt the project template if there is one, and open it with the right tool.

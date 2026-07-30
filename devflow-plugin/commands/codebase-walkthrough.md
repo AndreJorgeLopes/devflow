@@ -1,5 +1,5 @@
 ---
-description: [0.27.1] Deep codebase walkthrough before implementation — trace the full flow, explain architecture, and build understanding.
+description: [0.27.2] Deep codebase walkthrough before implementation — trace the full flow, explain architecture, and build understanding.
 ---
 
 Guide the user through a deep technical walkthrough of the codebase areas affected by their task, BEFORE any implementation begins. This builds architectural understanding so the user can meaningfully review code during implementation.
