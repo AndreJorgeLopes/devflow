@@ -209,7 +209,11 @@ services:
       langfuse-redis: { condition: service_healthy }
       langfuse-minio: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/public/health"]
+      # langfuse-web (Next.js) binds the container's own IP, NOT loopback, so a
+      # localhost probe is refused and the container shows perpetually "unhealthy"
+      # even while it serves fine (host :3100 returns 200 throughout). Probe the
+      # container IP via $(hostname -i) instead.
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://$(hostname -i):3000/api/public/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
