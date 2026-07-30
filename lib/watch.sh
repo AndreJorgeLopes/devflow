@@ -549,6 +549,23 @@ _watch_run() {
 
 # ── Setup / Remove ───────────────────────────────────────────────────────────
 
+# Absolute, stable path to the installed devflow launcher for a scheduled entry.
+# `command -v devflow` can return a RELATIVE path (e.g. ./bin/devflow when PATH has a
+# relative entry), and a launchd/cron job needs an ABSOLUTE target that survives
+# auto-reinstall. Prefer the copy-install BINDIR launcher derived from DEVFLOW_ROOT
+# (<prefix>/share/devflow -> <prefix>/bin/devflow); otherwise absolutize command -v.
+_devflow_launcher() {
+  if [[ "${DEVFLOW_ROOT:-}" == */share/devflow && -x "${DEVFLOW_ROOT%/share/devflow}/bin/devflow" ]]; then
+    echo "${DEVFLOW_ROOT%/share/devflow}/bin/devflow"; return
+  fi
+  local dfb; dfb="$(command -v devflow 2>/dev/null || echo "${DEVFLOW_ROOT:-$(devflow_root)}/bin/devflow")"
+  case "$dfb" in
+    /*) echo "$dfb" ;;
+    *)  local d; d="$(cd "$(dirname "$dfb")" 2>/dev/null && pwd)"
+        if [[ -n "$d" ]]; then echo "${d}/$(basename "$dfb")"; else echo "${HOME}/.local/bin/devflow"; fi ;;
+  esac
+}
+
 # ── native scheduler backend: macOS launchd ──────────────────────────────────
 # A per-project LaunchAgent, not cron: macOS user-cron is unreliable (does not fire
 # after sleep). StartCalendarInterval (not StartInterval) is used deliberately -
@@ -645,7 +662,7 @@ _watch_setup() {
   project_dir="$(cd "$project_dir" && pwd)"  # resolve to absolute
 
   local devflow_bin
-  devflow_bin="$(command -v devflow 2>/dev/null || echo "${DEVFLOW_ROOT:-$(devflow_root)}/bin/devflow")"
+  devflow_bin="$(_devflow_launcher)"   # absolute + stable (never a relative ./bin/devflow)
 
   section "Sensitive File Watchdog Setup"
   echo ""
