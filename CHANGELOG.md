@@ -1,3 +1,10 @@
+## v0.27.3 — 2026-07-30
+
+### Fixes
+- fix(docker): langfuse-web healthcheck probes container IP (was falsely unhealthy) (#89)
+
+---
+
 ## v0.27.2 — 2026-07-30
 
 ### Fixes
