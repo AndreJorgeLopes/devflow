@@ -81,6 +81,20 @@ to **`langfuse/langfuse:3.200.0`** (web + worker, identical).
    `No such container <hash>_devflow-langfuse-web`, leaving the OLD container serving
    stale env. Fix: a **full `down` then fresh `up`** (a fresh CREATE has no rename), not
    a partial recreate.
+4. **A blank `LANGFUSE_OTEL_BASIC_AUTH` in `docker/.env` fails SILENTLY and drops ALL
+   Claude Code telemetry** (found 2026-07-30, after ~27 days of missing traces went
+   unnoticed). If that var is unset/empty, `otel-collector` sends `Authorization: Basic `
+   (nothing after it) to `langfuse-web`, which rejects every batch with HTTP 401 -
+   `otel-collector` logs `Exporting failed. Dropping data.` and the CLI-facing symptom is
+   `devflow trace-review run` quietly showing `"observations": 0` and zero attribution,
+   with NO error surfaced anywhere the user would see. Diagnose: `docker logs
+   devflow-langfuse-otel-collector-1 --since 1h | grep 401`. Fix: recompute the value
+   (`base64("$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY")`, sourcing keys from
+   `~/.config/zsh/secrets`) into `docker/.env`, then `docker compose up -d
+   --force-recreate otel-collector` (env vars are baked at container creation - a plain
+   `restart` does NOT re-read a changed `.env`). Verify by re-querying
+   `/api/public/observations?name=claude_code.tool&orderBy=startTime.desc` for a
+   just-now timestamp, not just by the absence of new 401s.
 
 ### Score-push bridge (feeds `devflow trace-review`'s score column)
 Push a skill's quality score as a `devflow-eval` trace so trace-review can key it by
