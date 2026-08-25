@@ -1,3 +1,10 @@
+## v0.28.0 — 2026-07-30
+
+### Features
+- feat(verify-first): cover probes that pass for the wrong reason (#91)
+
+---
+
 ## v0.27.3 — 2026-07-30
 
 ### Fixes

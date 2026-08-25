@@ -1,5 +1,5 @@
 ---
-description: [0.27.3] Use when reviewing a PR/MR by URL or the local working-tree diff — runs multi-perspective parallel agents (bug scanner, CLAUDE.md compliance, test coverage, plan alignment, git history, sibling MR/epic coherence) with confidence scoring and optional draft inline comments on the MR. Triggers for `/devflow:review` or any "review this PR/MR" request.
+description: [0.28.0] Use when reviewing a PR/MR by URL or the local working-tree diff — runs multi-perspective parallel agents (bug scanner, CLAUDE.md compliance, test coverage, plan alignment, git history, sibling MR/epic coherence) with confidence scoring and optional draft inline comments on the MR. Triggers for `/devflow:review` or any "review this PR/MR" request.
 ---
 
 # /devflow:review — Consolidated multi-perspective code review
