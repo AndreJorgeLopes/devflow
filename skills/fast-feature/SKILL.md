@@ -105,14 +105,14 @@ If the trivial-change escape hatch fires (tiny plan, no new AC), follow lock-tes
 This is the ONLY phase boundary that spawns a new session. After the reviewer approves, invoke:
 
 ```
-devflow:phase-handoff --phase lock-tests --next-phase impl
+devflow:phase-handoff --phase lock-tests --next-phase impl --unattended
 ```
 
 Run it WITHOUT `--no-handoff`, and WITH `--unattended` so it does not gate on an `AskUserQuestion`. It commits the spec/plan/test-inventory docs to the branch (durability) and spawns the `[<TICKET>] [MR#<N>] Implementation` session whose prompt leads with `/devflow:executing-plans`. That new session does the red/green/refactor against the locked tests and finishes via `/devflow:finish-feature`.
 
 If the runtime cannot spawn a session without a human click, do not wait on one: continue into `/devflow:executing-plans` in THIS session and say plainly in the final report that execute did not get a cold context.
 
-Then exit. Report: spec + plan + test-inventory produced in this session, and the implementation session spawned.
+Then exit. Report: spec + plan + test-inventory produced in this session, and whether execution continued in-session or the implementation session spawned.
 
 ## Common Mistakes
 
