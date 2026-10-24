@@ -1,0 +1,30 @@
+# orchestrate-epic determinism assertions (Axis B: pin output shape).
+# Run from repo root: make determinism SKILL=orchestrate-epic
+# orchestrate-epic can spawn sessions, start agents, comment and merge, so eval-run.sh sets
+# DEVFLOW_EVAL=1: the skill prints its plan and does no write, and run-skill.sh runs it in a
+# throwaway fixture. Reads use the real gh auth (signal-copier epic #12, read-only).
+description: orchestrate-epic determinism assertions
+
+prompts:
+  - '{{input}}'
+
+providers:
+  - id: 'exec: bash eval-run.sh'
+    label: orchestrate-epic@head
+
+tests:
+  - description: "gate.py mode picks the GitHub mode for a GitHub epic"
+    vars: { input: '/devflow:orchestrate-epic https://github.com/AndreJorgeLopes/signal-copier/issues/12' }
+    assert:
+      - type: regex
+        value: '"mode":\s*"github"'
+  - description: "one pinned routing line per ticket"
+    vars: { input: '/devflow:orchestrate-epic https://github.com/AndreJorgeLopes/signal-copier/issues/12' }
+    assert:
+      - type: regex
+        value: '#\d+ -> (agent|sub-session|blocked)'
+  - description: "no merge command without --match-head-commit"
+    vars: { input: '/devflow:orchestrate-epic https://github.com/AndreJorgeLopes/signal-copier/issues/12' }
+    assert:
+      - type: not-regex
+        value: 'gh pr merge(?![^\n]*--match-head-commit)'
