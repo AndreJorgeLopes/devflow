@@ -12,13 +12,15 @@ Subcommands:
       exit 10 for anything else (GitLab epic URL, two candidates, free text).
 
   gate.py gate <path/to/CLAUDE.md> Does the target repo define a merge gate?
-      {"merge_gate":true,"heading":"..."}   a Markdown heading that starts with "Merge gate"
+      {"merge_gate":true,"heading":"..."}   a Markdown heading that starts with "Merge gate", outside
+                                            code fences. It means "a gate section exists": the AI still
+                                            reads it and confirms it lets an agent merge.
       {"merge_gate":false}                  no such heading and no mention of "merge gate"
       exit 10 when "merge gate" is mentioned but is not a heading (the AI reads it).
       A missing file gives {"merge_gate":false} (no CLAUDE.md, no gate: the safe answer).
 
   gate.py premerge [owner/repo] < pr.json   Is the PR ready for the gated merge?
-      stdin = `gh pr view <n> --json number,state,headRefOid,comments,statusCheckRollup`
+      stdin = `gh pr view <n> --json number,state,headRefOid,mergeStateStatus,comments,statusCheckRollup`
       {"ready":bool,"head":"<sha>","reasons":[...],"merge_cmd":"gh pr merge ..."}
       exit 10 when the PR has no CI checks at all (the AI asks: no CI, or not reported yet?).
 """
@@ -32,9 +34,11 @@ ABSTAIN = 10
 GH_URL = re.compile(r"github\.com/([\w.-]+/[\w.-]+)/issues/(\d+)")
 GH_SHORT = re.compile(r"(?<![\w/.-])([\w.-]+/[\w.-]+)#(\d+)\b")
 JIRA_KEY = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
+FENCE = re.compile(r"^\s{0,3}(```|~~~)")
 GATE_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(merge gate\b.*)$", re.IGNORECASE)
-VERDICT = re.compile(r"REVIEW:\s*(APPROVE|CHANGES REQUESTED)\b", re.IGNORECASE)
-SHA = re.compile(r"\b[0-9a-f]{7,40}\b")
+# One verdict line, anchored and case-sensitive. The SHA comes only from this line.
+VERDICT = re.compile(r"^REVIEW: (APPROVE|CHANGES REQUESTED)(?: at ([0-9a-f]{7,40}))?\b", re.MULTILINE)
+MERGEABLE_STATES = {"CLEAN", "HAS_HOOKS"}
 CHECK_OK = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 
 
@@ -44,8 +48,11 @@ def out(obj, code=0):
 
 
 def cmd_mode(ref):
+    ref = ref.strip()
+    if not ref or any(ch.isspace() for ch in ref):
+        out({"abstain": True, "reason": "an epic reference is one token, not free text"}, ABSTAIN)
     gh = {(m.group(1), int(m.group(2))) for m in GH_URL.finditer(ref)}
-    if not gh:
+    if not gh and "gitlab" not in ref.lower():
         gh = {(m.group(1), int(m.group(2))) for m in GH_SHORT.finditer(ref)}
     jira = set() if "github.com" in ref else set(JIRA_KEY.findall(ref))
     if len(gh) == 1 and not jira:
@@ -60,7 +67,14 @@ def cmd_gate(path):
     if not os.path.isfile(path):
         out({"merge_gate": False, "reason": "no CLAUDE.md"})
     with open(path, encoding="utf-8") as f:
-        lines = f.read().splitlines()
+        raw = f.read().splitlines()
+    lines, fenced = [], False
+    for l in raw:
+        if FENCE.match(l):
+            fenced = not fenced
+            continue
+        if not fenced:
+            lines.append(l)
     headings = [m.group(1).strip() for m in map(GATE_HEADING.match, lines) if m]
     if len(headings) == 1:
         out({"merge_gate": True, "heading": headings[0]})
@@ -79,6 +93,12 @@ def _check_state(c):
     if (c.get("status") or "").upper() != "COMPLETED":
         return "pending"
     return "ok" if (c.get("conclusion") or "").upper() in CHECK_OK else "fail"
+
+
+def _is_success(c):
+    if "conclusion" in c or c.get("__typename") == "CheckRun":
+        return (c.get("conclusion") or "").upper() == "SUCCESS"
+    return (c.get("state") or "").upper() == "SUCCESS"
 
 
 def cmd_premerge(raw, repo=None):
@@ -100,23 +120,31 @@ def cmd_premerge(raw, repo=None):
         reasons.append("a CI check failed")
     elif "pending" in states:
         reasons.append("CI checks are still running")
+    elif not any(_is_success(c) for c in checks):
+        reasons.append("no CI check succeeded (all skipped or neutral)")
+    mss = (pr.get("mergeStateStatus") or "").upper()
+    if not mss:
+        reasons.append("mergeStateStatus missing: add it to the gh pr view --json fields")
+    elif mss not in MERGEABLE_STATES:
+        reasons.append(f"GitHub reports mergeStateStatus {mss} (required checks or reviews not met)")
 
     verdicts = []
     for c in pr.get("comments") or []:
-        m = VERDICT.search(c.get("body") or "")
-        if m:
-            verdicts.append((c.get("createdAt") or "", m.group(1).upper(), c.get("body") or ""))
+        found = VERDICT.findall(c.get("body") or "")
+        if len(found) > 1:
+            out({"abstain": True, "reason": "a comment has more than one REVIEW: line", "head": head}, ABSTAIN)
+        if found:
+            verdicts.append((c.get("createdAt") or "", found[0][0], found[0][1]))
     if not verdicts:
         reasons.append("no REVIEW: verdict comment")
     else:
-        _, verdict, body = sorted(verdicts)[-1]
-        shas = SHA.findall(body.lower())
+        _, verdict, sha = sorted(verdicts)[-1]
         if verdict != "APPROVE":
             reasons.append("latest verdict is CHANGES REQUESTED")
-        elif not shas:
+        elif not sha:
             reasons.append("the APPROVE verdict names no head SHA")
-        elif not any(head.lower().startswith(s) for s in shas):
-            reasons.append(f"the APPROVE verdict is for {shas[0]}, not the current head {head[:7]}: re-check needed")
+        elif not head.lower().startswith(sha):
+            reasons.append(f"the APPROVE verdict is for {sha}, not the current head {head[:7]}: re-check needed")
 
     out({
         "ready": not reasons,

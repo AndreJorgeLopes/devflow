@@ -152,13 +152,13 @@ Give the user, concisely:
 
 Diagram: the DAG is usually 🔴 complex (>8 nodes, multi-lane). Prefer a tight ASCII lane view inline; offer a rendered Excalidraw via `/devflow:render-diagram` if the user wants something shareable.
 
-## Phase E — Route and start the workable tickets
+## Phase E: Route and start the workable tickets
 
 First pick a route for each `workable_now` ticket, with these rules in this order:
 
 1. It has a `needs-andre` label (or the label the project CLAUDE.md names) → **sub-session**, even if it has a spec and locked tests.
-2. It has a spec AND locked tests that André already approved → **background author `Agent`** (`general-purpose`, no model override). Its prompt: the per-ticket brief (below), the spec and locked-test paths, the worktree path `~/dev/.worktrees/<repo>/<slug>`, the branch `feat/<KEY>/<slug>`, "make the locked tests pass without changing them, open a ready (not draft) PR when the work is complete, and if you reach a question only André can answer, stop and report it, do not guess". Record its agent id: it is "the same author" for every fix.
-3. Anything else → **sub-session** running `/devflow:fast-feature`, as below.
+2. It has a spec AND locked tests that André already approved → **background author `Agent`** (`general-purpose`, no model override). Its prompt: the per-ticket brief (below), the spec and locked-test paths, the worktree path `~/dev/.worktrees/<repo>/<slug>`, the branch `feat/<KEY>/<slug>`, "make the locked tests pass without changing them, run the repo's checks, open a ready (not draft) PR with `gh pr create` when the work is complete, and if you reach a question only André can answer, stop and report it, do not guess". Do not ask it to run `create-pr` or `finish-feature`: their approval prompts need André, and the merge-gate reviewer does the independent review. Record its agent id: it is "the same author" for every fix.
+3. Anything else → **sub-session** running `/devflow:fast-feature`, as below. A ticket that needs real design exploration (not only a few open points) gets `/devflow:new-feature` on line 1 instead.
 
 Use ONE `AskUserQuestion` (multi-select) listing the workable tickets with their route, so the user picks which to start now (default: all). For each selected ticket, distil a **per-ticket context brief** (format below). Start the author Agents in one message (parallel). For each sub-session ticket, spawn a session via `mcp__ccd_session__spawn_task`:
 
@@ -173,7 +173,7 @@ Use ONE `AskUserQuestion` (multi-select) listing the workable tickets with their
   --- end context brief ---
   ```
 
-This reuses the familiar one-click spawn gate. Record each session's `local_…` id: if that ticket's PR later needs a fix, it is "the same author". After spawning, tell the user which sessions were created and that each chip waits for his click (they appear in the sidebar; `spawn_task` can't place them in a group; drag them by hand if you want).
+This reuses the familiar one-click spawn gate. Record each session's `local_…` id. Its PR is opened later by the Implementation session that fast-feature spawns: that session is "the same author" for fixes (`merge-gate.md` says how to find it). After spawning, tell the user which sessions were created and that each chip waits for his click (they appear in the sidebar; `spawn_task` can't place them in a group; drag them by hand if you want).
 
 **Do not spawn a blocked or ineligible ticket.** If the user asks to start one anyway, surface its unresolved blockers first and confirm.
 

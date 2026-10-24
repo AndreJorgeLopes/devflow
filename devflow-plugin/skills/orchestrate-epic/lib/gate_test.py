@@ -29,10 +29,10 @@ def check(name, cond):
         print("FAIL", name)
 
 
-def pr(comments, checks=None, state="OPEN"):
+def pr(comments, checks=None, state="OPEN", mss="CLEAN"):
     if checks is None:
         checks = [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]
-    return json.dumps({"number": 51, "state": state, "headRefOid": HEAD,
+    return json.dumps({"number": 51, "state": state, "headRefOid": HEAD, "mergeStateStatus": mss,
                        "statusCheckRollup": checks, "comments": comments})
 
 
@@ -53,6 +53,10 @@ code, _ = run("mode", "https://gitlab.com/groups/aircall/-/epics/77")
 check("mode gitlab abstains", code == 10)
 code, _ = run("mode", "MES-1 and MES-2")
 check("mode two keys abstains", code == 10)
+code, _ = run("mode", "the UTF-8 epic")
+check("mode free text with key-like token abstains", code == 10)
+code, _ = run("mode", "gitlab.com/group/project#12")
+check("mode gitlab short form abstains", code == 10)
 code, _ = run("mode", "the tags epic")
 check("mode free text abstains", code == 10)
 
@@ -71,6 +75,10 @@ with tempfile.TemporaryDirectory() as d:
         f.write("# Proj\n\nWe have no merge gate yet.\n")
     code, _ = run("gate", p)
     check("gate prose mention abstains", code == 10)
+    with open(p, "w") as f:
+        f.write("# Proj\n\n```md\n## Merge gate\n```\n\n## Conventions\n")
+    code, o = run("gate", p)
+    check("gate heading inside fence ignored", not (code == 0 and o.get("merge_gate") is True))
     code, o = run("gate", os.path.join(d, "missing.md"))
     check("gate missing file is no gate", code == 0 and o["merge_gate"] is False)
 
@@ -97,6 +105,22 @@ code, o = run("premerge", stdin=pr([c(f"REVIEW: APPROVE at {HEAD[:7]}", "2026-10
 check("premerge failed status", code == 0 and o["ready"] is False)
 code, _ = run("premerge", stdin=pr([c(f"REVIEW: APPROVE at {HEAD[:7]}", "2026-10-24T10:00:00Z")], checks=[]))
 check("premerge no ci abstains", code == 10)
+T = "2026-10-24T10:00:00Z"
+code, o = run("premerge", stdin=pr([c(f"> REVIEW: APPROVE at {HEAD[:7]}\n\nREVIEW: CHANGES REQUESTED at {HEAD[:7]}", T)]))
+check("premerge quoted approve does not count", code == 0 and o["ready"] is False)
+code, o = run("premerge", stdin=pr([c(f"ready for review: approve when ready, head {HEAD[:7]}", T)]))
+check("premerge prose is not a verdict", code == 0 and o["ready"] is False)
+code, o = run("premerge", stdin=pr([c(f"REVIEW: APPROVE at {OLD}\nhead {HEAD[:7]} has an unreviewed lint commit", T)]))
+check("premerge sha only from verdict line", code == 0 and o["ready"] is False)
+code, o = run("premerge", stdin=pr([c(f"Reviewer report, posted by the orchestrator word for word:\nREVIEW: APPROVE at {HEAD[:7]}", T)]))
+check("premerge orchestrator repost counts", code == 0 and o["ready"] is True)
+code, _ = run("premerge", stdin=pr([c(f"REVIEW: APPROVE at {HEAD[:7]}\nREVIEW: CHANGES REQUESTED at {HEAD[:7]}", T)]))
+check("premerge two verdict lines abstains", code == 10)
+code, o = run("premerge", stdin=pr([c(f"REVIEW: APPROVE at {HEAD[:7]}", T)],
+                                   checks=[{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SKIPPED"}]))
+check("premerge all skipped not ready", code == 0 and o["ready"] is False)
+code, o = run("premerge", stdin=pr([c(f"REVIEW: APPROVE at {HEAD[:7]}", T)], mss="BLOCKED"))
+check("premerge blocked state not ready", code == 0 and o["ready"] is False)
 code, _ = run("premerge", stdin="not json")
 check("premerge bad json errors", code == 1)
 

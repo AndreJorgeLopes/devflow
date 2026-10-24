@@ -7,7 +7,7 @@ Read this file when `gate.py mode <epic>` returned `{"mode":"github",...}`. The 
 Try the sources in this order. Use the first one that gives children:
 
 1. Native sub-issues: `gh api --paginate repos/<owner/repo>/issues/<n>/sub_issues -q '.[].number'`.
-2. Task-list items in the epic body: lines that match `^\s*- \[[ xX]\] .*#(\d+)`. (Real case: the signal-copier epic #12 has zero sub-issues. All children are in its "Status per issue" task list.)
+2. Task-list items in the epic body: lines that match `^\s*- \[[ xX]\] .*?#(\d+)` (the FIRST `#N` on the line is the child; a later `#N` is a note, such as "blocked by #40"). (Real case: the signal-copier epic #12 has zero sub-issues. All children are in its "Status per issue" task list.)
 3. Neither gives children → ask André for the list. Do not guess from labels or titles.
 
 **A checkbox is not a status.** The epic's task list is often stale (real case: seven items said "PR open" when all seven issues were closed and their PRs merged). Read the state of each child with `gh issue view <n> --repo <owner/repo> --json number,title,state,stateReason,assignees,labels,body,closedByPullRequestsReferences`. List every stale box in Phase D and ask André once before you rewrite the epic body.

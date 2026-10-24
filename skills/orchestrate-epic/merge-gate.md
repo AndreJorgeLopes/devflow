@@ -1,8 +1,8 @@
 # Merge-gate mode (orchestrate-epic bundle file)
 
-Read this file only when `gate.py gate <target-repo>/CLAUDE.md` returned `{"merge_gate":true}`. The target repo's CLAUDE.md is the authority: André approved its gate once, for that repo only. This file tells you how to run that gate. It never makes a gate where the repo has none.
+Read this file only when `gate.py gate <target-repo>/CLAUDE.md` returned `{"merge_gate":true}`. That means a merge-gate section exists. Read that section yourself and confirm it lets an agent merge (a heading such as "Merge gate: none yet" does not). The target repo's CLAUDE.md is the authority: André approved its gate once, for that repo only. This file tells you how to run that gate. It never makes a gate where the repo has none.
 
-This gate runs **after** a PR is open. It is separate from `finish-feature`'s review gate, which runs before the PR. Do not repeat that review here.
+This gate runs **after** a PR is open. It is separate from `finish-feature`'s review gate, which runs before the PR. Do not repeat that review here. `finish-feature`'s "never merge from inside the agent" rule applies to the author. This gate is the one exception, and only the orchestrator runs it.
 
 ## When there is no gate
 
@@ -24,7 +24,7 @@ There are two kinds of author. Record which one each ticket has when you route i
 | Route | Who opens the PR | "The same author" means |
 |---|---|---|
 | Background author Agent (ticket had a spec and approved locked tests) | that Agent | `SendMessage` to its agent id |
-| fast-feature sub-session, then its Implementation session | `finish-feature` in the Implementation session | `SendMessage` with `to:` that session's `local_…` id (on a host without that, `mcp__ccd_session_mgmt__send_message`) |
+| fast-feature sub-session, then its Implementation session (find its `local_…` id with `mcp__ccd_session_mgmt__list_sessions` by the deterministic title `[<TICKET>] ... Implementation` from phase-handoff; not found → ask André) | `finish-feature` in the Implementation session | `SendMessage` with `to:` that session's `local_…` id (on a host without that, `mcp__ccd_session_mgmt__send_message`) |
 
 Find the PR from the branch: `gh pr list --repo <owner/repo> --head <branch> --json number,headRefOid,url`.
 
@@ -52,7 +52,7 @@ If the reviewer reports back but forgets to post, post its report word for word 
 ```bash
 gate="${CLAUDE_PLUGIN_ROOT:-}/skills/orchestrate-epic/lib/gate.py"
 [ -f "$gate" ] || gate="$(find "$HOME/.claude/plugins" "$HOME/dev/devflow" -path '*orchestrate-epic/lib/gate.py' 2>/dev/null | head -1)"
-gh pr view <n> --repo <owner/repo> --json number,state,headRefOid,comments,statusCheckRollup | python3 "$gate" premerge <owner/repo>
+gh pr view <n> --repo <owner/repo> --json number,state,headRefOid,mergeStateStatus,comments,statusCheckRollup | python3 "$gate" premerge <owner/repo>
 ```
 
 - `"ready": true` → run `merge_cmd` exactly as printed (`gh pr merge <n> --repo <owner/repo> --squash --match-head-commit <sha>`). Add no other flags. `--match-head-commit` makes GitHub refuse the merge if a commit lands between the check and the merge.
