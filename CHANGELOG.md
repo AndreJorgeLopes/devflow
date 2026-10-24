@@ -1,3 +1,10 @@
+## v0.29.0 — 2026-10-24
+
+### Features
+- feat(orchestrate-epic): GitHub-issues mode, orchestrator routing, merge-gate loop (#93)
+
+---
+
 ## v0.28.0 — 2026-07-30
 
 ### Features
