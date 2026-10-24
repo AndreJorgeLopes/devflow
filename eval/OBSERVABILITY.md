@@ -18,7 +18,7 @@ npx -y promptfoo@latest view        # visual side-by-side matrix in browser
 
 - Provider `exec: bash lib/run-skill.sh` runs `claude --print '<invocation>'`
   with `CLAUDECODE=""` (so the nested claude can launch — claude-agent-sdk#573)
-  and `--model haiku` (cheap; override with `SKILL_EVAL_MODEL`).
+  and `--model sonnet` (an alias, so it does not go stale; override with `SKILL_EVAL_MODEL`).
 - Assertions: deterministic (`is-json`, `regex`, `contains`, `json-schema`,
   `javascript`) + LLM-judge (`llm-rubric`, `g-eval`).
 - **Version compare (vN vs vN+1):** add a second provider that runs the prior
