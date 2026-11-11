@@ -1,3 +1,10 @@
+## v0.29.1 — 2026-11-11
+
+### Fixes
+- fix(eval): default SKILL_EVAL_MODEL to the sonnet alias (#94)
+
+---
+
 ## v0.29.0 — 2026-10-24
 
 ### Features
