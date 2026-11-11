@@ -1,6 +1,6 @@
 ---
 name: phase-handoff
-description: Hand off between phases of the devflow new-feature pipeline. Writes a frozen-state file, marks a chapter, sets the terminal title, gates on a one-click AskUserQuestion, then spawns a new session for the next phase via `mcp__ccd_session__spawn_task` so it shows up in the Claude Desktop sidebar with a deterministic title.
+description: Hand off between phases of the devflow new-feature pipeline. Writes a frozen-state file, marks a chapter, sets the terminal title, gates on a one-click AskUserQuestion unless `--unattended` is passed, then spawns a new session for the next phase via `mcp__ccd_session__spawn_task` so it shows up in the Claude Desktop sidebar with a deterministic title.
 ---
 
 You are at a phase boundary in devflow's new-feature pipeline. Capture the current state to disk, **commit the phase artefacts to the feature branch so they survive worktree removal**, mark the transition in the CURRENT session, then spawn a NEW session (`mcp__ccd_session__spawn_task`) for the next phase.
@@ -14,6 +14,7 @@ You are at a phase boundary in devflow's new-feature pipeline. Capture the curre
 - `--phase <current-phase>` (required): one of `spec`, `plan`, `lock-tests`
 - `--next-phase <next>` (required): one of `plan`, `lock-tests`, `impl`
 - `--no-handoff` (optional): skip everything, return immediately (escape hatch)
+- `--unattended` (optional): do everything, but skip the one-click gate in step 10 and spawn directly. For runs that must not block on a human.
 
 If `--no-handoff` is present, print "phase-handoff skipped" and exit.
 
@@ -240,7 +241,7 @@ If `--no-handoff` is present, print "phase-handoff skipped" and exit.
      The slash command on line 1 is your first action — invoke it now. Its Step 0 re-establishes the feature worktree from the block above; the artefacts are then the only authoritative inputs.
      ```
 
-10. **One-click handoff gate (`AskUserQuestion`).** Ask the user:
+10. **One-click handoff gate (`AskUserQuestion`).** Skip this entire step when `--unattended` was passed, and go straight to step 11. Otherwise ask the user:
 
     - Question: `Phase \`<current-phase>\` complete. Spawn a new session for the \`<next-phase>\` phase? Title will be: \`<computed-title>\``
     - Header: `Handoff`
