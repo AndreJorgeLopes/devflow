@@ -24,9 +24,10 @@
 #    and it must itself honor DEVFLOW_EVAL (emit output, skip the irreversible action).
 #
 # Env knobs:
-#   SKILL_EVAL_MODEL   model id (default: sonnet — haiku is too weak to adhere to a
-#                      pinned output shape, so it flaps these asserts; verified. Override
-#                      to haiku only for a skill whose asserts don't depend on strict format.)
+#   SKILL_EVAL_MODEL   model alias or id (default: the `sonnet` alias, so it never goes stale
+#                      when a new model ships. haiku is too weak to adhere to a pinned output
+#                      shape, so it flaps these asserts; verified. Override to haiku only for
+#                      a skill whose asserts don't depend on strict format.)
 #   SKILL_EVAL_TIMEOUT seconds before kill (default: 300)
 #
 # IMPORTANT: clears CLAUDECODE so a nested `claude` can launch from inside a
@@ -34,7 +35,7 @@
 set -euo pipefail
 
 PROMPT="${1:-}"
-MODEL="${SKILL_EVAL_MODEL:-claude-sonnet-5}"
+MODEL="${SKILL_EVAL_MODEL:-sonnet}"
 TIMEOUT="${SKILL_EVAL_TIMEOUT:-300}"
 
 if [[ -z "$PROMPT" ]]; then
