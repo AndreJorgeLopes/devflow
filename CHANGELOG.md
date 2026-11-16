@@ -1,3 +1,10 @@
+## v0.30.0 — 2026-11-16
+
+### Features
+- feat(fast-feature): run unattended by replacing both human gates (#92)
+
+---
+
 ## v0.29.1 — 2026-11-11
 
 ### Fixes
